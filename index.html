@@ -7,12 +7,12 @@
 
 <!-- ===================== SEO / OPEN GRAPH =====================
      Live domain: https://stackpine.org -->
-<meta name="description" content="Stackpine builds custom software shaped around exactly how your business runs — for one affordable monthly subscription that covers the build, hosting, updates, and support. Based in Ohio, serving businesses everywhere.">
+<meta name="description" content="Stackpine builds custom software, websites, and online storefronts shaped around exactly how your business runs — for one affordable monthly subscription that covers the build, hosting, updates, and support. Based in Ohio, serving businesses everywhere.">
 <link rel="canonical" href="https://stackpine.org/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
 <meta property="og:title" content="Stackpine — Custom Software, Built for Exactly How You Work">
-<meta property="og:description" content="Any idea you have, we can build it. Custom software for one affordable monthly subscription — build, hosting, updates, and support included.">
+<meta property="og:description" content="Any idea you have, we can build it. Custom software, websites & online storefronts for one affordable monthly subscription — build, hosting, updates, and support included.">
 <meta property="og:url" content="https://stackpine.org/">
 <meta property="og:image" content="https://stackpine.org/cover.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -344,42 +344,66 @@ section{position:relative}
 .kanban-hint{font-size:.8rem;color:var(--slate-lt);margin-top:.9rem;text-align:center}
 @media (max-width:760px){.kanban{grid-template-columns:1fr}.kanban-col{min-height:auto}}
 
-/* --- demo 2: picker --- */
-.picker-wrap{display:grid;grid-template-columns:1fr 1.15fr;gap:1.8rem;align-items:start}
-.picker-entry label{font-size:.85rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.5rem}
-.picker-entry .row{display:flex;gap:.6rem}
-.picker-entry input{
-  flex:1;font-family:inherit;font-size:.95rem;padding:.7em 1em;
-  border:2px solid var(--ice);border-radius:10px;background:var(--ice);color:var(--text);
-  transition:border-color .2s ease;
+/* --- demo 2: booking --- */
+.booking-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:1.8rem;align-items:start}
+.bk-label{font-size:.85rem;font-weight:700;color:var(--navy);display:block;margin:1.3rem 0 .55rem}
+.bk-label:first-child{margin-top:0}
+.bk-open{font-weight:500;color:var(--pine);font-size:.8rem;margin-left:.4em}
+.bk-services{display:flex;flex-wrap:wrap;gap:.5rem}
+.bk-chip{
+  font-family:inherit;font-size:.88rem;font-weight:500;color:var(--navy);
+  background:var(--ice);border:2px solid transparent;border-radius:999px;padding:.5em 1.1em;
+  cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease;
 }
-.picker-entry input:focus{outline:none;border-color:var(--pine);background:#fff}
-.chiplist{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
-.chip{
-  display:inline-flex;align-items:center;gap:.45em;
-  background:var(--ice);color:var(--navy);font-size:.86rem;font-weight:500;
-  padding:.35em .5em .35em .95em;border-radius:999px;animation:popIn .3s ease;
+.bk-chip:hover{transform:translateY(-1px);border-color:var(--sage-lt)}
+.bk-chip[aria-pressed=true]{background:#E2EEE5;border-color:var(--pine);color:var(--pine-dark);font-weight:600}
+.bk-chip:focus-visible,.bk-day:focus-visible,.bk-slot:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.bk-days{display:flex;gap:.45rem;overflow-x:auto;padding-bottom:.3rem}
+.bk-day{
+  font-family:inherit;flex:0 0 auto;min-width:62px;padding:.55em .4em;border:2px solid var(--ice);
+  border-radius:12px;background:var(--ice);cursor:pointer;text-align:center;color:var(--slate);
+  display:flex;flex-direction:column;gap:.1em;transition:background .15s ease,border-color .15s ease;
 }
-.chip button{
-  border:0;background:rgba(43,58,92,.12);color:var(--navy);width:20px;height:20px;border-radius:50%;
-  cursor:pointer;font-size:.75rem;line-height:1;display:flex;align-items:center;justify-content:center;
+.bk-day:hover{border-color:var(--sage-lt)}
+.bk-day .dow{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.bk-day .dom{font-size:1.15rem;font-weight:700;color:var(--navy)}
+.bk-day[aria-pressed=true]{background:var(--pine);border-color:var(--pine)}
+.bk-day[aria-pressed=true] .dow,.bk-day[aria-pressed=true] .dom{color:#fff}
+.bk-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:.5rem}
+.bk-slot{
+  font-family:inherit;font-size:.86rem;font-weight:600;color:var(--navy);
+  background:var(--ice);border:2px solid transparent;border-radius:9px;padding:.55em .3em;
+  cursor:pointer;transition:background .15s ease,border-color .15s ease;
 }
-.chip button:hover{background:#C15B4E;color:#fff}
-.picker-stage{
-  position:relative;background:var(--navy);border-radius:14px;padding:2.4rem 1.6rem;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;
-  min-height:250px;overflow:hidden;
+.bk-slot:hover:not(:disabled){border-color:var(--sage-lt)}
+.bk-slot[aria-pressed=true]{background:var(--pine);color:#fff}
+.bk-slot:disabled{opacity:.38;cursor:not-allowed}
+.bk-slot.taken{text-decoration:line-through}
+.booking-panel{
+  position:relative;background:var(--navy);border-radius:14px;padding:1.8rem 1.6rem;
+  overflow:hidden;min-height:300px;
 }
-.picker-display{
-  font-size:clamp(1.3rem,3vw,2rem);font-weight:800;color:#fff;text-align:center;
-  min-height:1.4em;transition:transform .1s ease;
+.bk-title{color:#fff;font-size:1.05rem;margin-bottom:1rem}
+.bk-row{
+  display:flex;justify-content:space-between;gap:1rem;font-size:.9rem;padding:.55em 0;
+  border-bottom:1px dashed rgba(255,255,255,.18);color:rgba(237,241,245,.65);
 }
-.picker-display.spinning{color:var(--sage-lt)}
-.picker-display.winner{animation:winnerPop .55s cubic-bezier(.3,1.6,.5,1);color:#8FCB9B}
+.bk-row strong{color:#fff;font-weight:600;text-align:right}
+.bk-confirm{width:100%;margin-top:1.3rem}
+.bk-confirm:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.bk-hint{font-size:.78rem;color:rgba(237,241,245,.55);margin-top:.8rem;text-align:center}
+.bk-check{
+  width:60px;height:60px;border-radius:50%;background:var(--pine);margin:0 auto 1rem;
+  display:flex;align-items:center;justify-content:center;
+  animation:winnerPop .55s cubic-bezier(.3,1.6,.5,1);
+}
+#bkSuccess{text-align:center;padding-top:.5rem}
+#bkSuccess .bk-title{margin-bottom:.5rem}
+.bk-done{color:#8FCB9B;font-weight:600;font-size:.95rem}
+.bk-again{margin-top:1.2rem;font-size:.88rem;padding:.6em 1.5em}
 @keyframes winnerPop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
-.picker-sub{color:rgba(237,241,245,.6);font-size:.85rem;text-align:center;min-height:1.3em}
 .confetti-canvas{position:absolute;inset:0;pointer-events:none}
-@media (max-width:760px){.picker-wrap{grid-template-columns:1fr}}
+@media (max-width:760px){.booking-wrap{grid-template-columns:1fr}}
 
 /* --- demo 3: quote calculator --- */
 .quote-wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;align-items:stretch}
@@ -442,7 +466,9 @@ input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px
 .build-card p{font-size:.92rem;color:var(--text-soft)}
 .build-card.wild{
   background:linear-gradient(150deg,var(--pine),var(--pine-dark));color:#fff;
+  grid-column:1/-1;display:flex;align-items:center;gap:1.4rem;
 }
+.build-card.wild .b-icon{margin-bottom:0;flex:0 0 auto}
 .build-card.wild h3{color:#fff}
 .build-card.wild p{color:rgba(255,255,255,.85)}
 .build-card.wild .b-icon{background:rgba(255,255,255,.16)}
@@ -498,6 +524,21 @@ input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px
 .price-feats li svg{flex:0 0 auto;margin-top:.25rem}
 .price-card .btn{width:100%}
 .pricing-note{text-align:center;font-size:.88rem;color:var(--text-soft);margin-top:2.2rem}
+.site-banner{
+  margin-top:2.4rem;background:linear-gradient(150deg,var(--navy),var(--navy-deep));
+  border-radius:18px;padding:2.4rem 2.2rem;color:#fff;
+  display:grid;grid-template-columns:1.5fr 1fr;gap:2.2rem;align-items:center;
+  box-shadow:var(--shadow-md);
+}
+.site-banner h3{color:#fff;font-size:1.35rem;margin-bottom:.6rem}
+.site-banner .sb-copy p{color:rgba(237,241,245,.78);font-size:.97rem}
+.sb-price{text-align:center;display:grid;gap:.35rem;justify-items:center}
+.sb-amount{font-size:2.3rem;font-weight:800;line-height:1}
+.sb-amount .cur{font-size:.5em;vertical-align:.7em;font-weight:700}
+.sb-amount small{font-size:.34em;font-weight:600;color:rgba(255,255,255,.7)}
+.sb-plus{font-size:.9rem;font-weight:600;color:#8FCB9B}
+.sb-price .btn{margin-top:.9rem}
+@media (max-width:840px){.site-banner{grid-template-columns:1fr;text-align:center}.sb-copy .vs-tag{display:block}}
 @media (max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
 
 /* ---------- contact ---------- */
@@ -530,6 +571,33 @@ input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px
   display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;font-size:.84rem;color:rgba(237,241,245,.5);
 }
 .footer-bottom .ohio{display:inline-flex;align-items:center;gap:.45em}
+
+/* ---------- mobile polish ---------- */
+@media (max-width:640px){
+  .section{padding:3.6rem 0}
+  .section-head{margin-bottom:2.2rem}
+  .hero-content{padding:calc(var(--nav-h) + 2.2rem) 0 4.5rem}
+  .hero-ctas{flex-direction:column}
+  .hero-ctas .btn{width:100%}
+  .demo-body{padding:1.1rem}
+  .demo-block{margin-bottom:3.2rem}
+  .intake-form{flex-direction:column}
+  .intake-form .btn{width:100%}
+  .kcard-move button{width:32px;height:32px}
+  .bk-slots{grid-template-columns:repeat(3,1fr)}
+  .booking-panel{min-height:0}
+  .vs-card{padding:1.7rem 1.4rem}
+  .price-card{padding:2rem 1.5rem}
+  .site-banner{padding:1.9rem 1.5rem}
+  .quote-result{padding:1.8rem 1.3rem}
+  .contact-ctas{flex-direction:column;align-items:stretch}
+  .footer-inner{flex-direction:column;text-align:center}
+  .footer-links{justify-content:center}
+  .footer-bottom{flex-direction:column;align-items:center;text-align:center}
+  .treeline{height:46px}
+  /* 16px inputs so iOS doesn't zoom the page when a field is tapped */
+  input[type=text],select{font-size:1rem!important}
+}
 
 /* ---------- static test mode (?static=1) — used for screenshot/QA ---------- */
 html.static-mode{scroll-behavior:auto}
@@ -576,7 +644,7 @@ html.static-mode .hero{min-height:850px}
       <span class="hero-eyebrow">Custom software · Subscription simple</span>
       <h1>Your business. Your software. <span class="accent">Built for exactly how you work.</span></h1>
       <p class="hero-tagline">Building the Future, One Layer at a Time.</p>
-      <p class="hero-sub">Stop bending your business around off-the-shelf tools. Stackpine builds software shaped around <em>you</em> — for one affordable monthly subscription that covers everything.</p>
+      <p class="hero-sub">Stop bending your business around off-the-shelf tools. Stackpine builds custom software, websites, and online storefronts shaped around <em>you</em> — for one affordable monthly subscription that covers everything.</p>
       <div class="hero-ctas">
         <a href="#demos" class="btn btn-primary">Try Our Demos</a>
         <a href="#contact" class="btn btn-ghost">Get in Touch</a>
@@ -716,28 +784,42 @@ html.static-mode .hero{min-height:850px}
       <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
     </div>
 
-    <!-- ===== Demo 2: Live Drawing Picker ===== -->
+    <!-- ===== Demo 2: Online Booking ===== -->
     <div class="demo-block reveal">
       <div class="demo-frame">
         <div class="demo-titlebar">
           <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <h3>Demo 2 — Live Giveaway Drawing Picker</h3>
+          <h3>Demo 2 — Online Booking &amp; Scheduling</h3>
         </div>
         <div class="demo-body">
-          <div class="picker-wrap">
-            <div class="picker-entry">
-              <label for="pickerInput">Entrants</label>
-              <form class="row" id="pickerForm">
-                <input type="text" id="pickerInput" maxlength="30" placeholder="Add a name…" aria-label="Add entrant name">
-                <button type="submit" class="btn btn-navy btn-sm">Add</button>
-              </form>
-              <ul class="chiplist" id="pickerChips" aria-label="Entrant list"></ul>
+          <div class="booking-wrap">
+            <div class="booking-picker">
+              <span class="bk-label" id="bkSvcLabel">1. Pick a service</span>
+              <div class="bk-services" role="group" aria-labelledby="bkSvcLabel" id="bkServices"></div>
+              <span class="bk-label" id="bkDayLabel">2. Pick a day</span>
+              <div class="bk-days" role="group" aria-labelledby="bkDayLabel" id="bkDays"></div>
+              <span class="bk-label" id="bkTimeLabel">3. Pick a time <span class="bk-open" id="bkOpenCount"></span></span>
+              <div class="bk-slots" role="group" aria-labelledby="bkTimeLabel" id="bkSlots"></div>
             </div>
-            <div class="picker-stage">
+            <div class="booking-panel" aria-live="polite">
               <canvas class="confetti-canvas" id="confettiCanvas" aria-hidden="true"></canvas>
-              <div class="picker-display" id="pickerDisplay" aria-live="polite">Who's it gonna be?</div>
-              <p class="picker-sub" id="pickerSub">Add names, then hit Draw.</p>
-              <button class="btn btn-primary" id="drawBtn" type="button">🎉 Draw a Winner</button>
+              <div id="bkSummary">
+                <h4 class="bk-title">Your appointment</h4>
+                <div class="bk-row"><span>Service</span><strong id="bkOutSvc">—</strong></div>
+                <div class="bk-row"><span>Day</span><strong id="bkOutDay">—</strong></div>
+                <div class="bk-row"><span>Time</span><strong id="bkOutTime">—</strong></div>
+                <button class="btn btn-primary bk-confirm" id="bkConfirm" type="button" disabled>Confirm Booking</button>
+                <p class="bk-hint" id="bkHint">Pick a service, day &amp; time above.</p>
+              </div>
+              <div id="bkSuccess" hidden>
+                <div class="bk-check" aria-hidden="true">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <h4 class="bk-title">Booked! 🎉</h4>
+                <p class="bk-done" id="bkDoneText"></p>
+                <p class="bk-hint">In the real version, you and your customer would both get a confirmation text or email automatically.</p>
+                <button class="btn btn-ghost bk-again" id="bkAgain" type="button">Book another</button>
+              </div>
             </div>
           </div>
         </div>
@@ -828,10 +910,17 @@ html.static-mode .hero{min-height:850px}
         <h3>Inventory &amp; quoting systems</h3>
         <p>Know what you have, what it costs, and what to charge — with quotes generated in seconds, not evenings.</p>
       </article>
-      <article class="build-card wild reveal d3">
+      <article class="build-card reveal d3">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <h3>Websites &amp; online storefronts</h3>
+        <p>A professional site or online store that's actually yours — built custom, then hosted and maintained by us so it never goes stale.</p>
+      </article>
+      <article class="build-card wild reveal d2">
         <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
-        <h3>…and whatever you can imagine</h3>
-        <p>If you can describe it, we can build it. Seriously — that's the whole point of custom.</p>
+        <div>
+          <h3>…and whatever you can imagine</h3>
+          <p>If you can describe it, we can build it. Seriously — that's the whole point of custom.</p>
+        </div>
       </article>
     </div>
   </div>
@@ -945,6 +1034,22 @@ html.static-mode .hero{min-height:850px}
         </ul>
         <a href="#contact" class="btn btn-navy">Get a custom quote</a>
       </article>
+    </div>
+    <!-- ============================================================
+         EDIT WEBSITE PRICING HERE — build price + monthly care fee.
+         ============================================================ -->
+    <div class="site-banner reveal">
+      <div class="sb-copy">
+        <span class="vs-tag" style="color:var(--sage-lt)">Websites &amp; storefronts</span>
+        <h3>Just need a website or online store?</h3>
+        <p>We build those too — custom-designed, for a lower one-time build cost. Then we host it, maintain it, and keep it updated for a small monthly fee, so it stays fast, secure, and never goes stale.</p>
+      </div>
+      <div class="sb-price">
+        <span class="price-start">Starting at</span>
+        <div class="sb-amount"><span class="cur">$</span>499 <small>one-time build</small></div>
+        <div class="sb-plus">+ $29/mo hosting, updates &amp; care</div>
+        <a href="#contact" class="btn btn-primary">Ask about websites</a>
+      </div>
     </div>
     <p class="pricing-note">Not sure which fits? Just describe your idea — we'll tell you honestly what it needs (and doesn't).</p>
   </div>
@@ -1062,7 +1167,8 @@ navLinks.addEventListener("click", e => {
    ============================================================ */
 const heroBg = document.getElementById("heroBg");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-if (!reduceMotion) {
+const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+if (!reduceMotion && !coarsePointer) {
   let ticking = false;
   window.addEventListener("scroll", () => {
     if (ticking) return;
@@ -1207,82 +1313,100 @@ kanban.addEventListener("keydown", e => {
 });
 
 /* ============================================================
-   DEMO 2 — Drawing picker + hand-rolled confetti
+   DEMO 2 — Online booking + hand-rolled confetti
    ============================================================ */
-const pickerChips = document.getElementById("pickerChips");
-const pickerDisplay = document.getElementById("pickerDisplay");
-const pickerSub = document.getElementById("pickerSub");
-const drawBtn = document.getElementById("drawBtn");
-let entrants = ["Jordan","Riley","Casey","Morgan","Alex"];
+const BK_SERVICES = [
+  {name:"Quick check-in", dur:"15 min"},
+  {name:"New client consult", dur:"30 min"},
+  {name:"Standard appointment", dur:"1 hr"},
+];
+const BK_TIMES = ["9:00","9:30","10:00","10:30","11:00","11:30","1:00","1:30","2:00","2:30","3:00","3:30","4:00","4:30"];
+const bkState = {svc:null, day:null, slot:null};
+const bkServices = document.getElementById("bkServices");
+const bkDays = document.getElementById("bkDays");
+const bkSlots = document.getElementById("bkSlots");
 
-function renderChips(){
-  pickerChips.innerHTML = "";
-  entrants.forEach((name, i) => {
-    const li = document.createElement("li");
-    li.className = "chip";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.setAttribute("aria-label", `Remove ${name}`);
-    btn.textContent = "×";
-    btn.addEventListener("click", () => { entrants.splice(i,1); renderChips(); });
-    li.append(name, btn);
-    pickerChips.appendChild(li);
-  });
-  pickerSub.textContent = entrants.length
-    ? `${entrants.length} entrant${entrants.length === 1 ? "" : "s"} ready.`
-    : "Add names, then hit Draw.";
-}
-renderChips();
-
-document.getElementById("pickerForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const input = document.getElementById("pickerInput");
-  const name = input.value.trim();
-  if (name && !entrants.includes(name)) { entrants.push(name); renderChips(); }
-  input.value = "";
-  input.focus();
+BK_SERVICES.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "bk-chip";
+  b.textContent = `${s.name} · ${s.dur}`;
+  b.setAttribute("aria-pressed", "false");
+  b.addEventListener("click", () => { bkState.svc = i; bkSelect(bkServices, b); bkUpdate(); });
+  bkServices.appendChild(b);
 });
 
-let drawing = false;
-drawBtn.addEventListener("click", () => {
-  if (drawing || entrants.length === 0) {
-    if (!entrants.length) { pickerSub.textContent = "Add at least one name first!"; }
-    return;
-  }
-  drawing = true;
-  drawBtn.disabled = true;
-  pickerDisplay.classList.remove("winner");
-  pickerDisplay.classList.add("spinning");
-  pickerSub.textContent = "Drawing…";
+const bkDayList = [];
+for (let i = 0; i < 7; i++) {
+  const d = new Date(); d.setDate(d.getDate() + 1 + i);
+  bkDayList.push(d);
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "bk-day";
+  b.innerHTML = `<span class="dow">${d.toLocaleDateString("en-US",{weekday:"short"})}</span><span class="dom">${d.getDate()}</span>`;
+  b.setAttribute("aria-pressed", "false");
+  b.setAttribute("aria-label", d.toLocaleDateString("en-US",{weekday:"long", month:"long", day:"numeric"}));
+  b.addEventListener("click", () => { bkState.day = i; bkState.slot = null; bkSelect(bkDays, b); bkRenderSlots(); bkUpdate(); });
+  bkDays.appendChild(b);
+}
 
-  const winner = entrants[Math.floor(Math.random() * entrants.length)];
-  const total = reduceMotion ? 200 : 2600;   // total spin ms
-  const start = performance.now();
-  let idx = 0;
+function bkSelect(group, btn){
+  group.querySelectorAll("[aria-pressed]").forEach(x => x.setAttribute("aria-pressed", "false"));
+  btn.setAttribute("aria-pressed", "true");
+}
 
-  function spin(now){
-    const p = Math.min((now - start) / total, 1);
-    // ease-out: ticks slow down as p -> 1
-    const interval = 60 + 480 * p * p;
-    if (!spin.last || now - spin.last >= interval) {
-      spin.last = now;
-      idx = (idx + 1) % entrants.length;
-      pickerDisplay.textContent = entrants[idx];
-      pickerDisplay.style.transform = "scale(1.06)";
-      setTimeout(() => pickerDisplay.style.transform = "", 70);
-    }
-    if (p < 1) requestAnimationFrame(spin);
-    else {
-      pickerDisplay.textContent = "🏆 " + winner + "!";
-      pickerDisplay.classList.remove("spinning");
-      pickerDisplay.classList.add("winner");
-      pickerSub.textContent = "Congratulations! Draw again any time.";
-      confettiBurst();
-      drawing = false;
-      drawBtn.disabled = false;
-    }
-  }
-  requestAnimationFrame(spin);
+/* deterministic "already booked" pattern so each day looks different */
+function bkIsTaken(dayIdx, slotIdx){ return (slotIdx * 7 + dayIdx * 3) % 4 === 0; }
+
+function bkRenderSlots(){
+  bkSlots.innerHTML = "";
+  let open = 0;
+  BK_TIMES.forEach((t, i) => {
+    const taken = bkState.day !== null && bkIsTaken(bkState.day, i);
+    if (!taken) open++;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "bk-slot";
+    const hour = parseInt(t);
+    const label = t + (hour >= 9 && hour <= 11 ? " AM" : " PM");
+    b.textContent = label;
+    b.disabled = taken || bkState.day === null;
+    b.classList.toggle("taken", taken);
+    b.setAttribute("aria-pressed", "false");
+    b.setAttribute("aria-label", taken ? label + " — already booked" : label);
+    b.addEventListener("click", () => { bkState.slot = label; bkSelect(bkSlots, b); bkUpdate(); });
+    bkSlots.appendChild(b);
+  });
+  document.getElementById("bkOpenCount").textContent =
+    bkState.day === null ? "(pick a day first)" : `· ${open} slots open`;
+}
+bkRenderSlots();
+
+function bkUpdate(){
+  const s = bkState.svc !== null ? BK_SERVICES[bkState.svc] : null;
+  const d = bkState.day !== null ? bkDayList[bkState.day] : null;
+  document.getElementById("bkOutSvc").textContent = s ? s.name : "—";
+  document.getElementById("bkOutDay").textContent = d ? d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"}) : "—";
+  document.getElementById("bkOutTime").textContent = bkState.slot || "—";
+  const ready = s && d && bkState.slot;
+  document.getElementById("bkConfirm").disabled = !ready;
+  document.getElementById("bkHint").textContent = ready ? "Looks good? Lock it in." : "Pick a service, day & time above.";
+}
+
+document.getElementById("bkConfirm").addEventListener("click", () => {
+  const s = BK_SERVICES[bkState.svc];
+  const d = bkDayList[bkState.day];
+  document.getElementById("bkDoneText").textContent =
+    `${s.name} — ${d.toLocaleDateString("en-US",{weekday:"long", month:"long", day:"numeric"})} at ${bkState.slot}`;
+  document.getElementById("bkSummary").hidden = true;
+  document.getElementById("bkSuccess").hidden = false;
+  confettiBurst();
+});
+
+document.getElementById("bkAgain").addEventListener("click", () => {
+  bkState.svc = bkState.day = bkState.slot = null;
+  document.querySelectorAll("#bkServices [aria-pressed], #bkDays [aria-pressed]").forEach(x => x.setAttribute("aria-pressed","false"));
+  bkRenderSlots();
+  bkUpdate();
+  document.getElementById("bkSuccess").hidden = true;
+  document.getElementById("bkSummary").hidden = false;
 });
 
 /* confetti — hand-rolled, no libraries */
