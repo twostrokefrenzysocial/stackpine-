@@ -405,50 +405,6 @@ section{position:relative}
 .confetti-canvas{position:absolute;inset:0;pointer-events:none}
 @media (max-width:760px){.booking-wrap{grid-template-columns:1fr}}
 
-/* --- demo 3: quote calculator --- */
-.quote-wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;align-items:stretch}
-.quote-controls{display:grid;gap:1.5rem;align-content:center}
-.qc-row label{display:flex;justify-content:space-between;font-size:.9rem;font-weight:600;color:var(--navy);margin-bottom:.5rem}
-.qc-row label output{color:var(--pine);font-weight:700}
-input[type=range]{
-  -webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;
-  background:linear-gradient(to right,var(--pine) 0%,var(--pine) var(--fill,50%),var(--ice) var(--fill,50%));
-  cursor:pointer;
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;
-  background:#fff;border:4px solid var(--pine);box-shadow:var(--shadow-sm);
-  transition:transform .15s ease;
-}
-input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
-input[type=range]::-moz-range-thumb{
-  width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid var(--pine);box-shadow:var(--shadow-sm);
-}
-input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px}
-.qc-row select{
-  width:100%;font-family:inherit;font-size:.95rem;padding:.7em 1em;
-  border:2px solid var(--ice);border-radius:10px;background:var(--ice);color:var(--text);cursor:pointer;
-}
-.qc-row select:focus{outline:none;border-color:var(--pine);background:#fff}
-.quote-result{
-  background:linear-gradient(150deg,var(--navy),var(--navy-deep));
-  border-radius:14px;padding:2.2rem 1.8rem;color:#fff;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.4rem;
-  position:relative;overflow:hidden;
-}
-.quote-result::after{
-  content:"";position:absolute;inset:auto -20% -55% -20%;height:75%;
-  background:linear-gradient(135deg,rgba(58,125,68,.35),rgba(111,160,122,.12));
-  clip-path:polygon(0 55%,8% 30%,16% 55%,24% 18%,32% 55%,40% 35%,48% 55%,56% 12%,64% 55%,72% 30%,80% 55%,88% 22%,96% 55%,100% 40%,100% 100%,0 100%);
-}
-.quote-result > *{position:relative;z-index:1}
-.quote-label{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sage-lt);font-weight:600}
-.quote-price{font-size:clamp(2.6rem,5vw,3.6rem);font-weight:800;line-height:1}
-.quote-price small{font-size:.36em;font-weight:600;color:rgba(255,255,255,.7)}
-.quote-tier{font-size:.9rem;color:#8FCB9B;font-weight:600;min-height:1.4em}
-.quote-note{font-size:.78rem;color:rgba(237,241,245,.55);margin-top:.6rem;max-width:260px}
-@media (max-width:760px){.quote-wrap{grid-template-columns:1fr}}
-
 /* ---------- what we can build ---------- */
 .build-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .build-card{
@@ -589,7 +545,6 @@ input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px
   .vs-card{padding:1.7rem 1.4rem}
   .price-card{padding:2rem 1.5rem}
   .site-banner{padding:1.9rem 1.5rem}
-  .quote-result{padding:1.8rem 1.3rem}
   .contact-ctas{flex-direction:column;align-items:stretch}
   .footer-inner{flex-direction:column;text-align:center}
   .footer-links{justify-content:center}
@@ -827,44 +782,6 @@ html.static-mode .hero{min-height:850px}
       <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
     </div>
 
-    <!-- ===== Demo 3: Instant Quote Calculator ===== -->
-    <div class="demo-block reveal">
-      <div class="demo-frame">
-        <div class="demo-titlebar">
-          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <h3>Demo 3 — Instant Quote Calculator</h3>
-        </div>
-        <div class="demo-body">
-          <div class="quote-wrap">
-            <div class="quote-controls">
-              <div class="qc-row">
-                <label for="qUsers">People using it <output id="qUsersOut">5</output></label>
-                <input type="range" id="qUsers" min="1" max="50" value="5">
-              </div>
-              <div class="qc-row">
-                <label for="qFeatures">Features / screens <output id="qFeaturesOut">4</output></label>
-                <input type="range" id="qFeatures" min="1" max="12" value="4">
-              </div>
-              <div class="qc-row">
-                <label for="qComplexity">Complexity</label>
-                <select id="qComplexity">
-                  <option value="1" selected>Simple — one clear job, done well</option>
-                  <option value="1.6">Standard — database, logins, reports</option>
-                  <option value="2.4">Advanced — integrations, portals, automation</option>
-                </select>
-              </div>
-            </div>
-            <div class="quote-result">
-              <span class="quote-label">Estimated subscription</span>
-              <div class="quote-price"><span id="qPrice">$0</span><small>/mo</small></div>
-              <div class="quote-tier" id="qTier"></div>
-              <p class="quote-note">Ballpark only — every quote is custom. Hosting, updates &amp; support always included.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
-    </div>
   </div>
 </section>
 
@@ -1455,51 +1372,6 @@ function confettiTick(){
   else { confettiRunning = false; cCtx.clearRect(0,0,cCanvas.width,cCanvas.height); }
 }
 
-/* ============================================================
-   DEMO 3 — Instant quote calculator
-   ============================================================ */
-const qUsers = document.getElementById("qUsers");
-const qFeatures = document.getElementById("qFeatures");
-const qComplexity = document.getElementById("qComplexity");
-const qPrice = document.getElementById("qPrice");
-const qTier = document.getElementById("qTier");
-let shownPrice = 0;
-
-function sliderFill(el){
-  const p = (el.value - el.min) / (el.max - el.min) * 100;
-  el.style.setProperty("--fill", p + "%");
-}
-
-function calcQuote(){
-  sliderFill(qUsers); sliderFill(qFeatures);
-  document.getElementById("qUsersOut").textContent = qUsers.value;
-  document.getElementById("qFeaturesOut").textContent = qFeatures.value;
-  const raw = (245 + qUsers.value * 9 + qFeatures.value * 45) * parseFloat(qComplexity.value);
-  const price = Math.round(raw / 5) * 5;
-  qTier.textContent = price < 500 ? "That's Starter territory 🌱"
-                    : price < 1300 ? "Sounds like a Business plan 🌲"
-                    : "That's a Pro project — let's talk 🌲🌲🌲";
-  animatePrice(price);
-}
-
-let priceAnim;
-function animatePrice(target){
-  cancelAnimationFrame(priceAnim);
-  if (reduceMotion) { shownPrice = target; qPrice.textContent = "$" + target; return; }
-  const from = shownPrice, start = performance.now(), dur = 450;
-  function tick(now){
-    const p = Math.min((now - start) / dur, 1);
-    const eased = 1 - Math.pow(1 - p, 3);
-    shownPrice = Math.round(from + (target - from) * eased);
-    qPrice.textContent = "$" + shownPrice;
-    if (p < 1) priceAnim = requestAnimationFrame(tick);
-  }
-  priceAnim = requestAnimationFrame(tick);
-}
-
-[qUsers, qFeatures].forEach(el => el.addEventListener("input", calcQuote));
-qComplexity.addEventListener("change", calcQuote);
-calcQuote();
 </script>
 </body>
 </html>
