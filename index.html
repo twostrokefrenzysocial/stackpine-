@@ -346,6 +346,7 @@ section{position:relative}
 
 /* --- demo 2: booking --- */
 .booking-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:1.8rem;align-items:start}
+.booking-picker,.booking-panel{min-width:0}
 .bk-label{font-size:.85rem;font-weight:700;color:var(--navy);display:block;margin:1.3rem 0 .55rem}
 .bk-label:first-child{margin-top:0}
 .bk-open{font-weight:500;color:var(--pine);font-size:.8rem;margin-left:.4em}
@@ -358,11 +359,12 @@ section{position:relative}
 .bk-chip:hover{transform:translateY(-1px);border-color:var(--sage-lt)}
 .bk-chip[aria-pressed=true]{background:#E2EEE5;border-color:var(--pine);color:var(--pine-dark);font-weight:600}
 .bk-chip:focus-visible,.bk-day:focus-visible,.bk-slot:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
-.bk-days{display:flex;gap:.45rem;overflow-x:auto;padding-bottom:.3rem}
+.bk-days{display:flex;gap:.45rem;overflow-x:auto;padding-bottom:.3rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .bk-day{
   font-family:inherit;flex:0 0 auto;min-width:62px;padding:.55em .4em;border:2px solid var(--ice);
   border-radius:12px;background:var(--ice);cursor:pointer;text-align:center;color:var(--slate);
-  display:flex;flex-direction:column;gap:.1em;transition:background .15s ease,border-color .15s ease;
+  display:flex;flex-direction:column;gap:.1em;scroll-snap-align:start;
+  transition:background .15s ease,border-color .15s ease;
 }
 .bk-day:hover{border-color:var(--sage-lt)}
 .bk-day .dow{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
@@ -539,15 +541,25 @@ section{position:relative}
   .demo-block{margin-bottom:3.2rem}
   .intake-form{flex-direction:column}
   .intake-form .btn{width:100%}
-  .kcard-move button{width:32px;height:32px}
+  /* comfortable finger-sized tap targets (Apple's 44px guideline) */
+  .btn{min-height:46px}
+  .btn-sm{min-height:44px}
+  .kcard{padding:.9rem 1rem}
+  .kcard-title{padding-right:5.4rem}
+  .kcard-move{gap:.4rem}
+  .kcard-move button{width:40px;height:40px;font-size:1rem}
+  .bk-chip{min-height:44px;display:inline-flex;align-items:center}
   .bk-slots{grid-template-columns:repeat(3,1fr)}
+  .bk-slot{min-height:46px}
+  .bk-day{min-width:56px;padding:.6em .4em}
   .booking-panel{min-height:0}
   .vs-card{padding:1.7rem 1.4rem}
   .price-card{padding:2rem 1.5rem}
   .site-banner{padding:1.9rem 1.5rem}
   .contact-ctas{flex-direction:column;align-items:stretch}
   .footer-inner{flex-direction:column;text-align:center}
-  .footer-links{justify-content:center}
+  .footer-links{justify-content:center;gap:.4rem 1.4rem}
+  .footer-links a{display:inline-block;padding:.5rem .3rem}
   .footer-bottom{flex-direction:column;align-items:center;text-align:center}
   .treeline{height:46px}
   /* 16px inputs so iOS doesn't zoom the page when a field is tapped */
