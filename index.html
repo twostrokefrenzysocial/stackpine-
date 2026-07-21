@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stackpine — Custom Software, Built for Exactly How You Work</title>
+
+<!-- ===================== SEO / OPEN GRAPH =====================
+     Live domain: https://stackpine.org -->
+<meta name="description" content="Stackpine builds custom software shaped around exactly how your business runs — for one affordable monthly subscription that covers the build, hosting, updates, and support. Based in Ohio, serving businesses everywhere.">
+<link rel="canonical" href="https://stackpine.org/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stackpine">
+<meta property="og:title" content="Stackpine — Custom Software, Built for Exactly How You Work">
+<meta property="og:description" content="Any idea you have, we can build it. Custom software for one affordable monthly subscription — build, hosting, updates, and support included.">
+<meta property="og:url" content="https://stackpine.org/">
+<meta property="og:image" content="https://stackpine.org/cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stackpine — Custom Software, Built for Exactly How You Work">
+<meta name="twitter:description" content="Any idea you have, we can build it. Custom software for one affordable monthly subscription.">
+<meta name="twitter:image" content="https://stackpine.org/cover.png">
+<link rel="icon" type="image/png" href="logo.png">
+
+<!-- Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script>if(new URLSearchParams(location.search).has("static"))document.documentElement.classList.add("static-mode");</script>
+<style>
+/* =====================================================
+   STACKPINE — brand tokens
+   ===================================================== */
+:root{
+  --navy:#2B3A5C;
+  --navy-deep:#1E2A45;
+  --navy-ink:#182236;
+  --pine:#3A7D44;
+  --pine-dark:#2E6537;
+  --slate:#4A5D7E;
+  --slate-lt:#7A8BA6;
+  --sage:#6FA07A;
+  --sage-lt:#A8C3AE;
+  --ice:#EDF1F5;
+  --white:#FFFFFF;
+  --text:#33415E;
+  --text-soft:#5C6B88;
+  --radius:14px;
+  --shadow-sm:0 2px 8px rgba(43,58,92,.08);
+  --shadow-md:0 8px 28px rgba(43,58,92,.14);
+  --shadow-lg:0 18px 48px rgba(30,42,69,.22);
+  --nav-h:68px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h) + 12px)}
+body{
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color:var(--text);
+  background:var(--white);
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img{max-width:100%;display:block}
+a{color:var(--pine)}
+h1,h2,h3,h4{color:var(--navy);line-height:1.2;font-weight:700}
+.container{width:min(1120px,92%);margin:0 auto}
+section{position:relative}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  font-family:inherit;font-weight:600;font-size:1rem;
+  padding:.85em 1.9em;border-radius:999px;border:2px solid transparent;
+  cursor:pointer;text-decoration:none;line-height:1.2;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease,border-color .18s ease;
+}
+.btn:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
+.btn-primary{background:var(--pine);color:#fff;box-shadow:0 6px 18px rgba(58,125,68,.35)}
+.btn-primary:hover{background:var(--pine-dark);transform:translateY(-2px);box-shadow:0 10px 24px rgba(58,125,68,.42)}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
+.btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.1);transform:translateY(-2px)}
+.btn-navy{background:var(--navy);color:#fff;box-shadow:0 6px 18px rgba(43,58,92,.3)}
+.btn-navy:hover{background:var(--navy-deep);transform:translateY(-2px)}
+.btn-sm{font-size:.88rem;padding:.6em 1.4em}
+
+/* ---------- sticky nav ---------- */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);
+  display:flex;align-items:center;
+  background:rgba(255,255,255,0);
+  transition:background .3s ease,box-shadow .3s ease;
+}
+.nav.scrolled{background:rgba(255,255,255,.96);box-shadow:0 2px 18px rgba(30,42,69,.12);backdrop-filter:blur(8px)}
+.nav-inner{width:min(1120px,92%);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+
+/* Logo file has generous white padding — crop tight with an overflow window.
+   The white logo background sits on a white chip so it works on any nav state. */
+.logo-link{display:flex;align-items:center;text-decoration:none;border-radius:10px}
+.logo-link:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
+.logo-crop{
+  position:relative;overflow:hidden;border-radius:8px;background:#fff;
+  width:127px;height:40px;flex:0 0 auto;
+}
+.logo-crop img{
+  position:absolute;width:161px;height:161px;max-width:none;
+  left:-18px;top:-61px;
+}
+.nav:not(.scrolled) .logo-crop{box-shadow:0 2px 10px rgba(24,34,54,.35)}
+
+.nav-links{display:flex;align-items:center;gap:1.6rem;list-style:none}
+.nav-links a{
+  text-decoration:none;font-weight:500;font-size:.95rem;color:#fff;
+  transition:color .2s ease,opacity .2s ease;opacity:.92;
+}
+.nav-links a:hover{opacity:1;color:var(--sage-lt)}
+.nav.scrolled .nav-links a{color:var(--navy)}
+.nav.scrolled .nav-links a:hover{color:var(--pine)}
+.nav-links .btn{color:#fff}
+.nav-cta{font-size:.88rem;padding:.55em 1.3em}
+
+.nav-toggle{
+  display:none;background:none;border:0;cursor:pointer;padding:.5rem;border-radius:8px;
+}
+.nav-toggle:focus-visible{outline:3px solid var(--sage)}
+.nav-toggle span{display:block;width:24px;height:2.6px;border-radius:2px;background:#fff;margin:5px 0;transition:all .25s ease}
+.nav.scrolled .nav-toggle span,.nav.menu-open .nav-toggle span{background:var(--navy)}
+.nav.menu-open .nav-toggle span:nth-child(1){transform:translateY(7.6px) rotate(45deg)}
+.nav.menu-open .nav-toggle span:nth-child(2){opacity:0}
+.nav.menu-open .nav-toggle span:nth-child(3){transform:translateY(-7.6px) rotate(-45deg)}
+
+@media (max-width:840px){
+  .nav-toggle{display:block}
+  .nav-links{
+    position:absolute;top:var(--nav-h);left:0;right:0;
+    flex-direction:column;gap:0;background:#fff;box-shadow:0 18px 30px rgba(30,42,69,.18);
+    max-height:0;overflow:hidden;transition:max-height .3s ease;
+  }
+  .nav.menu-open{background:#fff;box-shadow:0 2px 18px rgba(30,42,69,.12)}
+  .nav.menu-open .nav-links{max-height:420px}
+  .nav-links li{width:100%;text-align:center}
+  .nav-links a{display:block;padding:1rem;color:var(--navy)!important;font-size:1.05rem}
+  .nav-links a:hover{background:var(--ice)}
+  .nav-links .nav-cta{margin:.6rem auto 1.2rem;display:inline-flex;width:auto;background:var(--pine);color:#fff!important}
+}
+
+/* ---------- hero ---------- */
+.hero{
+  min-height:100svh;display:flex;align-items:center;
+  position:relative;overflow:hidden;background:var(--navy-ink);
+}
+.hero-bg{
+  position:absolute;inset:-12% 0;z-index:0;
+  background:url('cover.png') center 30%/cover no-repeat;
+  will-change:transform;
+}
+.hero-overlay{
+  position:absolute;inset:0;z-index:1;
+  background:linear-gradient(100deg,
+    rgba(24,34,54,.94) 0%,
+    rgba(24,34,54,.86) 38%,
+    rgba(30,42,69,.62) 68%,
+    rgba(43,58,92,.45) 100%);
+}
+.hero-content{position:relative;z-index:2;padding:calc(var(--nav-h) + 3rem) 0 5.5rem;max-width:680px}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:.5em;
+  color:var(--sage-lt);font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:1.2rem;
+}
+.hero-eyebrow::before{content:"";width:28px;height:2px;background:var(--sage);border-radius:2px}
+.hero h1{
+  color:#fff;font-size:clamp(2.1rem,4.6vw,3.6rem);font-weight:800;letter-spacing:-.01em;
+  margin-bottom:1.1rem;
+}
+.hero h1 .accent{color:var(--sage-lt)}
+.hero-tagline{color:#8FCB9B;font-size:clamp(1.05rem,1.8vw,1.3rem);font-weight:600;margin-bottom:1.4rem}
+.hero-sub{color:rgba(237,241,245,.82);font-size:1.05rem;max-width:540px;margin-bottom:2.2rem}
+.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap}
+.hero-scroll{
+  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:2;
+  color:rgba(255,255,255,.65);font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;
+  display:flex;flex-direction:column;align-items:center;gap:.4rem;text-decoration:none;
+}
+.hero-scroll svg{animation:bob 2.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+
+/* staggered hero entrance */
+.hero-content > *{opacity:0;transform:translateY(22px);animation:heroIn .8s cubic-bezier(.2,.7,.3,1) forwards}
+.hero-content > *:nth-child(1){animation-delay:.05s}
+.hero-content > *:nth-child(2){animation-delay:.15s}
+.hero-content > *:nth-child(3){animation-delay:.25s}
+.hero-content > *:nth-child(4){animation-delay:.35s}
+.hero-content > *:nth-child(5){animation-delay:.5s}
+@keyframes heroIn{to{opacity:1;transform:translateY(0)}}
+
+/* ---------- layered treeline divider ---------- */
+.treeline{display:block;width:100%;height:70px;margin-bottom:-1px}
+.treeline svg{display:block;width:100%;height:100%}
+
+/* ---------- generic sections ---------- */
+.section{padding:5.5rem 0}
+.section-ice{background:var(--ice)}
+.section-dark{background:var(--navy);color:var(--ice)}
+.section-dark h2,.section-dark h3{color:#fff}
+.section-head{max-width:640px;margin:0 auto 3.2rem;text-align:center}
+.section-eyebrow{
+  color:var(--pine);font-weight:600;font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;
+  display:block;margin-bottom:.6rem;
+}
+.section-dark .section-eyebrow{color:var(--sage-lt)}
+.section-head h2{font-size:clamp(1.7rem,3.2vw,2.5rem);margin-bottom:.8rem}
+.section-head p{color:var(--text-soft);font-size:1.05rem}
+.section-dark .section-head p{color:rgba(237,241,245,.75)}
+
+/* node-network texture for dark sections */
+.net-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:.5}
+.net-bg svg{position:absolute;inset:0;width:100%;height:100%}
+
+/* ---------- scroll reveal ---------- */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.from-left{transform:translateX(-46px)}
+.reveal.from-right{transform:translateX(46px)}
+.reveal.visible{opacity:1;transform:none}
+.reveal.d1{transition-delay:.1s}.reveal.d2{transition-delay:.2s}.reveal.d3{transition-delay:.3s}
+.reveal.d4{transition-delay:.4s}.reveal.d5{transition-delay:.5s}
+
+/* ---------- problem section ---------- */
+.problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center}
+.problem-copy h2{font-size:clamp(1.7rem,3vw,2.4rem);margin-bottom:1.1rem}
+.problem-copy p{color:var(--text-soft);margin-bottom:1rem;font-size:1.05rem}
+.problem-copy strong{color:var(--navy)}
+.problem-punch{
+  font-size:1.25rem;font-weight:700;color:var(--pine);margin-top:1.4rem;
+}
+.pain-list{list-style:none;display:grid;gap:1rem}
+.pain-list li{
+  background:#fff;border-radius:var(--radius);padding:1.1rem 1.3rem;
+  box-shadow:var(--shadow-sm);display:flex;gap:.9rem;align-items:flex-start;
+  border-left:4px solid var(--slate-lt);font-size:.97rem;color:var(--text);
+}
+.pain-list li svg{flex:0 0 auto;margin-top:.2rem}
+@media (max-width:840px){.problem-grid{grid-template-columns:1fr;gap:2.2rem}}
+
+/* ---------- how it works ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.8rem;counter-reset:step}
+.step{
+  background:#fff;border-radius:var(--radius);padding:2.2rem 1.8rem 2rem;
+  box-shadow:var(--shadow-sm);position:relative;
+  transition:transform .25s ease,box-shadow .25s ease;
+}
+.step:hover{transform:translateY(-6px);box-shadow:var(--shadow-md)}
+.step-num{
+  position:absolute;top:1.3rem;right:1.5rem;
+  font-size:2.6rem;font-weight:800;color:var(--ice);line-height:1;
+}
+.step-icon{
+  width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--pine),var(--sage));margin-bottom:1.3rem;
+  box-shadow:0 6px 16px rgba(58,125,68,.3);
+}
+.step h3{font-size:1.15rem;margin-bottom:.6rem}
+.step p{color:var(--text-soft);font-size:.95rem}
+@media (max-width:840px){.steps{grid-template-columns:1fr}}
+
+/* ---------- demos ---------- */
+.demo-block{margin-bottom:4.5rem}
+.demo-block:last-child{margin-bottom:0}
+.demo-frame{
+  background:#fff;border-radius:18px;box-shadow:var(--shadow-md);overflow:hidden;
+  border:1px solid rgba(122,139,166,.18);
+}
+.demo-titlebar{
+  display:flex;align-items:center;gap:.6rem;padding:.7rem 1.1rem;
+  background:var(--navy);color:#fff;
+}
+.demo-titlebar .dots{display:flex;gap:.38rem}
+.demo-titlebar .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.28)}
+.demo-titlebar .dots span:first-child{background:var(--sage)}
+.demo-titlebar h3{color:#fff;font-size:.92rem;font-weight:600;margin:0}
+.demo-body{padding:1.6rem}
+.demo-caption{
+  text-align:center;font-size:.92rem;color:var(--text-soft);font-style:italic;margin-top:1rem;
+}
+.demo-caption strong{color:var(--pine);font-style:normal}
+
+/* --- demo 1: kanban --- */
+.intake-form{display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.4rem}
+.intake-form input[type=text]{
+  flex:1;min-width:220px;font-family:inherit;font-size:.95rem;
+  padding:.75em 1.1em;border:2px solid var(--ice);border-radius:10px;color:var(--text);
+  transition:border-color .2s ease;background:var(--ice);
+}
+.intake-form input[type=text]:focus{outline:none;border-color:var(--pine);background:#fff}
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.kanban-col{
+  background:var(--ice);border-radius:12px;padding:.9rem;min-height:230px;
+  transition:background .2s ease,box-shadow .2s ease;
+}
+.kanban-col.drag-over{background:#DDE8DF;box-shadow:inset 0 0 0 2px var(--sage)}
+.kanban-col-head{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--slate);margin-bottom:.8rem;padding:0 .2rem;
+}
+.kanban-count{
+  background:#fff;color:var(--slate);border-radius:999px;min-width:1.7em;height:1.7em;
+  display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;
+}
+.kcard{
+  background:#fff;border-radius:10px;padding:.8rem .9rem;margin-bottom:.7rem;
+  box-shadow:var(--shadow-sm);cursor:grab;position:relative;
+  border-left:4px solid var(--slate-lt);
+  transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease;
+}
+.kcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.kcard:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.kcard.dragging{opacity:.45;cursor:grabbing}
+.kcard.pop-in{animation:popIn .4s cubic-bezier(.3,1.4,.5,1)}
+@keyframes popIn{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:none}}
+.kcard.prio-high{border-left-color:#C15B4E}
+.kcard.prio-med{border-left-color:#CFA23C}
+.kcard.prio-low{border-left-color:var(--sage)}
+.kcard-title{font-size:.9rem;font-weight:600;color:var(--navy);margin-bottom:.45rem;padding-right:3.4rem}
+.kcard-meta{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center}
+.badge{
+  font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:.2em .7em;border-radius:999px;
+}
+.badge-high{background:#F7E3E0;color:#A34438}
+.badge-med{background:#F7EED8;color:#8A6A1B}
+.badge-low{background:#E2EEE5;color:var(--pine-dark)}
+.badge-route{background:var(--ice);color:var(--slate);text-transform:none;letter-spacing:0}
+.kcard-move{position:absolute;top:.55rem;right:.55rem;display:flex;gap:.25rem}
+.kcard-move button{
+  width:24px;height:24px;border:0;border-radius:6px;background:var(--ice);color:var(--slate);
+  cursor:pointer;font-size:.8rem;line-height:1;display:flex;align-items:center;justify-content:center;
+  transition:background .15s ease,color .15s ease;
+}
+.kcard-move button:hover{background:var(--pine);color:#fff}
+.kcard-move button:focus-visible{outline:2px solid var(--sage)}
+.kanban-hint{font-size:.8rem;color:var(--slate-lt);margin-top:.9rem;text-align:center}
+@media (max-width:760px){.kanban{grid-template-columns:1fr}.kanban-col{min-height:auto}}
+
+/* --- demo 2: picker --- */
+.picker-wrap{display:grid;grid-template-columns:1fr 1.15fr;gap:1.8rem;align-items:start}
+.picker-entry label{font-size:.85rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.5rem}
+.picker-entry .row{display:flex;gap:.6rem}
+.picker-entry input{
+  flex:1;font-family:inherit;font-size:.95rem;padding:.7em 1em;
+  border:2px solid var(--ice);border-radius:10px;background:var(--ice);color:var(--text);
+  transition:border-color .2s ease;
+}
+.picker-entry input:focus{outline:none;border-color:var(--pine);background:#fff}
+.chiplist{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+.chip{
+  display:inline-flex;align-items:center;gap:.45em;
+  background:var(--ice);color:var(--navy);font-size:.86rem;font-weight:500;
+  padding:.35em .5em .35em .95em;border-radius:999px;animation:popIn .3s ease;
+}
+.chip button{
+  border:0;background:rgba(43,58,92,.12);color:var(--navy);width:20px;height:20px;border-radius:50%;
+  cursor:pointer;font-size:.75rem;line-height:1;display:flex;align-items:center;justify-content:center;
+}
+.chip button:hover{background:#C15B4E;color:#fff}
+.picker-stage{
+  position:relative;background:var(--navy);border-radius:14px;padding:2.4rem 1.6rem;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;
+  min-height:250px;overflow:hidden;
+}
+.picker-display{
+  font-size:clamp(1.3rem,3vw,2rem);font-weight:800;color:#fff;text-align:center;
+  min-height:1.4em;transition:transform .1s ease;
+}
+.picker-display.spinning{color:var(--sage-lt)}
+.picker-display.winner{animation:winnerPop .55s cubic-bezier(.3,1.6,.5,1);color:#8FCB9B}
+@keyframes winnerPop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.picker-sub{color:rgba(237,241,245,.6);font-size:.85rem;text-align:center;min-height:1.3em}
+.confetti-canvas{position:absolute;inset:0;pointer-events:none}
+@media (max-width:760px){.picker-wrap{grid-template-columns:1fr}}
+
+/* --- demo 3: quote calculator --- */
+.quote-wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;align-items:stretch}
+.quote-controls{display:grid;gap:1.5rem;align-content:center}
+.qc-row label{display:flex;justify-content:space-between;font-size:.9rem;font-weight:600;color:var(--navy);margin-bottom:.5rem}
+.qc-row label output{color:var(--pine);font-weight:700}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;
+  background:linear-gradient(to right,var(--pine) 0%,var(--pine) var(--fill,50%),var(--ice) var(--fill,50%));
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;
+  background:#fff;border:4px solid var(--pine);box-shadow:var(--shadow-sm);
+  transition:transform .15s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+input[type=range]::-moz-range-thumb{
+  width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid var(--pine);box-shadow:var(--shadow-sm);
+}
+input[type=range]:focus-visible{outline:3px solid var(--sage);outline-offset:4px}
+.qc-row select{
+  width:100%;font-family:inherit;font-size:.95rem;padding:.7em 1em;
+  border:2px solid var(--ice);border-radius:10px;background:var(--ice);color:var(--text);cursor:pointer;
+}
+.qc-row select:focus{outline:none;border-color:var(--pine);background:#fff}
+.quote-result{
+  background:linear-gradient(150deg,var(--navy),var(--navy-deep));
+  border-radius:14px;padding:2.2rem 1.8rem;color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.4rem;
+  position:relative;overflow:hidden;
+}
+.quote-result::after{
+  content:"";position:absolute;inset:auto -20% -55% -20%;height:75%;
+  background:linear-gradient(135deg,rgba(58,125,68,.35),rgba(111,160,122,.12));
+  clip-path:polygon(0 55%,8% 30%,16% 55%,24% 18%,32% 55%,40% 35%,48% 55%,56% 12%,64% 55%,72% 30%,80% 55%,88% 22%,96% 55%,100% 40%,100% 100%,0 100%);
+}
+.quote-result > *{position:relative;z-index:1}
+.quote-label{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sage-lt);font-weight:600}
+.quote-price{font-size:clamp(2.6rem,5vw,3.6rem);font-weight:800;line-height:1}
+.quote-price small{font-size:.36em;font-weight:600;color:rgba(255,255,255,.7)}
+.quote-tier{font-size:.9rem;color:#8FCB9B;font-weight:600;min-height:1.4em}
+.quote-note{font-size:.78rem;color:rgba(237,241,245,.55);margin-top:.6rem;max-width:260px}
+@media (max-width:760px){.quote-wrap{grid-template-columns:1fr}}
+
+/* ---------- what we can build ---------- */
+.build-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.build-card{
+  background:#fff;border-radius:var(--radius);padding:1.9rem 1.6rem;box-shadow:var(--shadow-sm);
+  transition:transform .25s ease,box-shadow .25s ease;border-top:4px solid transparent;
+}
+.build-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md);border-top-color:var(--pine)}
+.build-card .b-icon{
+  width:48px;height:48px;border-radius:12px;background:var(--ice);
+  display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem;
+  transition:background .25s ease;
+}
+.build-card:hover .b-icon{background:#E2EEE5}
+.build-card h3{font-size:1.05rem;margin-bottom:.5rem}
+.build-card p{font-size:.92rem;color:var(--text-soft)}
+.build-card.wild{
+  background:linear-gradient(150deg,var(--pine),var(--pine-dark));color:#fff;
+}
+.build-card.wild h3{color:#fff}
+.build-card.wild p{color:rgba(255,255,255,.85)}
+.build-card.wild .b-icon{background:rgba(255,255,255,.16)}
+@media (max-width:900px){.build-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:620px){.build-grid{grid-template-columns:1fr}}
+
+/* ---------- why subscription ---------- */
+.versus{display:grid;grid-template-columns:1fr 1fr;gap:1.8rem;align-items:stretch}
+.vs-card{border-radius:16px;padding:2.2rem 1.9rem}
+.vs-old{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+.vs-new{background:#fff;box-shadow:var(--shadow-lg)}
+.vs-card h3{font-size:1.2rem;margin-bottom:.4rem}
+.vs-old h3{color:rgba(255,255,255,.92)}
+.vs-tag{font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.4rem;display:block}
+.vs-old .vs-tag{color:var(--slate-lt)}
+.vs-new .vs-tag{color:var(--pine)}
+.section-dark .vs-new h3{color:var(--navy)}
+.vs-list{list-style:none;display:grid;gap:.95rem}
+.vs-list li{display:flex;gap:.8rem;align-items:flex-start;font-size:.95rem}
+.vs-old .vs-list li{color:rgba(237,241,245,.75)}
+.vs-new .vs-list li{color:var(--text)}
+.vs-list .mark{
+  flex:0 0 auto;width:22px;height:22px;border-radius:50%;margin-top:.15rem;
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;
+}
+.vs-old .mark{background:rgba(193,91,78,.25);color:#E8A199}
+.vs-new .mark{background:#E2EEE5;color:var(--pine)}
+@media (max-width:760px){.versus{grid-template-columns:1fr}}
+
+/* ---------- pricing ---------- */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
+.price-card{
+  background:#fff;border-radius:18px;padding:2.4rem 2rem;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;position:relative;
+  transition:transform .25s ease,box-shadow .25s ease;
+  border:2px solid transparent;
+}
+.price-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md)}
+.price-card.featured{border-color:var(--pine);box-shadow:var(--shadow-md)}
+.price-flag{
+  position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  background:var(--pine);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;padding:.35em 1.1em;border-radius:999px;white-space:nowrap;
+}
+.price-card h3{font-size:1.1rem;margin-bottom:.2rem}
+.price-for{font-size:.85rem;color:var(--text-soft);margin-bottom:1.4rem;min-height:2.6em}
+.price-amount{font-size:2.7rem;font-weight:800;color:var(--navy);line-height:1}
+.price-amount .cur{font-size:.5em;vertical-align:.7em;font-weight:700}
+.price-amount .per{font-size:.34em;font-weight:600;color:var(--text-soft)}
+.price-start{font-size:.75rem;color:var(--pine);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
+.price-feats{list-style:none;display:grid;gap:.7rem;margin:1.6rem 0 2rem;flex:1}
+.price-feats li{display:flex;gap:.7rem;font-size:.9rem;color:var(--text)}
+.price-feats li svg{flex:0 0 auto;margin-top:.25rem}
+.price-card .btn{width:100%}
+.pricing-note{text-align:center;font-size:.88rem;color:var(--text-soft);margin-top:2.2rem}
+@media (max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
+
+/* ---------- contact ---------- */
+.contact-box{max-width:640px;margin:0 auto;text-align:center}
+.contact-box h2{font-size:clamp(1.8rem,3.4vw,2.6rem);color:#fff;margin-bottom:1rem}
+.contact-box p{color:rgba(237,241,245,.8);font-size:1.08rem;margin-bottom:2.2rem}
+.contact-ctas{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.6rem}
+.contact-fast{display:inline-flex;align-items:center;gap:.5em;color:var(--sage-lt);font-size:.9rem;font-weight:500}
+.contact-fast .pulse{
+  width:9px;height:9px;border-radius:50%;background:#6FCF7C;position:relative;
+}
+.contact-fast .pulse::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #6FCF7C;
+  animation:pulse 1.8s ease-out infinite;
+}
+@keyframes pulse{from{transform:scale(.5);opacity:1}to{transform:scale(1.5);opacity:0}}
+/* Formspree-ready: when you have an endpoint, unhide this form and set its action. */
+.contact-form{display:none;margin-top:2.5rem;text-align:left;gap:1rem}
+
+/* ---------- footer ---------- */
+.footer{background:var(--navy-ink);color:rgba(237,241,245,.72);padding:3.2rem 0 2.2rem}
+.footer-inner{display:flex;justify-content:space-between;align-items:center;gap:2rem;flex-wrap:wrap}
+.footer .logo-crop{width:152px;height:48px;border-radius:10px}
+.footer .logo-crop img{width:193px;height:193px;left:-22px;top:-73px}
+.footer-links{display:flex;gap:1.6rem;list-style:none;flex-wrap:wrap}
+.footer-links a{color:rgba(237,241,245,.72);text-decoration:none;font-size:.92rem;transition:color .2s ease}
+.footer-links a:hover{color:var(--sage-lt)}
+.footer-bottom{
+  margin-top:2.2rem;padding-top:1.6rem;border-top:1px solid rgba(255,255,255,.1);
+  display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;font-size:.84rem;color:rgba(237,241,245,.5);
+}
+.footer-bottom .ohio{display:inline-flex;align-items:center;gap:.45em}
+
+/* ---------- static test mode (?static=1) — used for screenshot/QA ---------- */
+html.static-mode{scroll-behavior:auto}
+html.static-mode *{animation:none!important;transition:none!important}
+html.static-mode .hero-content > *,html.static-mode .reveal{opacity:1!important;transform:none!important}
+html.static-mode .hero{min-height:850px}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .reveal{opacity:1;transform:none}
+  .hero-content > *{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== NAV ==================== -->
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#top" class="logo-link" aria-label="Stackpine — back to top">
+      <span class="logo-crop"><img src="logo.png" alt="Stackpine logo"></span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#demos">Live Demos</a></li>
+      <li><a href="#build">What We Build</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#contact" class="btn btn-primary nav-cta">Get in Touch</a></li>
+    </ul>
+  </div>
+</header>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero" id="top">
+  <div class="hero-bg" id="heroBg" aria-hidden="true"></div>
+  <div class="hero-overlay" aria-hidden="true"></div>
+  <div class="container">
+    <div class="hero-content">
+      <span class="hero-eyebrow">Custom software · Subscription simple</span>
+      <h1>Your business. Your software. <span class="accent">Built for exactly how you work.</span></h1>
+      <p class="hero-tagline">Building the Future, One Layer at a Time.</p>
+      <p class="hero-sub">Stop bending your business around off-the-shelf tools. Stackpine builds software shaped around <em>you</em> — for one affordable monthly subscription that covers everything.</p>
+      <div class="hero-ctas">
+        <a href="#demos" class="btn btn-primary">Try Our Demos</a>
+        <a href="#contact" class="btn btn-ghost">Get in Touch</a>
+      </div>
+    </div>
+  </div>
+  <a href="#problem" class="hero-scroll" aria-label="Scroll down">
+    <span>Scroll</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+  </a>
+</section>
+
+<!-- ==================== THE PROBLEM ==================== -->
+<section class="section section-ice" id="problem">
+  <div class="container">
+    <div class="problem-grid">
+      <div class="problem-copy reveal from-left">
+        <span class="section-eyebrow">The Problem</span>
+        <h2>Your tools almost fit. That "almost" costs you every day.</h2>
+        <p>Most businesses run on a patchwork of spreadsheets, group texts, and off-the-shelf apps that were built for <strong>somebody else's business</strong>. You adapt to the software instead of the software adapting to you.</p>
+        <p>Custom software used to be the fix — if you had tens of thousands of dollars up front and a year to wait.</p>
+        <p class="problem-punch">Not anymore.</p>
+      </div>
+      <ul class="pain-list">
+        <li class="reveal d1">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          The spreadsheet only one person understands — and they're on vacation.
+        </li>
+        <li class="reveal d2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          Paying for five different apps that each do 60% of what you need.
+        </li>
+        <li class="reveal d3">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          Requests coming in by phone, text, email, and sticky note — and falling through the cracks.
+        </li>
+        <li class="reveal d4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          A developer quoted you $40,000 up front… then vanished after launch.
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- treeline divider ice -> white -->
+<div class="treeline" aria-hidden="true">
+  <svg viewBox="0 0 1200 70" preserveAspectRatio="none">
+    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
+    <path fill="#A8C3AE" opacity=".35" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
+  </svg>
+</div>
+
+<!-- ==================== HOW IT WORKS ==================== -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">How It Works</span>
+      <h2>From idea to running software in three steps</h2>
+      <p>You don't need to know anything about technology. You just need to know your business — we handle the rest.</p>
+    </div>
+    <div class="steps">
+      <article class="step reveal d1">
+        <span class="step-num" aria-hidden="true">1</span>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
+        </div>
+        <h3>Tell us your idea</h3>
+        <p>Describe it in plain language — "I wish I had something that…" is a perfect start. No tech knowledge needed, no jargon, no homework.</p>
+      </article>
+      <article class="step reveal d2">
+        <span class="step-num" aria-hidden="true">2</span>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>
+        </div>
+        <h3>We build it, layer by layer</h3>
+        <p>We shape the software around exactly how your business runs — your words, your workflow, your rules. You see progress fast, not in six months.</p>
+      </article>
+      <article class="step reveal d3">
+        <span class="step-num" aria-hidden="true">3</span>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </div>
+        <h3>You subscribe, it keeps improving</h3>
+        <p>One affordable monthly fee covers hosting, updates, support, and ongoing improvements — forever. No surprise bills. No disappearing developer.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- treeline divider white -> ice -->
+<div class="treeline" aria-hidden="true" style="transform:scaleY(-1)">
+  <svg viewBox="0 0 1200 70" preserveAspectRatio="none">
+    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
+    <path fill="#A8C3AE" opacity=".35" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
+  </svg>
+</div>
+
+<!-- ==================== DEMOS ==================== -->
+<section class="section section-ice" id="demos">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Live Demos</span>
+      <h2>Don't take our word for it — try one</h2>
+      <p>These aren't screenshots or mockups. They're small, fully working pieces of custom software running right here on this page. Click around. Break stuff. Have fun.</p>
+    </div>
+
+    <!-- ===== Demo 1: Intake & Triage ===== -->
+    <div class="demo-block reveal">
+      <div class="demo-frame">
+        <div class="demo-titlebar">
+          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <h3>Demo 1 — Request Intake &amp; Triage Board</h3>
+        </div>
+        <div class="demo-body">
+          <form class="intake-form" id="intakeForm">
+            <input type="text" id="intakeInput" maxlength="80" placeholder='Type a request… try "URGENT: printer is broken again"' aria-label="New request description">
+            <button type="submit" class="btn btn-primary btn-sm">Add Request</button>
+          </form>
+          <div class="kanban" id="kanban">
+            <div class="kanban-col" data-col="0">
+              <div class="kanban-col-head"><span>📥 New</span><span class="kanban-count">0</span></div>
+              <div class="kanban-cards" data-cards="0"></div>
+            </div>
+            <div class="kanban-col" data-col="1">
+              <div class="kanban-col-head"><span>🔧 In Progress</span><span class="kanban-count">0</span></div>
+              <div class="kanban-cards" data-cards="1"></div>
+            </div>
+            <div class="kanban-col" data-col="2">
+              <div class="kanban-col-head"><span>✅ Done</span><span class="kanban-count">0</span></div>
+              <div class="kanban-cards" data-cards="2"></div>
+            </div>
+          </div>
+          <p class="kanban-hint">Add a request above — it gets auto-prioritized and routed. Drag cards between columns (or use the ‹ › buttons / arrow keys).</p>
+        </div>
+      </div>
+      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
+    </div>
+
+    <!-- ===== Demo 2: Live Drawing Picker ===== -->
+    <div class="demo-block reveal">
+      <div class="demo-frame">
+        <div class="demo-titlebar">
+          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <h3>Demo 2 — Live Giveaway Drawing Picker</h3>
+        </div>
+        <div class="demo-body">
+          <div class="picker-wrap">
+            <div class="picker-entry">
+              <label for="pickerInput">Entrants</label>
+              <form class="row" id="pickerForm">
+                <input type="text" id="pickerInput" maxlength="30" placeholder="Add a name…" aria-label="Add entrant name">
+                <button type="submit" class="btn btn-navy btn-sm">Add</button>
+              </form>
+              <ul class="chiplist" id="pickerChips" aria-label="Entrant list"></ul>
+            </div>
+            <div class="picker-stage">
+              <canvas class="confetti-canvas" id="confettiCanvas" aria-hidden="true"></canvas>
+              <div class="picker-display" id="pickerDisplay" aria-live="polite">Who's it gonna be?</div>
+              <p class="picker-sub" id="pickerSub">Add names, then hit Draw.</p>
+              <button class="btn btn-primary" id="drawBtn" type="button">🎉 Draw a Winner</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
+    </div>
+
+    <!-- ===== Demo 3: Instant Quote Calculator ===== -->
+    <div class="demo-block reveal">
+      <div class="demo-frame">
+        <div class="demo-titlebar">
+          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <h3>Demo 3 — Instant Quote Calculator</h3>
+        </div>
+        <div class="demo-body">
+          <div class="quote-wrap">
+            <div class="quote-controls">
+              <div class="qc-row">
+                <label for="qUsers">People using it <output id="qUsersOut">5</output></label>
+                <input type="range" id="qUsers" min="1" max="50" value="5">
+              </div>
+              <div class="qc-row">
+                <label for="qFeatures">Features / screens <output id="qFeaturesOut">4</output></label>
+                <input type="range" id="qFeatures" min="1" max="12" value="4">
+              </div>
+              <div class="qc-row">
+                <label for="qComplexity">Complexity</label>
+                <select id="qComplexity">
+                  <option value="1" selected>Simple — one clear job, done well</option>
+                  <option value="1.6">Standard — database, logins, reports</option>
+                  <option value="2.4">Advanced — integrations, portals, automation</option>
+                </select>
+              </div>
+            </div>
+            <div class="quote-result">
+              <span class="quote-label">Estimated subscription</span>
+              <div class="quote-price"><span id="qPrice">$0</span><small>/mo</small></div>
+              <div class="quote-tier" id="qTier"></div>
+              <p class="quote-note">Ballpark only — every quote is custom. Hosting, updates &amp; support always included.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- treeline divider ice -> white -->
+<div class="treeline" aria-hidden="true">
+  <svg viewBox="0 0 1200 70" preserveAspectRatio="none" style="transform:scale(-1,1)">
+    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
+    <path fill="#7A8BA6" opacity=".25" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
+  </svg>
+</div>
+
+<!-- ==================== WHAT WE CAN BUILD ==================== -->
+<section class="section" id="build">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">What We Can Build</span>
+      <h2>If you can describe it, we can build it</h2>
+      <p>A few of the shapes custom software can take. Yours will look like none of these — it'll look like your business.</p>
+    </div>
+    <div class="build-grid">
+      <article class="build-card reveal d1">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></div>
+        <h3>Intake &amp; triage systems</h3>
+        <p>Every request in one place, auto-sorted and routed — nothing falls through the cracks again.</p>
+      </article>
+      <article class="build-card reveal d2">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h3>Scheduling &amp; booking tools</h3>
+        <p>Appointments, shifts, rentals, sign-ups — booked online, confirmed automatically, synced to your calendar.</p>
+      </article>
+      <article class="build-card reveal d3">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.3 5.6.6-4.2 3.9 1.2 5.6L12 14.5 7 17.4l1.2-5.6L4 7.9l5.6-.6z"/></svg></div>
+        <h3>Event, promo &amp; giveaway tools</h3>
+        <p>Contests, drawings, RSVPs, live leaderboards — engagement tools your audience actually enjoys.</p>
+      </article>
+      <article class="build-card reveal d1">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Customer portals &amp; dashboards</h3>
+        <p>Give clients and staff a live window into orders, jobs, balances, and progress — no more "any update?" calls.</p>
+      </article>
+      <article class="build-card reveal d2">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg></div>
+        <h3>Inventory &amp; quoting systems</h3>
+        <p>Know what you have, what it costs, and what to charge — with quotes generated in seconds, not evenings.</p>
+      </article>
+      <article class="build-card wild reveal d3">
+        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <h3>…and whatever you can imagine</h3>
+        <p>If you can describe it, we can build it. Seriously — that's the whole point of custom.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== WHY SUBSCRIPTION ==================== -->
+<section class="section section-dark" id="why">
+  <div class="net-bg" aria-hidden="true">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+      <g stroke="#7A8BA6" stroke-width="1" opacity=".3">
+        <line x1="80" y1="120" x2="300" y2="60"/><line x1="300" y1="60" x2="520" y2="180"/>
+        <line x1="520" y1="180" x2="760" y2="90"/><line x1="760" y1="90" x2="1020" y2="160"/>
+        <line x1="160" y1="420" x2="380" y2="520"/><line x1="380" y1="520" x2="640" y2="440"/>
+        <line x1="640" y1="440" x2="900" y2="540"/><line x1="900" y1="540" x2="1120" y2="430"/>
+        <line x1="80" y1="120" x2="160" y2="420"/><line x1="1020" y1="160" x2="1120" y2="430"/>
+        <line x1="520" y1="180" x2="640" y2="440"/>
+      </g>
+      <g fill="#A8C3AE" opacity=".45">
+        <circle cx="80" cy="120" r="4"/><circle cx="300" cy="60" r="3"/><circle cx="520" cy="180" r="4"/>
+        <circle cx="760" cy="90" r="3"/><circle cx="1020" cy="160" r="4"/><circle cx="160" cy="420" r="3"/>
+        <circle cx="380" cy="520" r="4"/><circle cx="640" cy="440" r="3"/><circle cx="900" cy="540" r="4"/>
+        <circle cx="1120" cy="430" r="3"/>
+      </g>
+    </svg>
+  </div>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Why Subscription</span>
+      <h2>A partner, not a project</h2>
+      <p>Traditional custom development ends the day it launches. Ours is just getting started.</p>
+    </div>
+    <div class="versus">
+      <div class="vs-card vs-old reveal from-left">
+        <h3>Traditional development</h3>
+        <span class="vs-tag">The old way</span>
+        <ul class="vs-list">
+          <li><span class="mark">✕</span>$20,000–$100,000+ due up front, before you've seen anything work</li>
+          <li><span class="mark">✕</span>Months of meetings and mockups before real software exists</li>
+          <li><span class="mark">✕</span>Developer disappears after launch — good luck getting changes</li>
+          <li><span class="mark">✕</span>Hosting, security, and updates become <em>your</em> problem</li>
+          <li><span class="mark">✕</span>Software frozen in time while your business keeps evolving</li>
+        </ul>
+      </div>
+      <div class="vs-card vs-new reveal from-right">
+        <h3>The Stackpine way</h3>
+        <span class="vs-tag">One layer at a time</span>
+        <ul class="vs-list">
+          <li><span class="mark">✓</span>Low, predictable monthly fee — no giant upfront bill</li>
+          <li><span class="mark">✓</span>Working software fast, then improved layer by layer</li>
+          <li><span class="mark">✓</span>One ongoing relationship — we're here next month and next year</li>
+          <li><span class="mark">✓</span>Hosting, security, updates, and support all included</li>
+          <li><span class="mark">✓</span>Your software grows and changes as your business does</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== PRICING ==================== -->
+<section class="section section-ice" id="pricing">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Pricing</span>
+      <h2>Simple plans, everything included</h2>
+      <p>Every plan includes hosting, support, updates, and ongoing improvements. Prices are "starting at" — your exact quote depends on what we build.</p>
+    </div>
+
+    <!-- ============================================================
+         EDIT PRICES HERE — change the numbers below and you're done.
+         ============================================================ -->
+    <div class="pricing-grid">
+      <article class="price-card reveal d1">
+        <h3>Starter</h3>
+        <p class="price-for">A simple, single-purpose tool that does one job perfectly.</p>
+        <span class="price-start">Starting at</span>
+        <div class="price-amount"><span class="cur">$</span>299<span class="per">/mo</span></div>
+        <ul class="price-feats">
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>One focused tool, built to order</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Hosting &amp; security included</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Updates &amp; support included</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Works great on phones</li>
+        </ul>
+        <a href="#contact" class="btn btn-navy">Start with Starter</a>
+      </article>
+
+      <article class="price-card featured reveal d2">
+        <span class="price-flag">Most popular</span>
+        <h3>Business</h3>
+        <p class="price-for">A multi-user app with a database, logins, and reports.</p>
+        <span class="price-start">Starting at</span>
+        <div class="price-amount"><span class="cur">$</span>699<span class="per">/mo</span></div>
+        <ul class="price-feats">
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Multi-user app with accounts</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Database, dashboards &amp; reports</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Everything in Starter, included</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Priority support &amp; improvements</li>
+        </ul>
+        <a href="#contact" class="btn btn-primary">Talk about Business</a>
+      </article>
+
+      <article class="price-card reveal d3">
+        <h3>Pro</h3>
+        <p class="price-for">Integrations, customer portals, and complex systems.</p>
+        <span class="price-start">Let's scope it</span>
+        <div class="price-amount" style="font-size:2.1rem;padding:.35em 0">Custom quote</div>
+        <ul class="price-feats">
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Integrations with your other tools</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Customer-facing portals</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Complex, multi-part systems</li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Everything in Business, included</li>
+        </ul>
+        <a href="#contact" class="btn btn-navy">Get a custom quote</a>
+      </article>
+    </div>
+    <p class="pricing-note">Not sure which fits? Just describe your idea — we'll tell you honestly what it needs (and doesn't).</p>
+  </div>
+</section>
+
+<!-- ==================== CONTACT ==================== -->
+<section class="section section-dark" id="contact">
+  <div class="net-bg" aria-hidden="true">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+      <g stroke="#7A8BA6" stroke-width="1" opacity=".3">
+        <line x1="100" y1="500" x2="340" y2="380"/><line x1="340" y1="380" x2="560" y2="480"/>
+        <line x1="560" y1="480" x2="820" y2="370"/><line x1="820" y1="370" x2="1080" y2="470"/>
+        <line x1="200" y1="100" x2="460" y2="180"/><line x1="460" y1="180" x2="720" y2="80"/>
+        <line x1="720" y1="80" x2="980" y2="170"/><line x1="460" y1="180" x2="560" y2="480"/>
+      </g>
+      <g fill="#A8C3AE" opacity=".45">
+        <circle cx="100" cy="500" r="4"/><circle cx="340" cy="380" r="3"/><circle cx="560" cy="480" r="4"/>
+        <circle cx="820" cy="370" r="3"/><circle cx="1080" cy="470" r="4"/><circle cx="200" cy="100" r="3"/>
+        <circle cx="460" cy="180" r="4"/><circle cx="720" cy="80" r="3"/><circle cx="980" cy="170" r="4"/>
+      </g>
+    </svg>
+  </div>
+  <div class="container">
+    <div class="contact-box reveal">
+      <span class="section-eyebrow">Contact</span>
+      <h2>Have an idea? Let's talk.</h2>
+      <p>Tell us what's slowing your business down — in plain English, no prep needed. First conversation is free, friendly, and jargon-free.</p>
+      <div class="contact-ctas">
+        <a class="btn btn-primary" data-fb-link href="#" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          Message us on Facebook
+        </a>
+        <a class="btn btn-ghost" data-email-link href="#">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+          Prefer email?
+        </a>
+      </div>
+      <span class="contact-fast"><span class="pulse" aria-hidden="true"></span>Message the page — we reply fast, usually the same day.</span>
+
+      <!-- ============================================================
+           FORMSPREE-READY CONTACT FORM (hidden while running locally).
+           To activate later:
+           1. Create a form at formspree.io and copy your endpoint URL.
+           2. Set the action below to it.
+           3. Change style="display:none" to style="display:grid".
+           ============================================================ -->
+      <form class="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" style="display:none">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <textarea name="message" rows="4" placeholder="Tell us your idea…" required></textarea>
+        <button type="submit" class="btn btn-primary">Send it</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <a href="#top" class="logo-link" aria-label="Stackpine — back to top">
+        <span class="logo-crop"><img src="logo.png" alt="Stackpine logo"></span>
+      </a>
+      <ul class="footer-links">
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#demos">Demos</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a data-email-link href="#">Email</a></li>
+        <li><a data-fb-link href="#" target="_blank" rel="noopener">Facebook</a></li>
+      </ul>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Stackpine. All rights reserved.</span>
+      <span class="ohio">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6FA07A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Proudly based in Ohio — serving businesses everywhere
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   EDIT ME — contact details used everywhere on the page
+   ============================================================ */
+const CONTACT_EMAIL = "crlattimer@icloud.com";
+const FACEBOOK_URL  = "https://www.facebook.com/profile.php?id=61588702793283";
+
+/* wire contact links */
+document.querySelectorAll("[data-email-link]").forEach(a => a.href = "mailto:" + CONTACT_EMAIL + "?subject=I%20have%20an%20idea");
+document.querySelectorAll("[data-fb-link]").forEach(a => a.href = FACEBOOK_URL);
+document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ============================================================
+   Nav: scrolled state + mobile menu
+   ============================================================ */
+const nav = document.getElementById("nav");
+const navToggle = document.getElementById("navToggle");
+const navLinks = document.getElementById("navLinks");
+
+function onScrollNav(){ nav.classList.toggle("scrolled", window.scrollY > 40); }
+onScrollNav();
+window.addEventListener("scroll", onScrollNav, {passive:true});
+
+navToggle.addEventListener("click", () => {
+  const open = nav.classList.toggle("menu-open");
+  navToggle.setAttribute("aria-expanded", open);
+});
+navLinks.addEventListener("click", e => {
+  if (e.target.closest("a")) { nav.classList.remove("menu-open"); navToggle.setAttribute("aria-expanded","false"); }
+});
+
+/* ============================================================
+   Hero parallax (gentle; disabled for reduced motion)
+   ============================================================ */
+const heroBg = document.getElementById("heroBg");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (!reduceMotion) {
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = Math.min(window.scrollY, window.innerHeight);
+      heroBg.style.transform = `translate3d(0, ${y * 0.22}px, 0)`;
+      ticking = false;
+    });
+  }, {passive:true});
+}
+
+/* ============================================================
+   Scroll-triggered reveals
+   ============================================================ */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add("visible"); io.unobserve(en.target); } });
+}, {threshold:.15, rootMargin:"0px 0px -40px 0px"});
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+/* ============================================================
+   DEMO 1 — Intake & Triage board
+   ============================================================ */
+const COLS = ["New","In Progress","Done"];
+const ROUTES = [
+  {kw:["invoice","bill","charge","payment","refund","price"], team:"Billing"},
+  {kw:["printer","computer","wifi","internet","email","login","password","broken","error","crash","down","bug"], team:"IT Support"},
+  {kw:["schedule","meeting","appointment","calendar","book"], team:"Front Office"},
+  {kw:["order","stock","inventory","supply","ship"], team:"Operations"},
+];
+const HIGH_KW = ["urgent","asap","emergency","broken","down","crash","today","immediately","angry","now"];
+const LOW_KW  = ["someday","eventually","minor","small","whenever","idea","nice to have","suggestion"];
+
+let cardSeq = 0;
+function triage(text){
+  const t = text.toLowerCase();
+  let prio = "med";
+  if (HIGH_KW.some(k => t.includes(k))) prio = "high";
+  else if (LOW_KW.some(k => t.includes(k))) prio = "low";
+  let team = "General Queue";
+  for (const r of ROUTES) if (r.kw.some(k => t.includes(k))) { team = r.team; break; }
+  return {prio, team};
+}
+
+function makeCard(text, col, animate){
+  const {prio, team} = triage(text);
+  const card = document.createElement("div");
+  card.className = `kcard prio-${prio}` + (animate ? " pop-in" : "");
+  card.draggable = true;
+  card.tabIndex = 0;
+  card.dataset.id = "c" + (++cardSeq);
+  card.setAttribute("role","group");
+  card.setAttribute("aria-label", `Request: ${text}. Priority ${prio}. Use left and right arrow keys to move between columns.`);
+  const prioLabel = {high:"High", med:"Medium", low:"Low"}[prio];
+  card.innerHTML = `
+    <div class="kcard-move">
+      <button type="button" data-move="-1" aria-label="Move left" title="Move left">‹</button>
+      <button type="button" data-move="1" aria-label="Move right" title="Move right">›</button>
+    </div>
+    <div class="kcard-title"></div>
+    <div class="kcard-meta">
+      <span class="badge badge-${prio}">${prioLabel}</span>
+      <span class="badge badge-route">→ ${team}</span>
+    </div>`;
+  card.querySelector(".kcard-title").textContent = text;
+  const zone = document.querySelector(`[data-cards="${col}"]`);
+  if (prio === "high" && zone.firstChild) zone.prepend(card); else zone.appendChild(card);
+  updateCounts();
+  return card;
+}
+
+function updateCounts(){
+  document.querySelectorAll(".kanban-col").forEach(col => {
+    col.querySelector(".kanban-count").textContent = col.querySelectorAll(".kcard").length;
+  });
+}
+
+function moveCard(card, dir){
+  const zone = card.closest("[data-cards]");
+  const next = document.querySelector(`[data-cards="${+zone.dataset.cards + dir}"]`);
+  if (!next) return;
+  next.appendChild(card);
+  card.classList.remove("pop-in"); void card.offsetWidth; card.classList.add("pop-in");
+  updateCounts();
+  card.focus();
+}
+
+/* seed data so the board looks alive */
+[["URGENT: front desk computer is down", 0],
+ ["Customer asking about last month's invoice", 0],
+ ["Set up the new hire's schedule", 1],
+ ["Order more shipping supplies", 1],
+ ["Fix typo on the flyer", 2]
+].forEach(([t, c]) => makeCard(t, c, false));
+
+document.getElementById("intakeForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("intakeInput");
+  const text = input.value.trim();
+  if (!text) return;
+  makeCard(text, 0, true);
+  input.value = "";
+  input.focus();
+});
+
+/* drag & drop */
+const kanban = document.getElementById("kanban");
+let draggedCard = null;
+kanban.addEventListener("dragstart", e => {
+  const card = e.target.closest(".kcard");
+  if (!card) return;
+  draggedCard = card;
+  card.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", card.dataset.id);
+});
+kanban.addEventListener("dragend", () => {
+  if (draggedCard) draggedCard.classList.remove("dragging");
+  draggedCard = null;
+  document.querySelectorAll(".kanban-col").forEach(c => c.classList.remove("drag-over"));
+});
+document.querySelectorAll(".kanban-col").forEach(col => {
+  col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("drag-over"); });
+  col.addEventListener("dragleave", e => { if (!col.contains(e.relatedTarget)) col.classList.remove("drag-over"); });
+  col.addEventListener("drop", e => {
+    e.preventDefault();
+    col.classList.remove("drag-over");
+    if (draggedCard) { col.querySelector("[data-cards]").appendChild(draggedCard); updateCounts(); }
+  });
+});
+
+/* buttons + keyboard */
+kanban.addEventListener("click", e => {
+  const btn = e.target.closest("[data-move]");
+  if (btn) moveCard(btn.closest(".kcard"), +btn.dataset.move);
+});
+kanban.addEventListener("keydown", e => {
+  const card = e.target.closest(".kcard");
+  if (!card || e.target !== card) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); moveCard(card, -1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); moveCard(card, 1); }
+});
+
+/* ============================================================
+   DEMO 2 — Drawing picker + hand-rolled confetti
+   ============================================================ */
+const pickerChips = document.getElementById("pickerChips");
+const pickerDisplay = document.getElementById("pickerDisplay");
+const pickerSub = document.getElementById("pickerSub");
+const drawBtn = document.getElementById("drawBtn");
+let entrants = ["Jordan","Riley","Casey","Morgan","Alex"];
+
+function renderChips(){
+  pickerChips.innerHTML = "";
+  entrants.forEach((name, i) => {
+    const li = document.createElement("li");
+    li.className = "chip";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute("aria-label", `Remove ${name}`);
+    btn.textContent = "×";
+    btn.addEventListener("click", () => { entrants.splice(i,1); renderChips(); });
+    li.append(name, btn);
+    pickerChips.appendChild(li);
+  });
+  pickerSub.textContent = entrants.length
+    ? `${entrants.length} entrant${entrants.length === 1 ? "" : "s"} ready.`
+    : "Add names, then hit Draw.";
+}
+renderChips();
+
+document.getElementById("pickerForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("pickerInput");
+  const name = input.value.trim();
+  if (name && !entrants.includes(name)) { entrants.push(name); renderChips(); }
+  input.value = "";
+  input.focus();
+});
+
+let drawing = false;
+drawBtn.addEventListener("click", () => {
+  if (drawing || entrants.length === 0) {
+    if (!entrants.length) { pickerSub.textContent = "Add at least one name first!"; }
+    return;
+  }
+  drawing = true;
+  drawBtn.disabled = true;
+  pickerDisplay.classList.remove("winner");
+  pickerDisplay.classList.add("spinning");
+  pickerSub.textContent = "Drawing…";
+
+  const winner = entrants[Math.floor(Math.random() * entrants.length)];
+  const total = reduceMotion ? 200 : 2600;   // total spin ms
+  const start = performance.now();
+  let idx = 0;
+
+  function spin(now){
+    const p = Math.min((now - start) / total, 1);
+    // ease-out: ticks slow down as p -> 1
+    const interval = 60 + 480 * p * p;
+    if (!spin.last || now - spin.last >= interval) {
+      spin.last = now;
+      idx = (idx + 1) % entrants.length;
+      pickerDisplay.textContent = entrants[idx];
+      pickerDisplay.style.transform = "scale(1.06)";
+      setTimeout(() => pickerDisplay.style.transform = "", 70);
+    }
+    if (p < 1) requestAnimationFrame(spin);
+    else {
+      pickerDisplay.textContent = "🏆 " + winner + "!";
+      pickerDisplay.classList.remove("spinning");
+      pickerDisplay.classList.add("winner");
+      pickerSub.textContent = "Congratulations! Draw again any time.";
+      confettiBurst();
+      drawing = false;
+      drawBtn.disabled = false;
+    }
+  }
+  requestAnimationFrame(spin);
+});
+
+/* confetti — hand-rolled, no libraries */
+const cCanvas = document.getElementById("confettiCanvas");
+const cCtx = cCanvas.getContext("2d");
+const CONF_COLORS = ["#3A7D44","#6FA07A","#A8C3AE","#7A8BA6","#EDF1F5","#8FCB9B"];
+let particles = [], confettiRunning = false;
+
+function confettiBurst(){
+  if (reduceMotion) return;
+  const stage = cCanvas.parentElement;
+  cCanvas.width = stage.clientWidth;
+  cCanvas.height = stage.clientHeight;
+  const cx = cCanvas.width / 2, cy = cCanvas.height * 0.45;
+  for (let i = 0; i < 130; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 3 + Math.random() * 7;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      w: 5 + Math.random() * 6,
+      h: 3 + Math.random() * 5,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - .5) * .3,
+      color: CONF_COLORS[Math.floor(Math.random() * CONF_COLORS.length)],
+      life: 90 + Math.random() * 60,
+    });
+  }
+  if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(confettiTick); }
+}
+function confettiTick(){
+  cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+  particles = particles.filter(p => p.life > 0 && p.y < cCanvas.height + 20);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.vx *= 0.99; p.rot += p.vr; p.life--;
+    cCtx.save();
+    cCtx.translate(p.x, p.y);
+    cCtx.rotate(p.rot);
+    cCtx.globalAlpha = Math.min(1, p.life / 40);
+    cCtx.fillStyle = p.color;
+    cCtx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+    cCtx.restore();
+  }
+  if (particles.length) requestAnimationFrame(confettiTick);
+  else { confettiRunning = false; cCtx.clearRect(0,0,cCanvas.width,cCanvas.height); }
+}
+
+/* ============================================================
+   DEMO 3 — Instant quote calculator
+   ============================================================ */
+const qUsers = document.getElementById("qUsers");
+const qFeatures = document.getElementById("qFeatures");
+const qComplexity = document.getElementById("qComplexity");
+const qPrice = document.getElementById("qPrice");
+const qTier = document.getElementById("qTier");
+let shownPrice = 0;
+
+function sliderFill(el){
+  const p = (el.value - el.min) / (el.max - el.min) * 100;
+  el.style.setProperty("--fill", p + "%");
+}
+
+function calcQuote(){
+  sliderFill(qUsers); sliderFill(qFeatures);
+  document.getElementById("qUsersOut").textContent = qUsers.value;
+  document.getElementById("qFeaturesOut").textContent = qFeatures.value;
+  const raw = (245 + qUsers.value * 9 + qFeatures.value * 45) * parseFloat(qComplexity.value);
+  const price = Math.round(raw / 5) * 5;
+  qTier.textContent = price < 500 ? "That's Starter territory 🌱"
+                    : price < 1300 ? "Sounds like a Business plan 🌲"
+                    : "That's a Pro project — let's talk 🌲🌲🌲";
+  animatePrice(price);
+}
+
+let priceAnim;
+function animatePrice(target){
+  cancelAnimationFrame(priceAnim);
+  if (reduceMotion) { shownPrice = target; qPrice.textContent = "$" + target; return; }
+  const from = shownPrice, start = performance.now(), dur = 450;
+  function tick(now){
+    const p = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    shownPrice = Math.round(from + (target - from) * eased);
+    qPrice.textContent = "$" + shownPrice;
+    if (p < 1) priceAnim = requestAnimationFrame(tick);
+  }
+  priceAnim = requestAnimationFrame(tick);
+}
+
+[qUsers, qFeatures].forEach(el => el.addEventListener("input", calcQuote));
+qComplexity.addEventListener("change", calcQuote);
+calcQuote();
+</script>
+</body>
+</html>
