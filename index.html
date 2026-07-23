@@ -529,6 +529,13 @@ section{position:relative}
   display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;font-size:.84rem;color:rgba(237,241,245,.5);
 }
 .footer-bottom .ohio{display:inline-flex;align-items:center;gap:.45em}
+.footer-count{margin-top:1.5rem;text-align:center}
+.visit-counter{
+  display:inline-flex;align-items:center;gap:.55em;font-size:.8rem;
+  color:rgba(237,241,245,.55);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);padding:.45em 1.1em;border-radius:999px;
+}
+.visit-counter strong{color:var(--sage-lt);font-weight:700;font-variant-numeric:tabular-nums}
 
 /* ---------- mobile polish ---------- */
 @media (max-width:640px){
@@ -1057,6 +1064,12 @@ html.static-mode .hero{min-height:850px}
         Proudly based in Ohio — serving businesses everywhere
       </span>
     </div>
+    <div class="footer-count">
+      <span class="visit-counter" id="visitCounter" aria-live="polite" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <strong id="visitNum">—</strong> visits and counting
+      </span>
+    </div>
   </div>
 </footer>
 
@@ -1383,6 +1396,48 @@ function confettiTick(){
   if (particles.length) requestAnimationFrame(confettiTick);
   else { confettiRunning = false; cCtx.clearRect(0,0,cCanvas.width,cCanvas.height); }
 }
+
+/* ============================================================
+   Visitor counter — uses the free Abacus hit-counter API
+   (https://abacus.jasoncameron.dev) so a static site with no
+   backend can keep a running total. Counts each browser at most
+   once per 12 hours. If the service is ever unreachable, the
+   counter simply stays hidden — nothing else breaks.
+   To reset the count later: bump COUNTER_KEY to a new value.
+   ============================================================ */
+(function(){
+  const COUNTER_NS  = "stackpine-org";   // your namespace
+  const COUNTER_KEY = "visits-launch";    // change this to reset the counter to 0
+  const API = "https://abacus.jasoncameron.dev";
+  const el = document.getElementById("visitCounter");
+  const num = document.getElementById("visitNum");
+  if (!el) return;
+
+  const last = parseInt(localStorage.getItem("sp_visit_ts") || "0", 10);
+  const isNewVisit = (Date.now() - last) > 12 * 60 * 60 * 1000;   // once per 12h
+  const url = `${API}/${isNewVisit ? "hit" : "get"}/${COUNTER_NS}/${COUNTER_KEY}`;
+
+  fetch(url)
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(data => {
+      if (typeof data.value !== "number") return;
+      if (isNewVisit) localStorage.setItem("sp_visit_ts", String(Date.now()));
+      el.hidden = false;
+      countUp(num, data.value);
+    })
+    .catch(() => { /* service down — leave counter hidden */ });
+
+  function countUp(node, target){
+    if (reduceMotion){ node.textContent = target.toLocaleString(); return; }
+    const dur = 900, start = performance.now();
+    (function tick(now){
+      const p = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      node.textContent = Math.round(target * eased).toLocaleString();
+      if (p < 1) requestAnimationFrame(tick);
+    })(performance.now());
+  }
+})();
 
 </script>
 </body>
