@@ -456,48 +456,33 @@ section{position:relative}
 .vs-new .mark{background:#E2EEE5;color:var(--pine)}
 @media (max-width:760px){.versus{grid-template-columns:1fr}}
 
-/* ---------- pricing ---------- */
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
-.price-card{
-  background:#fff;border-radius:18px;padding:2.4rem 2rem;box-shadow:var(--shadow-sm);
-  display:flex;flex-direction:column;position:relative;
-  transition:transform .25s ease,box-shadow .25s ease;
-  border:2px solid transparent;
+/* ---------- what it costs ---------- */
+.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
+.cost-card{
+  background:#fff;border-radius:18px;padding:2.2rem 1.9rem;box-shadow:var(--shadow-sm);
+  transition:transform .25s ease,box-shadow .25s ease;border-top:4px solid transparent;
 }
-.price-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md)}
-.price-card.featured{border-color:var(--pine);box-shadow:var(--shadow-md)}
-.price-flag{
-  position:absolute;top:-14px;left:50%;transform:translateX(-50%);
-  background:var(--pine);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;padding:.35em 1.1em;border-radius:999px;white-space:nowrap;
+.cost-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md);border-top-color:var(--pine)}
+.cost-icon{
+  width:52px;height:52px;border-radius:14px;background:var(--ice);
+  display:flex;align-items:center;justify-content:center;margin-bottom:1.2rem;
+  transition:background .25s ease;
 }
-.price-card h3{font-size:1.1rem;margin-bottom:.2rem}
-.price-for{font-size:.85rem;color:var(--text-soft);margin-bottom:1.4rem;min-height:2.6em}
-.price-amount{font-size:2.7rem;font-weight:800;color:var(--navy);line-height:1}
-.price-amount .cur{font-size:.5em;vertical-align:.7em;font-weight:700}
-.price-amount .per{font-size:.34em;font-weight:600;color:var(--text-soft)}
-.price-start{font-size:.75rem;color:var(--pine);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
-.price-feats{list-style:none;display:grid;gap:.7rem;margin:1.6rem 0 2rem;flex:1}
-.price-feats li{display:flex;gap:.7rem;font-size:.9rem;color:var(--text)}
-.price-feats li svg{flex:0 0 auto;margin-top:.25rem}
-.price-card .btn{width:100%}
-.pricing-note{text-align:center;font-size:.88rem;color:var(--text-soft);margin-top:2.2rem}
-.site-banner{
-  margin-top:2.4rem;background:linear-gradient(150deg,var(--navy),var(--navy-deep));
-  border-radius:18px;padding:2.4rem 2.2rem;color:#fff;
-  display:grid;grid-template-columns:1.5fr 1fr;gap:2.2rem;align-items:center;
-  box-shadow:var(--shadow-md);
+.cost-card:hover .cost-icon{background:#E2EEE5}
+.cost-card h3{font-size:1.12rem;margin-bottom:.55rem}
+.cost-card p{font-size:.95rem;color:var(--text-soft)}
+.cost-cta{
+  position:relative;overflow:hidden;margin-top:2.4rem;
+  background:linear-gradient(150deg,var(--navy),var(--navy-deep));
+  border-radius:18px;padding:3rem 2rem;box-shadow:var(--shadow-md);text-align:center;
 }
-.site-banner h3{color:#fff;font-size:1.35rem;margin-bottom:.6rem}
-.site-banner .sb-copy p{color:rgba(237,241,245,.78);font-size:.97rem}
-.sb-price{text-align:center;display:grid;gap:.35rem;justify-items:center}
-.sb-amount{font-size:2.3rem;font-weight:800;line-height:1}
-.sb-amount .cur{font-size:.5em;vertical-align:.7em;font-weight:700}
-.sb-amount small{font-size:.34em;font-weight:600;color:rgba(255,255,255,.7)}
-.sb-plus{font-size:.9rem;font-weight:600;color:#8FCB9B}
-.sb-price .btn{margin-top:.9rem}
-@media (max-width:840px){.site-banner{grid-template-columns:1fr;text-align:center}.sb-copy .vs-tag{display:block}}
-@media (max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
+.cost-cta-inner{position:relative;z-index:1;max-width:620px;margin:0 auto}
+.cost-cta h3{color:#fff;font-size:clamp(1.35rem,2.6vw,1.9rem);margin-bottom:.8rem}
+.cost-cta p{color:rgba(237,241,245,.82);font-size:1.02rem;margin-bottom:1.8rem}
+.cost-cta .btn{font-size:1.05rem;padding:.95em 2.3em}
+.cost-cta-sub{display:block;margin-top:1rem;font-size:.8rem;color:var(--sage-lt);letter-spacing:.02em}
+.pricing-note{text-align:center;font-size:.9rem;color:var(--text-soft);margin-top:2.2rem;max-width:640px;margin-left:auto;margin-right:auto}
+@media (max-width:820px){.cost-grid{grid-template-columns:1fr;max-width:460px;margin:0 auto}}
 
 /* ---------- contact ---------- */
 .contact-box{max-width:640px;margin:0 auto;text-align:center}
@@ -561,8 +546,8 @@ section{position:relative}
   .bk-day{min-width:56px;padding:.6em .4em}
   .booking-panel{min-height:0}
   .vs-card{padding:1.7rem 1.4rem}
-  .price-card{padding:2rem 1.5rem}
-  .site-banner{padding:1.9rem 1.5rem}
+  .cost-card{padding:1.8rem 1.5rem}
+  .cost-cta{padding:2.3rem 1.4rem}
   .contact-ctas{flex-direction:column;align-items:stretch}
   .footer-inner{flex-direction:column;text-align:center}
   .footer-links{justify-content:center;gap:.4rem 1.4rem}
@@ -603,7 +588,7 @@ html.static-mode .hero{min-height:850px}
       <li><a href="#how">How It Works</a></li>
       <li><a href="#demos">Live Demos</a></li>
       <li><a href="#build">What We Build</a></li>
-      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#pricing">What It Costs</a></li>
       <li><a href="#contact" class="btn btn-primary nav-cta">Get in Touch</a></li>
     </ul>
   </div>
@@ -915,79 +900,63 @@ html.static-mode .hero{min-height:850px}
   </div>
 </section>
 
-<!-- ==================== PRICING ==================== -->
+<!-- ==================== WHAT IT COSTS ==================== -->
 <section class="section section-ice" id="pricing">
   <div class="container">
     <div class="section-head reveal">
-      <span class="section-eyebrow">Pricing</span>
-      <h2>Simple plans, everything included</h2>
-      <p>Every plan includes hosting, support, updates, and ongoing improvements. Prices are "starting at" — your exact quote depends on what we build.</p>
+      <span class="section-eyebrow">What It Costs</span>
+      <h2>Probably less than you're spending right now.</h2>
+      <p>Here's the honest truth most software companies hide: custom doesn't mean expensive anymore. You're likely already paying more — in apps that half-fit, hours lost to busywork, and customers who slip through the cracks.</p>
     </div>
 
-    <!-- ============================================================
-         EDIT PRICES HERE — change the numbers below and you're done.
-         ============================================================ -->
-    <div class="pricing-grid">
-      <article class="price-card reveal d1">
-        <h3>Starter</h3>
-        <p class="price-for">A simple, single-purpose tool that does one job perfectly.</p>
-        <span class="price-start">Starting at</span>
-        <div class="price-amount"><span class="cur">$</span>299<span class="per">/mo</span></div>
-        <ul class="price-feats">
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>One focused tool, built to order</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Hosting &amp; security included</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Updates &amp; support included</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Works great on phones</li>
-        </ul>
-        <a href="#contact" class="btn btn-navy">Start with Starter</a>
+    <div class="cost-grid">
+      <article class="cost-card reveal d1">
+        <div class="cost-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3>No big bill up front</h3>
+        <p>Forget the tens of thousands developers used to charge before you'd seen a thing. You pay a small amount each month — and only once it's working for you.</p>
       </article>
-
-      <article class="price-card featured reveal d2">
-        <span class="price-flag">Most popular</span>
-        <h3>Business</h3>
-        <p class="price-for">A multi-user app with a database, logins, and reports.</p>
-        <span class="price-start">Starting at</span>
-        <div class="price-amount"><span class="cur">$</span>699<span class="per">/mo</span></div>
-        <ul class="price-feats">
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Multi-user app with accounts</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Database, dashboards &amp; reports</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Everything in Starter, included</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Priority support &amp; improvements</li>
-        </ul>
-        <a href="#contact" class="btn btn-primary">Talk about Business</a>
+      <article class="cost-card reveal d2">
+        <div class="cost-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        </div>
+        <h3>Starts small, grows with you</h3>
+        <p>A simple tool that does one job costs about what you already pay for one app that only half-fits. As it does more, it scales gently — never a surprise, never a shock.</p>
       </article>
-
-      <article class="price-card reveal d3">
-        <h3>Pro</h3>
-        <p class="price-for">Integrations, customer portals, and complex systems.</p>
-        <span class="price-start">Let's scope it</span>
-        <div class="price-amount" style="font-size:2.1rem;padding:.35em 0">Custom quote</div>
-        <ul class="price-feats">
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Integrations with your other tools</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Customer-facing portals</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Complex, multi-part systems</li>
-          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Everything in Business, included</li>
-        </ul>
-        <a href="#contact" class="btn btn-navy">Get a custom quote</a>
+      <article class="cost-card reveal d3">
+        <div class="cost-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <h3>Everything's included</h3>
+        <p>Hosting, support, updates, and future improvements are all baked into one predictable monthly fee. No add-ons. No surprise invoices. Cancel anytime.</p>
       </article>
     </div>
-    <!-- ============================================================
-         EDIT WEBSITE PRICING HERE — build price + monthly care fee.
-         ============================================================ -->
-    <div class="site-banner reveal">
-      <div class="sb-copy">
-        <span class="vs-tag" style="color:var(--sage-lt)">Websites &amp; storefronts</span>
-        <h3>Just need a website or online store?</h3>
-        <p>We build those too — custom-designed, for a lower one-time build cost. Then we host it, maintain it, and keep it updated for a small monthly fee, so it stays fast, secure, and never goes stale.</p>
+
+    <!-- Free-quote CTA — the whole point is to get people talking, not scare them off with a number -->
+    <div class="cost-cta reveal">
+      <div class="net-bg" aria-hidden="true">
+        <svg viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice">
+          <g stroke="#7A8BA6" stroke-width="1" opacity=".28">
+            <line x1="120" y1="300" x2="360" y2="180"/><line x1="360" y1="180" x2="620" y2="280"/>
+            <line x1="620" y1="280" x2="880" y2="150"/><line x1="880" y1="150" x2="1120" y2="250"/>
+            <line x1="240" y1="60" x2="500" y2="120"/><line x1="500" y1="120" x2="760" y2="50"/>
+          </g>
+          <g fill="#A8C3AE" opacity=".4">
+            <circle cx="120" cy="300" r="4"/><circle cx="360" cy="180" r="3"/><circle cx="620" cy="280" r="4"/>
+            <circle cx="880" cy="150" r="3"/><circle cx="1120" cy="250" r="4"/><circle cx="500" cy="120" r="3"/><circle cx="760" cy="50" r="4"/>
+          </g>
+        </svg>
       </div>
-      <div class="sb-price">
-        <span class="price-start">Starting at</span>
-        <div class="sb-amount"><span class="cur">$</span>499 <small>one-time build</small></div>
-        <div class="sb-plus">+ $29/mo hosting, updates &amp; care</div>
-        <a href="#contact" class="btn btn-primary">Ask about websites</a>
+      <div class="cost-cta-inner">
+        <h3>Curious what yours would cost?</h3>
+        <p>Every project is quoted custom — and most owners are pleasantly surprised. Tell us what you're picturing and we'll give you a straight, honest number. Free, and with zero pressure.</p>
+        <a href="#contact" class="btn btn-primary">Get my free quote</a>
+        <span class="cost-cta-sub">Takes 2 minutes · no commitment · no sales pitch</span>
       </div>
     </div>
-    <p class="pricing-note">Not sure which fits? Just describe your idea — we'll tell you honestly what it needs (and doesn't).</p>
+
+    <p class="pricing-note">Websites and online stores work the same way — a small setup, then one low monthly fee to host, maintain, and keep them fresh. Just ask.</p>
   </div>
 </section>
 
@@ -1052,7 +1021,7 @@ html.static-mode .hero{min-height:850px}
       <ul class="footer-links">
         <li><a href="#how">How It Works</a></li>
         <li><a href="#demos">Demos</a></li>
-        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#pricing">What It Costs</a></li>
         <li><a data-email-link href="#">Email</a></li>
         <li><a data-fb-link href="#" target="_blank" rel="noopener">Facebook</a></li>
       </ul>
