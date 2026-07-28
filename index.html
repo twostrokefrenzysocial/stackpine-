@@ -3,23 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stackpine — Custom Software, Built for Exactly How You Work</title>
+<title>Stackpine | Custom Software Development &amp; Websites for Small Businesses</title>
 
 <!-- ===================== SEO / OPEN GRAPH =====================
      Live domain: https://stackpine.org -->
-<meta name="description" content="Stackpine builds custom software, websites, and online storefronts shaped around exactly how your business runs — for one affordable monthly subscription that covers the build, hosting, updates, and support. Based in Ohio, serving businesses everywhere.">
+<meta name="description" content="Stackpine builds custom software, business apps, websites, and online storefronts shaped around exactly how your business runs — for one affordable monthly subscription covering the build, hosting, updates, and support. Ohio-based, serving businesses everywhere. Get a free quote.">
 <link rel="canonical" href="https://stackpine.org/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
-<meta property="og:title" content="Stackpine — Custom Software, Built for Exactly How You Work">
+<meta property="og:title" content="Stackpine | Custom Software Development &amp; Websites for Small Businesses">
 <meta property="og:description" content="Any idea you have, we can build it. Custom software, websites & online storefronts for one affordable monthly subscription — build, hosting, updates, and support included.">
 <meta property="og:url" content="https://stackpine.org/">
-<meta property="og:image" content="https://stackpine.org/cover.png">
+<meta property="og:image" content="https://stackpine.org/cover.jpg">
+<meta property="og:image:width" content="1696">
+<meta property="og:image:height" content="624">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Stackpine — Custom Software, Built for Exactly How You Work">
-<meta name="twitter:description" content="Any idea you have, we can build it. Custom software for one affordable monthly subscription.">
-<meta name="twitter:image" content="https://stackpine.org/cover.png">
+<meta name="twitter:title" content="Stackpine | Custom Software Development &amp; Websites for Small Businesses">
+<meta name="twitter:description" content="Any idea you have, we can build it. Custom software, websites &amp; online storefronts for one affordable monthly subscription.">
+<meta name="twitter:image" content="https://stackpine.org/cover.jpg">
 <link rel="icon" type="image/png" href="logo.png">
+<link rel="preload" as="image" href="cover.jpg" fetchpriority="high">
+
+<!-- Structured data so Google understands who/what Stackpine is -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "@id": "https://stackpine.org/#org",
+  "name": "Stackpine",
+  "url": "https://stackpine.org/",
+  "logo": "https://stackpine.org/logo.png",
+  "image": "https://stackpine.org/cover.jpg",
+  "slogan": "Building the Future, One Layer at a Time",
+  "description": "Custom software development, websites, and online storefronts for small businesses on an affordable monthly subscription — build, hosting, updates, and support included.",
+  "email": "crlattimer@icloud.com",
+  "sameAs": ["https://www.facebook.com/profile.php?id=61588702793283"],
+  "address": {"@type": "PostalAddress", "addressRegion": "OH", "addressCountry": "US"},
+  "areaServed": {"@type": "Country", "name": "United States"},
+  "hasOfferCatalog": {
+    "@type": "OfferCatalog",
+    "name": "Services",
+    "itemListElement": [
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Custom software development", "description": "Business software built to order — intake systems, scheduling tools, dashboards, portals, inventory and quoting systems."}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Custom website design", "description": "Custom-built business websites, hosted and maintained for a small monthly fee."}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Online storefronts", "description": "Custom e-commerce stores, hosted, maintained, and kept up to date."}}
+    ]
+  }
+}
+</script>
 
 <!-- Font -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,7 +184,7 @@ section{position:relative}
 }
 .hero-bg{
   position:absolute;inset:-12% 0;z-index:0;
-  background:url('cover.png') center 30%/cover no-repeat;
+  background:url('cover.jpg') center 30%/cover no-repeat;
   will-change:transform;
 }
 .hero-overlay{
