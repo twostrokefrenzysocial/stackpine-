@@ -51,6 +51,20 @@
   }
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "How long does a custom software build take?", "acceptedAnswer": {"@type": "Answer", "text": "Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through."}},
+    {"@type": "Question", "name": "Do I need to know anything about technology?", "acceptedAnswer": {"@type": "Answer", "text": "No. You describe how your business runs in plain English, and Stackpine turns that into working software."}},
+    {"@type": "Question", "name": "What does custom software cost?", "acceptedAnswer": {"@type": "Answer", "text": "Every project is quoted custom. There is no big upfront bill — hosting, support, updates, and improvements are included in one predictable monthly fee. Quotes are free."}},
+    {"@type": "Question", "name": "What happens when I reach out?", "acceptedAnswer": {"@type": "Answer", "text": "A normal conversation, not a sales pitch. Describe what's slowing your business down and you'll get an honest free quote."}},
+    {"@type": "Question", "name": "What if I need changes later?", "acceptedAnswer": {"@type": "Answer", "text": "Ongoing improvements are included in the subscription — your software grows and changes as your business does."}},
+    {"@type": "Question", "name": "Am I locked into a contract?", "acceptedAnswer": {"@type": "Answer", "text": "No. Everything is month to month, you can cancel anytime, and your data is always yours."}}
+  ]
+}
+</script>
 
 <!-- Font -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -438,6 +452,131 @@ section{position:relative}
 .confetti-canvas{position:absolute;inset:0;pointer-events:none}
 @media (max-width:760px){.booking-wrap{grid-template-columns:1fr}}
 
+/* --- command center: tabs, dashboard, feed --- */
+.cc-tabs{display:flex;gap:.25rem;background:var(--navy-deep);padding:.5rem .9rem 0}
+.cc-tabs [role=tab]{
+  font-family:inherit;font-size:.88rem;font-weight:600;color:rgba(237,241,245,.6);
+  background:transparent;border:0;border-radius:10px 10px 0 0;padding:.7em 1.2em;cursor:pointer;
+  transition:background .15s ease,color .15s ease;
+}
+.cc-tabs [role=tab]:hover{color:#fff}
+.cc-tabs [role=tab][aria-selected=true]{background:#fff;color:var(--navy)}
+.cc-tabs [role=tab]:focus-visible{outline:3px solid var(--sage);outline-offset:-3px}
+.cc-hint{
+  font-size:.82rem;color:var(--slate);background:#E9F1EB;padding:.6em 1.2em;margin:0;
+  border-bottom:1px solid rgba(122,139,166,.15);
+}
+.cc-panel[hidden]{display:none}
+.cc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.4rem}
+.cc-stat{
+  background:var(--ice);border-radius:12px;padding:1rem 1.1rem;
+  display:flex;flex-direction:column;gap:.15rem;
+}
+.cc-stat-label{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate)}
+.cc-stat-num{font-size:1.9rem;font-weight:800;color:var(--navy);line-height:1.15;font-variant-numeric:tabular-nums}
+.cc-stat-num small{font-size:.5em;font-weight:600;color:var(--text-soft);margin-left:.15em}
+.cc-stat-delta{font-size:.72rem;color:var(--pine);font-weight:600}
+.cc-stat-num.bump{animation:statBump .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes statBump{0%{transform:scale(1)}40%{transform:scale(1.22);color:var(--pine)}100%{transform:scale(1)}}
+.cc-mid{display:grid;grid-template-columns:1fr 1.15fr;gap:1.4rem}
+.cc-chart h4,.cc-feedwrap h4{font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;color:var(--slate);margin-bottom:.9rem}
+.cc-bars{display:flex;align-items:flex-end;gap:.6rem;height:150px;padding:0 .2rem}
+.cc-bar{
+  flex:1;height:var(--h);background:linear-gradient(to top,var(--pine),var(--sage));
+  border-radius:6px 6px 0 0;position:relative;min-height:14px;
+  transition:filter .15s ease;
+}
+.cc-bar:hover{filter:brightness(1.12)}
+.cc-bar i{
+  position:absolute;top:-1.4em;left:50%;transform:translateX(-50%);
+  font-style:normal;font-size:.72rem;font-weight:700;color:var(--slate);
+}
+.cc-bar b{
+  position:absolute;bottom:-1.6em;left:50%;transform:translateX(-50%);
+  font-size:.68rem;font-weight:600;color:var(--slate-lt);
+}
+.cc-chart{padding-bottom:1.4rem}
+.cc-feed{list-style:none;display:grid;gap:.55rem}
+.cc-feed li{
+  display:flex;align-items:flex-start;gap:.6rem;font-size:.84rem;color:var(--text);
+  background:var(--ice);border-radius:10px;padding:.6rem .8rem;
+}
+.cc-feed li.pop-in{animation:popIn .4s cubic-bezier(.3,1.4,.5,1)}
+.cc-feed .cc-ico{flex:0 0 auto}
+.cc-feed li span:nth-child(2){flex:1}
+.cc-feed time{font-size:.7rem;color:var(--slate-lt);white-space:nowrap;margin-top:.15em}
+
+/* --- real results / proof cards --- */
+.proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
+.proof-card{
+  background:#fff;border-radius:18px;overflow:hidden;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;
+  transition:transform .25s ease,box-shadow .25s ease;
+}
+.proof-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md)}
+.proof-card h3{font-size:1rem;margin:1.3rem 1.4rem .5rem}
+.proof-card p{font-size:.9rem;color:var(--text-soft);margin:0 1.4rem;flex:1}
+.proof-stat{
+  display:inline-block;margin:1.1rem 1.4rem 1.4rem;align-self:flex-start;
+  background:#E2EEE5;color:var(--pine-dark);font-size:.78rem;font-weight:700;
+  padding:.4em 1em;border-radius:999px;
+}
+.proof-shot{
+  position:relative;height:150px;background:linear-gradient(150deg,var(--navy),var(--slate));
+  padding:1.6rem 1.2rem .9rem;display:flex;flex-direction:column;gap:.5rem;overflow:hidden;
+}
+.ps-dots{position:absolute;top:.55rem;left:.8rem;display:flex;gap:.3rem}
+.ps-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3)}
+.ps-dots i:first-child{background:var(--sage)}
+.ps-block{display:block;border-radius:4px;background:rgba(255,255,255,.25)}
+.ps-title{width:45%;height:10px}
+.ps-row{display:flex;gap:.5rem;flex:1}
+.ps-tile{flex:1;border-radius:6px;background:rgba(255,255,255,.14)}
+.ps-chart{display:flex;align-items:flex-end;gap:.35rem;height:44px}
+.ps-chart i{flex:1;height:var(--h);background:var(--sage);opacity:.85;border-radius:3px 3px 0 0}
+.ps-product{flex:1;border-radius:6px;background:rgba(255,255,255,.16);position:relative}
+.ps-product::after{content:"";position:absolute;left:15%;right:15%;bottom:12%;height:7px;border-radius:3px;background:var(--sage);opacity:.8}
+.ps-btnrow{display:flex;justify-content:flex-end}
+.ps-btn{width:34%;height:14px;border-radius:999px;background:var(--pine)}
+.ps-btn.wide{width:70%;margin-top:.4rem}
+.ps-phone{
+  width:46%;margin:0 auto;background:rgba(255,255,255,.1);border-radius:10px 10px 0 0;
+  padding:.7rem .6rem 0;display:flex;flex-direction:column;gap:.4rem;flex:1;
+}
+.ps-line{display:block;height:7px;border-radius:3px;background:rgba(255,255,255,.28)}
+.ps-line.short{width:60%}
+@media (max-width:900px){.proof-grid{grid-template-columns:1fr;max-width:460px;margin:0 auto}}
+
+/* --- faq --- */
+.faq-list{max-width:760px;margin:0 auto;display:grid;gap:.8rem}
+.faq-item{
+  background:#fff;border:1px solid rgba(122,139,166,.2);border-radius:14px;
+  box-shadow:var(--shadow-sm);overflow:hidden;
+}
+.faq-item summary{
+  list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  font-weight:600;color:var(--navy);font-size:.98rem;padding:1.1rem 1.4rem;
+}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary svg{flex:0 0 auto;color:var(--pine);transition:transform .25s ease}
+.faq-item[open] summary svg{transform:rotate(180deg)}
+.faq-item summary:hover{color:var(--pine-dark)}
+.faq-item summary:focus-visible{outline:3px solid var(--sage);outline-offset:-3px;border-radius:14px}
+.faq-a{padding:0 1.4rem 1.2rem}
+.faq-a p{font-size:.93rem;color:var(--text-soft)}
+
+/* --- sticky mobile CTA --- */
+.mobile-cta{
+  display:none;position:fixed;left:50%;bottom:14px;transform:translate(-50%,90px);z-index:90;
+  align-items:center;gap:.5em;
+  background:var(--pine);color:#fff;text-decoration:none;font-weight:600;font-size:.95rem;
+  padding:.9em 1.7em;border-radius:999px;box-shadow:0 8px 24px rgba(30,42,69,.35);
+  transition:transform .35s cubic-bezier(.2,.7,.3,1);white-space:nowrap;
+  padding-bottom:calc(.9em + env(safe-area-inset-bottom,0px)/2);
+}
+.mobile-cta.show{transform:translate(-50%,0)}
+.mobile-cta:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
+
 /* ---------- what we can build ---------- */
 .build-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .build-card{
@@ -587,6 +726,16 @@ section{position:relative}
   .treeline{height:46px}
   /* 16px inputs so iOS doesn't zoom the page when a field is tapped */
   input[type=text],select{font-size:1rem!important}
+  /* command center on phones */
+  .cc-tabs{overflow-x:auto;padding:.5rem .5rem 0}
+  .cc-tabs [role=tab]{white-space:nowrap;min-height:44px}
+  .cc-stats{grid-template-columns:1fr 1fr;gap:.7rem}
+  .cc-stat-num{font-size:1.55rem}
+  .cc-mid{grid-template-columns:1fr;gap:1.6rem}
+  .cc-bars{height:120px}
+  /* sticky message bar */
+  .mobile-cta{display:inline-flex}
+  .footer{padding-bottom:5.5rem}
 }
 
 /* ---------- static test mode (?static=1) — used for screenshot/QA ---------- */
@@ -594,6 +743,7 @@ html.static-mode{scroll-behavior:auto}
 html.static-mode *{animation:none!important;transition:none!important}
 html.static-mode .hero-content > *,html.static-mode .reveal{opacity:1!important;transform:none!important}
 html.static-mode .hero{min-height:850px}
+html.static-mode .mobile-cta{transform:translate(-50%,0)}
 
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion:reduce){
@@ -617,8 +767,8 @@ html.static-mode .hero{min-height:850px}
     </button>
     <ul class="nav-links" id="navLinks">
       <li><a href="#how">How It Works</a></li>
-      <li><a href="#demos">Live Demos</a></li>
-      <li><a href="#build">What We Build</a></li>
+      <li><a href="#demos">Live Demo</a></li>
+      <li><a href="#results">Results</a></li>
       <li><a href="#pricing">What It Costs</a></li>
       <li><a href="#contact" class="btn btn-primary nav-cta">Get in Touch</a></li>
     </ul>
@@ -737,19 +887,76 @@ html.static-mode .hero{min-height:850px}
 <section class="section section-ice" id="demos">
   <div class="container">
     <div class="section-head reveal">
-      <span class="section-eyebrow">Live Demos</span>
-      <h2>Don't take our word for it — try one</h2>
-      <p>These aren't screenshots or mockups. They're small, fully working pieces of custom software running right here on this page. Click around. Break stuff. Have fun.</p>
+      <span class="section-eyebrow">Live Demo</span>
+      <h2>Don't take our word for it — run it</h2>
+      <p>This is a working mini command center, live on this page — the kind of connected system we build. The tabs talk to each other: confirm a booking or complete a request, then watch the Dashboard react in real time.</p>
     </div>
 
-    <!-- ===== Demo 1: Intake & Triage ===== -->
+    <!-- ===== Flagship demo: Command Center ===== -->
     <div class="demo-block reveal">
       <div class="demo-frame">
         <div class="demo-titlebar">
           <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <h3>Demo 1 — Request Intake &amp; Triage Board</h3>
+          <h3>Your Business Command Center — live demo</h3>
         </div>
-        <div class="demo-body">
+        <div class="cc-tabs" role="tablist" aria-label="Command center sections">
+          <button type="button" role="tab" id="ccTabDash" aria-selected="true" aria-controls="ccPanelDash" data-cctab="dash">📊 Dashboard</button>
+          <button type="button" role="tab" id="ccTabBook" aria-selected="false" aria-controls="ccPanelBook" data-cctab="book">📅 Bookings</button>
+          <button type="button" role="tab" id="ccTabReq" aria-selected="false" aria-controls="ccPanelReq" data-cctab="req">🔧 Requests</button>
+        </div>
+        <p class="cc-hint" id="ccHint">Everything below updates live. Go confirm a booking or complete a request — the Dashboard is watching. 👀</p>
+
+        <!-- ===== Tab 1: Dashboard ===== -->
+        <div class="demo-body cc-panel" id="ccPanelDash" role="tabpanel" aria-labelledby="ccTabDash">
+          <div class="cc-stats">
+            <div class="cc-stat">
+              <span class="cc-stat-label">Bookings today</span>
+              <span class="cc-stat-num" id="statBookings">7</span>
+              <span class="cc-stat-delta">▲ 2 vs yesterday</span>
+            </div>
+            <div class="cc-stat">
+              <span class="cc-stat-label">Open requests</span>
+              <span class="cc-stat-num" id="statOpen">0</span>
+              <span class="cc-stat-delta" id="statOpenDelta">live from Requests tab</span>
+            </div>
+            <div class="cc-stat">
+              <span class="cc-stat-label">Revenue this week</span>
+              <span class="cc-stat-num" id="statRev">$8,420</span>
+              <span class="cc-stat-delta">▲ 12% vs last week</span>
+            </div>
+            <div class="cc-stat">
+              <span class="cc-stat-label">Avg. response time</span>
+              <span class="cc-stat-num">14<small>min</small></span>
+              <span class="cc-stat-delta">▼ was 3 hours with sticky notes</span>
+            </div>
+          </div>
+          <div class="cc-mid">
+            <div class="cc-chart">
+              <h4>Bookings — last 7 days</h4>
+              <div class="cc-bars" aria-hidden="true">
+                <div class="cc-bar" style="--h:45%"><i>5</i><b>Mo</b></div>
+                <div class="cc-bar" style="--h:72%"><i>8</i><b>Tu</b></div>
+                <div class="cc-bar" style="--h:54%"><i>6</i><b>We</b></div>
+                <div class="cc-bar" style="--h:81%"><i>9</i><b>Th</b></div>
+                <div class="cc-bar" style="--h:63%"><i>7</i><b>Fr</b></div>
+                <div class="cc-bar" style="--h:100%"><i>11</i><b>Sa</b></div>
+                <div class="cc-bar" style="--h:63%"><i>7</i><b>Su</b></div>
+              </div>
+            </div>
+            <div class="cc-feedwrap">
+              <h4>Live activity</h4>
+              <ul class="cc-feed" id="ccFeed">
+                <li><span class="cc-ico">📅</span><span>New booking: Sarah M. — Standard appointment, 2:00 PM</span><time>2 min ago</time></li>
+                <li><span class="cc-ico">💬</span><span>Auto-reminder text sent to tomorrow's 9:00 AM booking</span><time>9 min ago</time></li>
+                <li><span class="cc-ico">✅</span><span>Request completed: "Update the front window signage"</span><time>24 min ago</time></li>
+                <li><span class="cc-ico">🧾</span><span>Invoice #1041 paid — $280</span><time>1 hr ago</time></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Tab 2: Requests ===== -->
+        <div class="demo-body cc-panel" id="ccPanelReq" role="tabpanel" aria-labelledby="ccTabReq" hidden>
           <form class="intake-form" id="intakeForm">
             <input type="text" id="intakeInput" maxlength="80" placeholder='Type a request… try "URGENT: printer is broken again"' aria-label="New request description">
             <button type="submit" class="btn btn-primary btn-sm">Add Request</button>
@@ -770,18 +977,9 @@ html.static-mode .hero{min-height:850px}
           </div>
           <p class="kanban-hint">Add a request above — it gets auto-prioritized and routed. Drag cards between columns (or use the ‹ › buttons / arrow keys).</p>
         </div>
-      </div>
-      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
-    </div>
 
-    <!-- ===== Demo 2: Online Booking ===== -->
-    <div class="demo-block reveal">
-      <div class="demo-frame">
-        <div class="demo-titlebar">
-          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <h3>Demo 2 — Online Booking &amp; Scheduling</h3>
-        </div>
-        <div class="demo-body">
+        <!-- ===== Tab 3: Bookings ===== -->
+        <div class="demo-body cc-panel" id="ccPanelBook" role="tabpanel" aria-labelledby="ccTabBook" hidden>
           <div class="booking-wrap">
             <div class="booking-picker">
               <span class="bk-label" id="bkSvcLabel">1. Pick a service</span>
@@ -814,9 +1012,8 @@ html.static-mode .hero{min-height:850px}
           </div>
         </div>
       </div>
-      <p class="demo-caption">Built as an example in hours. <strong>Imagine what we could build for your business.</strong></p>
+      <p class="demo-caption">Built as a working example — bookings, requests, and live stats all talking to each other. <strong>Now imagine the version wired to <em>your</em> business.</strong></p>
     </div>
-
   </div>
 </section>
 
@@ -873,6 +1070,54 @@ html.static-mode .hero{min-height:850px}
           <h3>…and whatever you can imagine</h3>
           <p>If you can describe it, we can build it. Seriously — that's the whole point of custom.</p>
         </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== REAL RESULTS ==================== -->
+<section class="section section-ice" id="results">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Real Results</span>
+      <h2>Built for real businesses. Working right now.</h2>
+      <p>A few recent builds — details kept anonymous, because our clients' operations are their business. Yours would be too.</p>
+    </div>
+    <div class="proof-grid">
+      <article class="proof-card reveal d1">
+        <div class="proof-shot shot-dash" aria-hidden="true">
+          <span class="ps-dots"><i></i><i></i><i></i></span>
+          <span class="ps-block ps-title"></span>
+          <span class="ps-row"><span class="ps-tile"></span><span class="ps-tile"></span><span class="ps-tile"></span></span>
+          <span class="ps-chart"><i style="--h:40%"></i><i style="--h:70%"></i><i style="--h:55%"></i><i style="--h:85%"></i><i style="--h:65%"></i></span>
+        </div>
+        <h3>Leadership dashboard — healthcare organization</h3>
+        <p>Leadership was piecing together program numbers from a dozen spreadsheets every week. Now one secure dashboard shows programs, staffing, and finances in real time — pulled together automatically.</p>
+        <span class="proof-stat">Weekly reporting: hours → minutes</span>
+      </article>
+      <article class="proof-card reveal d2">
+        <div class="proof-shot shot-store" aria-hidden="true">
+          <span class="ps-dots"><i></i><i></i><i></i></span>
+          <span class="ps-block ps-title"></span>
+          <span class="ps-row"><span class="ps-product"></span><span class="ps-product"></span><span class="ps-product"></span></span>
+          <span class="ps-btnrow"><span class="ps-btn"></span></span>
+        </div>
+        <h3>Online store — off-road parts retailer</h3>
+        <p>Needed a real online store without big-platform monthly fees eating the margin. Got a custom storefront with inventory, checkout, and an admin panel simple enough for one person to run.</p>
+        <span class="proof-stat">Full store + admin, live in weeks</span>
+      </article>
+      <article class="proof-card reveal d3">
+        <div class="proof-shot shot-app" aria-hidden="true">
+          <span class="ps-dots"><i></i><i></i><i></i></span>
+          <span class="ps-phone">
+            <span class="ps-block ps-title"></span>
+            <span class="ps-line"></span><span class="ps-line"></span><span class="ps-line short"></span>
+            <span class="ps-btn wide"></span>
+          </span>
+        </div>
+        <h3>Expense tracker — small motorsports business</h3>
+        <p>Receipts lived in a shoebox until tax season. Now every expense is snapped from a phone in seconds and sorted automatically — totals stay tax-ready all year long.</p>
+        <span class="proof-stat">Tax prep: days → one tap</span>
       </article>
     </div>
   </div>
@@ -991,6 +1236,42 @@ html.static-mode .hero{min-height:850px}
   </div>
 </section>
 
+<!-- ==================== FAQ ==================== -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Common Questions</span>
+      <h2>Answered straight, no jargon</h2>
+    </div>
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary>How long does a build take?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through, so there's never a six-month black box between "we talked" and "here's your software."</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>Do I need to know anything about technology?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>Not a thing. You describe how your business runs in plain English — "requests come in by text and we lose track of them" is a perfect starting point. Turning that into software is our job, not yours.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>What does it cost?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>Every project is quoted custom, because every business is different — but there's no big upfront bill, and hosting, support, updates, and improvements are all included in one predictable monthly fee. Most owners are pleasantly surprised. Message us and we'll give you a straight number, free.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>What happens when I reach out?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>A normal conversation — not a sales pitch. Tell us what's slowing your business down, we'll ask a few questions, and you'll get an honest free quote. If we think you don't actually need custom software, we'll tell you that too.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>What if I need changes later?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>That's the whole point of how we work. Your subscription includes ongoing improvements — as your business changes, your software changes with it. No change-order invoices, no disappearing developer.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>Am I locked into a contract?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="faq-a"><p>No. Everything is month to month, you can cancel anytime, and your data is always yours — if you ever leave, we'll hand over an export and part as friends.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- ==================== CONTACT ==================== -->
 <section class="section section-dark" id="contact">
   <div class="net-bg" aria-hidden="true">
@@ -1042,6 +1323,12 @@ html.static-mode .hero{min-height:850px}
   </div>
 </section>
 
+<!-- Sticky mobile CTA — straight to Facebook, appears after the hero -->
+<a class="mobile-cta" id="mobileCta" data-fb-link href="#" target="_blank" rel="noopener">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  Message us — free quote
+</a>
+
 <!-- ==================== FOOTER ==================== -->
 <footer class="footer">
   <div class="container">
@@ -1051,7 +1338,9 @@ html.static-mode .hero{min-height:850px}
       </a>
       <ul class="footer-links">
         <li><a href="#how">How It Works</a></li>
-        <li><a href="#demos">Demos</a></li>
+        <li><a href="#demos">Demo</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#faq">FAQ</a></li>
         <li><a href="#pricing">What It Costs</a></li>
         <li><a data-email-link href="#">Email</a></li>
         <li><a data-fb-link href="#" target="_blank" rel="noopener">Facebook</a></li>
@@ -1186,6 +1475,12 @@ function updateCounts(){
   document.querySelectorAll(".kanban-col").forEach(col => {
     col.querySelector(".kanban-count").textContent = col.querySelectorAll(".kcard").length;
   });
+  // live-wire the dashboard stat to the actual board state
+  const openEl = document.getElementById("statOpen");
+  if (openEl){
+    const open = document.querySelectorAll('[data-cards="0"] .kcard, [data-cards="1"] .kcard').length;
+    if (openEl.textContent !== String(open)) { openEl.textContent = open; statBump(openEl); }
+  }
 }
 
 function moveCard(card, dir){
@@ -1195,6 +1490,7 @@ function moveCard(card, dir){
   next.appendChild(card);
   card.classList.remove("pop-in"); void card.offsetWidth; card.classList.add("pop-in");
   updateCounts();
+  if (next.dataset.cards === "2") ccPushEvent("✅", `Request completed: "${card.querySelector(".kcard-title").textContent}"`);
   card.focus();
 }
 
@@ -1212,6 +1508,7 @@ document.getElementById("intakeForm").addEventListener("submit", e => {
   const text = input.value.trim();
   if (!text) return;
   makeCard(text, 0, true);
+  ccPushEvent("📥", `New request routed to ${triage(text).team}: "${text}"`);
   input.value = "";
   input.focus();
 });
@@ -1238,7 +1535,12 @@ document.querySelectorAll(".kanban-col").forEach(col => {
   col.addEventListener("drop", e => {
     e.preventDefault();
     col.classList.remove("drag-over");
-    if (draggedCard) { col.querySelector("[data-cards]").appendChild(draggedCard); updateCounts(); }
+    if (draggedCard) {
+      const zone = col.querySelector("[data-cards]");
+      zone.appendChild(draggedCard);
+      updateCounts();
+      if (zone.dataset.cards === "2") ccPushEvent("✅", `Request completed: "${draggedCard.querySelector(".kcard-title").textContent}"`);
+    }
   });
 });
 
@@ -1340,6 +1642,10 @@ document.getElementById("bkConfirm").addEventListener("click", () => {
   document.getElementById("bkSummary").hidden = true;
   document.getElementById("bkSuccess").hidden = false;
   confettiBurst();
+  ccPushEvent("📅", `New booking: ${s.name} — ${d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"})} at ${bkState.slot}`);
+  const bEl = document.getElementById("statBookings");
+  bEl.textContent = parseInt(bEl.textContent, 10) + 1;
+  statBump(bEl);
 });
 
 document.getElementById("bkAgain").addEventListener("click", () => {
@@ -1396,6 +1702,75 @@ function confettiTick(){
   if (particles.length) requestAnimationFrame(confettiTick);
   else { confettiRunning = false; cCtx.clearRect(0,0,cCanvas.width,cCanvas.height); }
 }
+
+/* ============================================================
+   Command center — tabs, live feed, ambient activity
+   ============================================================ */
+const ccPanels = {dash:"ccPanelDash", book:"ccPanelBook", req:"ccPanelReq"};
+const ccHints = {
+  dash: "Everything below updates live. Go confirm a booking or complete a request — the Dashboard is watching. 👀",
+  book: "Confirm a booking here, then flip back to the Dashboard and watch the numbers move.",
+  req:  "Add a request or drag one to Done — the Dashboard logs it instantly.",
+};
+document.querySelectorAll(".cc-tabs [role=tab]").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".cc-tabs [role=tab]").forEach(t => t.setAttribute("aria-selected", t === tab));
+    Object.entries(ccPanels).forEach(([key, id]) => {
+      document.getElementById(id).hidden = key !== tab.dataset.cctab;
+    });
+    document.getElementById("ccHint").textContent = ccHints[tab.dataset.cctab];
+  });
+});
+
+function statBump(el){
+  if (reduceMotion) return;
+  el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+}
+
+function ccPushEvent(icon, text){
+  const feed = document.getElementById("ccFeed");
+  if (!feed) return;
+  const li = document.createElement("li");
+  li.className = "pop-in";
+  const ico = document.createElement("span"); ico.className = "cc-ico"; ico.textContent = icon;
+  const msg = document.createElement("span"); msg.textContent = text;
+  const t = document.createElement("time"); t.textContent = "just now";
+  li.append(ico, msg, t);
+  feed.prepend(li);
+  while (feed.children.length > 8) feed.lastElementChild.remove();
+}
+
+/* ambient activity so the dashboard feels alive (only while visible) */
+const CC_AMBIENT = [
+  ["💬", "Auto-reminder text sent to tomorrow's bookings"],
+  ["⭐", "New 5-star review collected from yesterday's customer"],
+  ["🧾", "Invoice #1042 paid — $350"],
+  ["📅", "New booking: Mike R. — Quick check-in, Thursday 10:30 AM"],
+  ["📦", "Low-stock alert: reorder point reached on 2 items"],
+  ["🧾", "Invoice #1043 paid — $175"],
+];
+let ccAmbientIdx = 0, ccDemoVisible = false;
+new IntersectionObserver(es => es.forEach(e => ccDemoVisible = e.isIntersecting), {threshold:.1})
+  .observe(document.getElementById("demos"));
+setInterval(() => {
+  if (reduceMotion || document.hidden || !ccDemoVisible) return;
+  const [icon, text] = CC_AMBIENT[ccAmbientIdx++ % CC_AMBIENT.length];
+  ccPushEvent(icon, text);
+  if (text.startsWith("Invoice")) {
+    const rev = document.getElementById("statRev");
+    const amt = parseInt(text.match(/\$(\d+)/)[1], 10);
+    rev.textContent = "$" + (parseInt(rev.textContent.replace(/[$,]/g,""), 10) + amt).toLocaleString();
+    statBump(rev);
+  }
+}, 9000);
+
+/* ============================================================
+   Sticky mobile CTA — slides up once the visitor scrolls past the hero
+   ============================================================ */
+const mobileCta = document.getElementById("mobileCta");
+function onScrollCta(){ mobileCta.classList.toggle("show", window.scrollY > window.innerHeight * 0.8); }
+onScrollCta();
+window.addEventListener("scroll", onScrollCta, {passive:true});
 
 /* ============================================================
    Visitor counter — uses the free Abacus hit-counter API
