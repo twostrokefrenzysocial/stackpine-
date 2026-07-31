@@ -55,6 +55,15 @@ npm test
 
 ## Deploying to Railway
 
+**The five-minute version.** New Project → Deploy from GitHub repo → this repo. Then,
+on the service: **Settings → Root Directory** = `lattimer-budget`; **Settings → Source →
+Branch** = whichever branch has this code; **+ New → Volume** mounted at `/data`;
+**Variables** → `DB_PATH=/data/budget.db` and `FAMILY_PIN=<your four digits>`;
+**Settings → Networking → Generate Domain**. Open the domain on both phones.
+The start command and health check come from `railway.json` — you don't need to set them.
+
+The rest of this section is the same thing, slower.
+
 ### 1. Create the service
 
 1. Push this repo to GitHub.
