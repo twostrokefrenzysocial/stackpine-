@@ -17,6 +17,8 @@ the data; the phones install it straight from the browser, no app store.
   manual deposits, and a record of what each settled debt cost and when.
 - **Months roll over on their own** — a new month starts with fresh actuals; past
   months stay viewable but read-only, each holding the budget it was actually run on.
+  Last month stays editable for the first few days of the new one, so a purchase made
+  on the 31st can still be logged on the 1st.
 
 ---
 
@@ -47,6 +49,7 @@ npm test
 | `FAMILY_PIN`    | `0000`              | The shared 4-digit PIN on the login screen. Always set this. |
 | `SESSION_SECRET`| derived from the PIN| Signs the login tokens. Set it if you want sessions to survive a PIN change. |
 | `TZ_NAME`       | `America/New_York`  | Which clock decides "today" and "this month". |
+| `BACKDATE_GRACE_DAYS` | `5`           | How many days into a new month last month stays editable, so a purchase made on the 31st can be entered on the 1st. `0` closes last month immediately; `31` keeps it open all month. |
 
 ---
 
@@ -147,7 +150,14 @@ add a manual transaction to a bill category if the real amount differed.
 **Months.** Transactions carry the month they belong to, so a new month starts empty on
 its own. When a month is first opened, the app snapshots that month's budgets and
 income, so raising the grocery budget in November doesn't rewrite October's history.
-Past months reject writes at the API level, not just in the UI.
+Closed months reject writes at the API level, not just in the UI.
+
+**Back-dating grace.** For the first `BACKDATE_GRACE_DAYS` (default 5) of a new month,
+last month is still writable — add, edit, delete, and tick off its bills. Step back a
+month during that window and the header turns green with *"Still open through Aug 5"*
+instead of the orange read-only bar; the **+** button stays live and defaults the date
+to the last day of that month. On day 6 the month closes for good. The window never
+reaches back two months, and future dates are always refused.
 
 **Settlement fund.** The balance is: the "Settlement fund" bill payments, plus manual
 deposits (extra paychecks), minus what settled debts actually cost. Each target's bar

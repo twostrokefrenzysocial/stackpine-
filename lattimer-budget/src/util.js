@@ -41,6 +41,54 @@ function isValidMonth(value) {
   return m >= 1 && m <= 12;
 }
 
+function shiftMonth(month, delta) {
+  const y = Number(month.slice(0, 4));
+  let m = Number(month.slice(5, 7)) - 1 + delta;
+  const year = y + Math.floor(m / 12);
+  m = ((m % 12) + 12) % 12;
+  return `${year}-${String(m + 1).padStart(2, '0')}`;
+}
+
+function previousMonth() {
+  return shiftMonth(currentMonth(), -1);
+}
+
+/**
+ * Days into a new month during which last month can still be edited, so a
+ * purchase made on the 31st can be entered on the 1st. Read per call so it
+ * can be changed without a restart in tests.
+ */
+function graceDays() {
+  const raw = Number(process.env.BACKDATE_GRACE_DAYS);
+  if (!Number.isFinite(raw)) return 5;
+  // 0 closes last month the moment the new one starts; 31 keeps it open all month.
+  return Math.max(0, Math.min(31, Math.floor(raw)));
+}
+
+/** True through the end of the grace day itself, e.g. all of the 5th when days = 5. */
+function inGraceWindow() {
+  return Number(today().slice(8, 10)) <= graceDays();
+}
+
+/** Can this month still be written to? */
+function isWritableMonth(month) {
+  if (month === currentMonth()) return true;
+  return month === previousMonth() && inGraceWindow();
+}
+
+/** Oldest date a new transaction may carry right now (for the date picker). */
+function earliestWritableDate() {
+  return inGraceWindow() ? `${previousMonth()}-01` : `${currentMonth()}-01`;
+}
+
+/** Last calendar day of a YYYY-MM month. */
+function lastDayOfMonth(month) {
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const day = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${month}-${String(day).padStart(2, '0')}`;
+}
+
 // ---------- money ----------
 
 /** Accepts 12.34 or "12.34" and returns integer cents. Returns null when unusable. */
@@ -100,6 +148,13 @@ module.exports = {
   TZ,
   today,
   currentMonth,
+  previousMonth,
+  shiftMonth,
+  graceDays,
+  inGraceWindow,
+  isWritableMonth,
+  earliestWritableDate,
+  lastDayOfMonth,
   isValidDate,
   isValidMonth,
   toCents,

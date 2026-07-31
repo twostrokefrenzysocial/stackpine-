@@ -184,6 +184,8 @@ button { cursor: pointer; border: 0; background: none; }
   font-weight: 700;
   text-align: center;
 }
+/* Last month, still inside the back-dating grace window. */
+.readonly-banner.grace-banner { background: var(--ok); }
 
 .view { padding: 14px 14px 8px; max-width: 640px; margin: 0 auto; }
 .view:focus { outline: none; }

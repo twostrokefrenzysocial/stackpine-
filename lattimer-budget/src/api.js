@@ -6,6 +6,11 @@ const {
   TZ,
   today,
   currentMonth,
+  graceDays,
+  inGraceWindow,
+  isWritableMonth,
+  earliestWritableDate,
+  lastDayOfMonth,
   isValidDate,
   isValidMonth,
   toCents,
@@ -230,7 +235,15 @@ function createApi(db) {
       today: today(),
       currentMonth: cur,
       timezone: TZ,
-      readOnly: month !== cur,
+      readOnly: !isWritableMonth(month),
+      // Last month stays open for a few days so a purchase made on the 31st
+      // can still be entered on the 1st.
+      grace: {
+        days: graceDays(),
+        open: inGraceWindow(),
+        earliestDate: earliestWritableDate(),
+        closesAfter: graceDays() > 0 ? `${cur}-${String(graceDays()).padStart(2, '0')}` : null,
+      },
       version: lastChange.version,
       lastChange,
       months,
@@ -274,9 +287,10 @@ function createApi(db) {
   // ---------------------------------------------------------------- validation
 
   function requireMonthWritable(dateStr) {
-    if (dateStr.slice(0, 7) !== currentMonth()) {
-      throw new HttpError(409, 'Past months are read-only.');
-    }
+    const month = dateStr.slice(0, 7);
+    if (isWritableMonth(month)) return;
+    if (month > currentMonth()) throw new HttpError(409, 'That month has not started yet.');
+    throw new HttpError(409, 'That month is closed — it is read-only now.');
   }
 
   function readAmount(value, { allowNegative = false } = {}) {
@@ -442,10 +456,19 @@ function createApi(db) {
     const category = activeCategory(req.params.categoryId);
     if (category.kind !== 'fixed') throw bad('Only fixed bills can be checked off.');
 
-    const month = currentMonth();
+    // Defaults to this month, but last month's checklist stays tappable
+    // during the grace window.
+    const month = req.body?.month === undefined ? currentMonth() : String(req.body.month);
+    if (!isValidMonth(month)) throw bad('Month must be YYYY-MM.');
+    requireMonthWritable(`${month}-01`);
     ensureMonth(month);
+
     const paid = req.body?.paid !== false;
-    const date = readDate(req.body?.date);
+    // A bill paid against last month is dated in that month, not today.
+    const date = req.body?.date === undefined
+      ? (month === currentMonth() ? today() : lastDayOfMonth(month))
+      : readDate(req.body.date);
+    if (date.slice(0, 7) !== month) throw bad('That date is not in the month being paid.');
     requireMonthWritable(date);
 
     if (paid) {

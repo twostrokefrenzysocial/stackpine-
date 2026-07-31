@@ -228,21 +228,152 @@ test('variable categories cannot be checked off as bills', async () => {
 
 // ---------------------------------------------------------------- months
 
-test('past months are read-only', async () => {
+test('past months are read-only once the grace window has closed', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
   const res = await call('/api/transactions', {
     method: 'POST',
     body: { category_id: groceriesId, amount: 25, date: `${monthOf(-1)}-15` },
   });
   assert.equal(res.status, 409);
+
+  const view = await call(`/api/state?month=${monthOf(-1)}`);
+  assert.equal(view.body.readOnly, true);
+  assert.equal(view.body.grace.open, false);
 });
 
-test('a past month renders read-only with its own snapshot', async () => {
+test('a past month renders read-only with its own snapshot', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
   const res = await call(`/api/state?month=${monthOf(-1)}`);
   assert.equal(res.status, 200);
   assert.equal(res.body.readOnly, true);
   assert.equal(res.body.month, monthOf(-1));
   assert.equal(res.body.transactions.length, 0);
   assert.equal(res.body.categories.length, 23);
+});
+
+// ---------------------------------------------------------------- back-dating grace
+
+// Grace is "day of month <= N", so deriving N from today keeps these tests
+// honest on any calendar day and pins the boundary exactly.
+const openGrace = async () => String(Number((await state()).today.slice(8, 10)));
+const closedGrace = async () => String(Number((await state()).today.slice(8, 10)) - 1);
+
+test('the grace window is inclusive of its final day', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+  const res = await call(`/api/state?month=${monthOf(-1)}`);
+  assert.equal(res.body.readOnly, false);
+  assert.equal(res.body.grace.open, true);
+});
+
+test('the grace window shuts the day after it expires', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await closedGrace();
+  const res = await call(`/api/state?month=${monthOf(-1)}`);
+  assert.equal(res.body.readOnly, true);
+  assert.equal(res.body.grace.open, false);
+});
+
+test('last month accepts entries while the grace window is open', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+
+  const last = monthOf(-1);
+  const res = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 25, date: `${last}-15`, note: 'forgot to log this' },
+  });
+  assert.equal(res.status, 201);
+  assert.equal(res.body.state.month, last);
+  assert.equal(res.body.state.readOnly, false);
+  assert.equal(byName(res.body.state.categories, 'Groceries').spent, 25);
+
+  // ...and it lands in last month, not this one
+  const now = await state();
+  assert.equal(byName(now.categories, 'Groceries').spent, 0);
+  assert.equal(now.grace.open, true);
+  assert.equal(now.grace.earliestDate, `${last}-01`);
+
+  // it can be edited and deleted while the window is open
+  const edited = await call(`/api/transactions/${res.body.id}`, { method: 'PUT', body: { amount: 30 } });
+  assert.equal(edited.status, 200);
+  assert.equal(byName(edited.body.state.categories, 'Groceries').spent, 30);
+
+  const gone = await call(`/api/transactions/${res.body.id}`, { method: 'DELETE' });
+  assert.equal(gone.status, 200);
+  assert.equal(byName(gone.body.state.categories, 'Groceries').spent, 0);
+});
+
+test('the grace window never reaches back two months', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = '31';
+
+  const res = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 25, date: `${monthOf(-2)}-15` },
+  });
+  assert.equal(res.status, 409);
+});
+
+test('future months are refused', async () => {
+  const res = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 25, date: `${monthOf(1)}-02` },
+  });
+  assert.equal(res.status, 409);
+});
+
+test("last month's bill checklist works during grace and dates into that month", async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+
+  const last = monthOf(-1);
+  const s = await state();
+  const bill = byName(s.categories, 'Electric');
+
+  const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true, month: last } });
+  assert.equal(paid.status, 200);
+  assert.equal(paid.body.state.month, last);
+  assert.equal(byName(paid.body.state.categories, 'Electric').paid, true);
+  const tx = paid.body.state.transactions.find((x) => x.category === 'Electric');
+  assert.equal(tx.date.slice(0, 7), last);
+
+  // this month's Electric is untouched
+  const thisMonth = await state();
+  assert.equal(byName(thisMonth.categories, 'Electric').paid, false);
+
+  const cleared = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false, month: last } });
+  assert.equal(byName(cleared.body.state.categories, 'Electric').paid, false);
+});
+
+test('a bill cannot be dated outside the month it is paid for', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+
+  const s = await state();
+  const bill = byName(s.categories, 'Electric');
+  const res = await call(`/api/bills/${bill.id}/pay`, {
+    method: 'POST',
+    body: { paid: true, month: monthOf(-1), date: `${monthOf(0)}-03` },
+  });
+  assert.equal(res.status, 400);
+});
+
+test('a closed month rejects bill payment too', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  const s = await state();
+  const bill = byName(s.categories, 'Electric');
+  const res = await call(`/api/bills/${bill.id}/pay`, {
+    method: 'POST',
+    body: { paid: true, month: monthOf(-1) },
+  });
+  assert.equal(res.status, 409);
 });
 
 test('a malformed month is rejected', async () => {

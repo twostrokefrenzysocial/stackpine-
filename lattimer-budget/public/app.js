@@ -77,6 +77,29 @@
     return Number(parts[1]) + '/' + Number(parts[2]);
   }
 
+  function monthDay(dateStr) {
+    var p = dateStr.split('-');
+    var d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])));
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+
+  function lastDayOf(month) {
+    var y = Number(month.slice(0, 4));
+    var m = Number(month.slice(5, 7));
+    var day = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return month + '-' + String(day).padStart(2, '0');
+  }
+
+  /** Sensible default date for a new entry in whichever month is on screen. */
+  function defaultDate() {
+    return S.data.month === S.data.currentMonth ? S.data.today : lastDayOf(S.data.month);
+  }
+
+  /** min/max attributes for a date field, matching what the API will accept. */
+  function dateBounds() {
+    return ' min="' + esc(S.data.grace.earliestDate) + '" max="' + esc(lastDayOf(S.data.currentMonth)) + '"';
+  }
+
   function pct(value) { return Math.max(0, Math.min(100, Number(value) || 0)); }
 
   var toastTimer = null;
@@ -317,7 +340,24 @@
     var d = S.data;
 
     el('month-label').textContent = monthLabel(d.month);
-    el('readonly-banner').hidden = !d.readOnly;
+
+    var banner = el('readonly-banner');
+    if (d.readOnly) {
+      banner.hidden = false;
+      banner.textContent = 'Past month — view only';
+      banner.classList.remove('grace-banner');
+    } else if (d.month !== d.currentMonth) {
+      // Last month, still open for a few days.
+      banner.hidden = false;
+      banner.textContent = d.grace.closesAfter
+        ? 'Still open through ' + monthDay(d.grace.closesAfter) + ' — you can add to ' + monthLabel(d.month)
+        : 'Still open — you can add to ' + monthLabel(d.month);
+      banner.classList.add('grace-banner');
+    } else {
+      banner.hidden = true;
+      banner.classList.remove('grace-banner');
+    }
+
     el('month-next').disabled = d.month >= d.currentMonth;
     var earliest = d.months.length ? d.months[d.months.length - 1] : d.currentMonth;
     el('month-prev').disabled = d.month <= earliest;
@@ -638,7 +678,7 @@
   function openQuickAdd() {
     if (!S.data) { toast('Still loading — try again in a second', 'error'); return; }
     if (S.data.readOnly) { toast('Switch to ' + monthLabel(S.data.currentMonth) + ' to add', 'error'); return; }
-    QA = { digits: '', step: 1, note: '', date: S.data.today, person: S.person, details: false };
+    QA = { digits: '', step: 1, note: '', date: defaultDate(), person: S.person, details: false };
     renderQuickAdd();
   }
 
@@ -658,7 +698,7 @@
         html += '<label class="field"><span>Note</span>' +
           '<input class="input" id="qa-note" placeholder="Optional" maxlength="200" value="' + esc(QA.note) + '"></label>' +
           '<label class="field"><span>Date</span>' +
-          '<input class="input" id="qa-date" type="date" value="' + esc(QA.date) + '" min="' + esc(S.data.currentMonth) + '-01"></label>' +
+          '<input class="input" id="qa-date" type="date" value="' + esc(QA.date) + '"' + dateBounds() + '></label>' +
           '<div class="field"><span>Who</span>' + personPicker(QA.person) + '</div>';
       } else {
         html += '<button type="button" class="detail-toggle" data-act="qa-details">+ Note, date or person</button>';
@@ -710,7 +750,7 @@
           return '<option value="' + c.id + '"' + (c.id === t.category_id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
         }).join('') + '</select></label>' +
       '<label class="field"><span>Date</span>' +
-      '<input class="input" id="tx-date" type="date" value="' + esc(t.date) + '" min="' + esc(S.data.currentMonth) + '-01"></label>' +
+      '<input class="input" id="tx-date" type="date" value="' + esc(t.date) + '"' + dateBounds() + '></label>' +
       '<div class="field"><span>Who</span>' + personPicker(t.person) + '</div>' +
       '<label class="field"><span>Note</span>' +
       '<input class="input" id="tx-note" maxlength="200" value="' + esc(t.note) + '"></label>' +
@@ -818,7 +858,7 @@
       case 'toggle-bill': {
         var cat = S.data.categories.filter(function (c) { return c.id === Number(id); })[0];
         if (!cat) break;
-        mutate('/bills/' + id + '/pay', { method: 'POST', body: { paid: !cat.paid } },
+        mutate('/bills/' + id + '/pay', { method: 'POST', body: { paid: !cat.paid, month: S.data.month } },
           cat.paid ? cat.name + ' unmarked' : cat.name + ' paid');
         break;
       }
@@ -1016,7 +1056,7 @@
         localStorage.setItem(LS.tab, S.tab);
         window.scrollTo(0, 0);
         // Settings always edits the live budget, so snap back to this month.
-        if (S.tab === 'settings' && S.data && S.data.readOnly) {
+        if (S.tab === 'settings' && S.data && S.data.month !== S.data.currentMonth) {
           S.pinned = false;
           refresh(true);
           return;
