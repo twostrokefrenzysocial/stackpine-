@@ -1,0 +1,206 @@
+# Lattimer Family Budget
+
+A mobile-first Progressive Web App for two people — Chris and Miriam — sharing one
+budget in real time. One Node process serves both the API and the app; SQLite holds
+the data; the phones install it straight from the browser, no app store.
+
+- **Quick Add** — one tap on the orange **+**, punch the amount on a big keypad, tap a
+  category. Saved, tagged with who entered it and today's date, in about two seconds.
+- **Budget tab** — income vs. spent vs. remaining, fixed bills as a tap-to-pay
+  checklist, spending categories as progress bars (green under 80%, yellow to 100%,
+  red past it).
+- **Real-time** — one phone adds something, the other updates in well under a second
+  over Server-Sent Events, with 15-second polling as a fallback.
+- **History tab** — this month's transactions newest first, filter by category and
+  person, tap any row to edit or delete.
+- **Debt tab** — the five settlement targets, a settlement fund balance that takes
+  manual deposits, and a record of what each settled debt cost and when.
+- **Months roll over on their own** — a new month starts with fresh actuals; past
+  months stay viewable but read-only, each holding the budget it was actually run on.
+
+---
+
+## Quick start (local)
+
+```bash
+npm install
+FAMILY_PIN=1234 npm start
+# http://localhost:3000
+```
+
+The database is created on first run and seeded once with the family's real income,
+bills, categories, and debts. **Seeding never runs again** — redeploys and restarts
+leave your data alone.
+
+Run the API test suite:
+
+```bash
+npm test
+```
+
+## Environment variables
+
+| Variable        | Default             | What it does |
+| --------------- | ------------------- | ------------ |
+| `PORT`          | `3000`              | HTTP port. Railway sets this for you. |
+| `DB_PATH`       | `./data/budget.db`  | Where the SQLite file lives. **Point this at your Railway volume.** |
+| `FAMILY_PIN`    | `0000`              | The shared 4-digit PIN on the login screen. Always set this. |
+| `SESSION_SECRET`| derived from the PIN| Signs the login tokens. Set it if you want sessions to survive a PIN change. |
+| `TZ_NAME`       | `America/New_York`  | Which clock decides "today" and "this month". |
+
+---
+
+## Deploying to Railway
+
+### 1. Create the service
+
+1. Push this repo to GitHub.
+2. In Railway: **New Project → Deploy from GitHub repo**, pick the repo.
+3. If the app is in a subdirectory of the repo, open **Settings → Root Directory**
+   and set it to `lattimer-budget`.
+
+Railway detects Node, runs `npm install`, and starts it with `npm start`. No build
+step, no Dockerfile. `PORT` is injected automatically and the server reads it.
+
+### 2. Attach a volume so the database survives redeploys
+
+This is the step that matters. Without it, every deploy starts from an empty
+database and re-seeds.
+
+1. On the service, click **+ New → Volume** (or **Settings → Volumes → Add Volume**).
+2. Set the **mount path** to `/data`.
+3. Go to **Variables** and add:
+
+   ```
+   DB_PATH=/data/budget.db
+   ```
+
+4. Redeploy. From then on the SQLite file lives on the volume, and deploys, restarts,
+   and rollbacks all leave the data intact.
+
+### 3. Set the family PIN
+
+Under **Variables**, add:
+
+```
+FAMILY_PIN=1234        # pick your own four digits
+```
+
+Optionally add `SESSION_SECRET` (any long random string) so that changing the PIN
+later doesn't sign both phones out.
+
+### 4. Get a URL
+
+**Settings → Networking → Generate Domain.** You'll get something like
+`lattimer-budget-production.up.railway.app`. That's the address both phones use.
+A custom domain works too, as long as it's HTTPS — the service worker and
+"Add to Home Screen" require it.
+
+### Verifying a deploy
+
+```bash
+curl https://your-app.up.railway.app/healthz     # {"ok":true,"sse":0}
+```
+
+---
+
+## Installing on each phone
+
+Both phones open the same URL and sign in with their own name plus the shared PIN.
+The session sticks in `localStorage`, so it's a one-time thing per phone.
+
+**iPhone (must be Safari — Chrome on iOS can't install web apps):**
+
+1. Open the URL in **Safari**.
+2. Tap the **Share** button (the square with the up arrow).
+3. Scroll down and tap **Add to Home Screen**.
+4. Tap **Add**. The icon lands on the home screen and opens full-screen, no address bar.
+
+**Android (Chrome):**
+
+1. Open the URL in **Chrome**.
+2. Tap the **⋮** menu (top right).
+3. Tap **Add to Home Screen** (Chrome may also show an "Install app" banner — either works).
+4. Tap **Install**.
+
+After installing, sign in once inside the installed app; the browser session and the
+installed app keep separate storage on iOS.
+
+---
+
+## How things work
+
+**Auth.** Two names, one shared PIN, no emails or passwords. A successful login returns
+an HMAC-signed token that identifies which of the two people you are; the phone keeps
+it in `localStorage`. Tokens survive redeploys.
+
+**Real-time sync.** Every write bumps a version stamp and pushes a `change` event over
+`/api/events` (SSE). Listeners refetch and re-render. If the stream drops — dead zone,
+phone asleep, a proxy that dislikes SSE — the app silently falls back to polling
+`/api/version` every 15 seconds and switches back to the stream when it reconnects.
+The dot in the header shows which mode you're in: **live**, **syncing**, or **offline**.
+
+**Fixed bills.** Tapping a bill records a transaction for the budgeted amount, tagged
+`billpay`. Tapping again removes it. Tapping twice never double-charges. You can still
+add a manual transaction to a bill category if the real amount differed.
+
+**Months.** Transactions carry the month they belong to, so a new month starts empty on
+its own. When a month is first opened, the app snapshots that month's budgets and
+income, so raising the grocery budget in November doesn't rewrite October's history.
+Past months reject writes at the API level, not just in the UI.
+
+**Settlement fund.** The balance is: the "Settlement fund" bill payments, plus manual
+deposits (extra paychecks), minus what settled debts actually cost. Each target's bar
+shows how much of it the fund can cover right now.
+
+**Offline.** The service worker caches the app shell, so the app opens without a signal
+and says so plainly instead of showing a blank screen. Budget data itself always comes
+from the server — there is no offline write queue, on purpose: two phones editing a
+shared budget offline would need conflict resolution that isn't worth the complexity
+here.
+
+**Money.** Stored as integer cents everywhere; dollars only exist at the API boundary.
+No floating-point drift.
+
+## API
+
+All routes except `POST /api/login` need `Authorization: Bearer <token>`.
+
+| Method | Route | Purpose |
+| ------ | ----- | ------- |
+| POST   | `/api/login` | `{person, pin}` → `{token, person}` |
+| GET    | `/api/state?month=YYYY-MM` | Everything the UI renders for a month |
+| GET    | `/api/events` | SSE change stream (`?token=` since EventSource can't send headers) |
+| GET    | `/api/version` | Polling fallback for the change stamp |
+| POST   | `/api/transactions` | `{category_id, amount, note?, date?, person?}` |
+| PUT    | `/api/transactions/:id` | Edit any field |
+| DELETE | `/api/transactions/:id` | Remove |
+| POST   | `/api/bills/:categoryId/pay` | `{paid: true\|false}` — the checklist toggle |
+| POST   | `/api/categories` · PUT · DELETE `/:id` | Add, edit budget/name, archive |
+| POST   | `/api/income` · PUT · DELETE `/:id` | Income sources |
+| PUT    | `/api/debts/:id` | Edit name, balance, target, flag |
+| POST   | `/api/debts/:id/settle` · `/unsettle` | Record or undo a settlement |
+| POST   | `/api/fund/deposits` · DELETE `/:id` | Manual deposits into the settlement fund |
+| GET    | `/healthz` | Uptime check |
+
+Every write responds with the full refreshed state, so the UI never needs a second
+round trip.
+
+## Project layout
+
+```
+server.js              Express app: API + static shell + SPA fallback
+src/db.js              Schema, migrations, one-time seeding
+src/seed.js            The family's starting income, bills, categories, debts
+src/api.js             Every endpoint, plus the SSE broadcaster
+src/util.js            Dates in the family's timezone, money in cents, tokens
+public/                index.html · app.js · styles.css · sw.js · manifest.json
+tools/make-icons.js    Regenerates the PWA icons (no image dependencies)
+test/api.test.js       End-to-end API tests
+```
+
+## Changing the seed data
+
+`src/seed.js` only runs against a brand-new database, so editing it will not change a
+budget that's already live. Once you're running, change budgets, income, categories,
+and debts in the **Settings** and **Debt** tabs — that's what they're for.

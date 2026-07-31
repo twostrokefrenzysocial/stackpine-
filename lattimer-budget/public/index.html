@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lattimer Family Budget</title>
+<meta name="description" content="Real-time shared budget tracker for the Lattimer family.">
+<meta name="theme-color" content="#1F3864">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Family Budget">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ------------------------------------------------------------ login -->
+<section id="login" class="login" hidden>
+  <div class="login-card">
+    <div class="brand">
+      <img src="/icons/icon-192.png" alt="" width="64" height="64" class="brand-mark">
+      <h1>Lattimer<br>Family Budget</h1>
+    </div>
+    <p class="login-hint">Who's here?</p>
+    <div class="who">
+      <button type="button" class="who-btn" data-person="Chris">Chris</button>
+      <button type="button" class="who-btn" data-person="Miriam">Miriam</button>
+    </div>
+    <form id="pin-form" autocomplete="off">
+      <label class="pin-label" for="pin-input">Family PIN</label>
+      <input id="pin-input" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+             placeholder="••••" aria-label="Four digit family PIN">
+      <p id="login-error" class="login-error" role="alert" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block" id="login-submit" disabled>Sign in</button>
+    </form>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ app -->
+<div id="app" class="app" hidden>
+  <header class="topbar">
+    <div class="topbar-row">
+      <h1 class="topbar-title">Lattimer Family Budget</h1>
+      <button type="button" id="who-chip" class="who-chip" title="Signed in — tap to switch">C</button>
+    </div>
+    <div class="topbar-row topbar-sub">
+      <div class="month-nav">
+        <button type="button" id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
+        <span id="month-label" class="month-label">—</span>
+        <button type="button" id="month-next" class="icon-btn" aria-label="Next month">›</button>
+      </div>
+      <span id="sync-dot" class="sync-dot" title="Sync status"><i></i><span id="sync-text">live</span></span>
+    </div>
+    <div id="readonly-banner" class="readonly-banner" hidden>Past month — view only</div>
+  </header>
+
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <button type="button" id="fab" class="fab" aria-label="Quick add a purchase">+</button>
+
+  <nav class="tabbar" role="tablist">
+    <button type="button" class="tab" data-tab="dashboard" role="tab" aria-selected="true">
+      <span class="tab-ico" aria-hidden="true">▤</span><span>Budget</span>
+    </button>
+    <button type="button" class="tab" data-tab="history" role="tab" aria-selected="false">
+      <span class="tab-ico" aria-hidden="true">≡</span><span>History</span>
+    </button>
+    <button type="button" class="tab" data-tab="debt" role="tab" aria-selected="false">
+      <span class="tab-ico" aria-hidden="true">◈</span><span>Debt</span>
+    </button>
+    <button type="button" class="tab" data-tab="settings" role="tab" aria-selected="false">
+      <span class="tab-ico" aria-hidden="true">⚙</span><span>Settings</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ------------------------------------------------------------ overlays -->
+<div id="sheet" class="sheet" hidden aria-modal="true" role="dialog" aria-label="Quick add"></div>
+<div id="scrim" class="scrim" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

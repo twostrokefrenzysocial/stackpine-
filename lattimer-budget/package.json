@@ -1,0 +1,19 @@
+{
+  "name": "lattimer-family-budget",
+  "version": "1.0.0",
+  "description": "Real-time shared family budget PWA for Chris and Miriam",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/api.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "express": "^5.2.1"
+  }
+}
