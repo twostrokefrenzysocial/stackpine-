@@ -755,40 +755,50 @@ test('the payday nudge fires on the day and only on the day', async () => {
 
 // ---------------------------------------------------------------- per-payday bills & split subscriptions
 
-test('tithing repeats every payday: $200 per check, month budget follows the payday count', async () => {
+test('the tithe is 10% of net income, owed as paychecks actually land', async () => {
   const s = await state();
   const tithe = byName(s.categories, 'Church giving');
   assert.equal(tithe.cadence, 'payday');
-  assert.equal(tithe.perPay, 200);
+  assert.equal(tithe.percent, 10);
   assert.ok(tithe.expected >= 2, 'biweekly from Aug 7 means at least 2 paydays a month');
-  assert.equal(tithe.budget, 200 * tithe.expected, 'monthly budget = per-pay × paydays');
-  assert.equal(tithe.paid, false);
-  assert.equal(tithe.paidCount, 0);
+  assert.equal(tithe.budget, Math.round(s.totals.income * 10) / 100, 'monthly tithe budget = 10% of expected income');
+  assert.equal(tithe.dueNow, 0, 'nothing owed before money comes in');
 
-  // first tap: one payday paid, bill not complete
+  // paying before any income is logged is refused with guidance
+  const early = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(early.status, 400);
+  assert.match(early.body.error, /Log the paychecks first/);
+
+  // a payday lands: both checks logged
+  const check = await call('/api/income/entries', { method: 'POST', body: { amount: 3819, label: 'payday 1' } });
+  let now = byName(check.body.state.categories, 'Church giving');
+  assert.equal(now.dueNow, 381.9, '10% of what came in');
+
   const one = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
-  let now = byName(one.body.state.categories, 'Church giving');
+  now = byName(one.body.state.categories, 'Church giving');
+  assert.equal(now.spent, 381.9);
   assert.equal(now.paidCount, 1);
-  assert.equal(now.paid, false, 'one of two paydays is not done');
-  assert.equal(now.spent, 200);
+  assert.equal(now.paid, false);
+  assert.equal(now.dueNow, 0, 'square with the church again');
 
-  // second tap completes it; a third is refused
-  await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
-  const s2 = await state();
-  now = byName(s2.categories, 'Church giving');
-  if (now.expected === 2) {
-    assert.equal(now.paid, true);
-    assert.equal(now.spent, 400);
-    const extra = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
-    assert.equal(extra.status, 400, 'cannot overpay the payday count');
-  }
+  // tithing twice on the same money is refused
+  const again = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(again.status, 400);
+  assert.match(again.body.error, /fully paid/);
 
-  // untap removes one payment at a time
-  const undo = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: false } });
-  now = byName(undo.body.state.categories, 'Church giving');
-  assert.equal(now.paidCount, 1);
-  assert.equal(now.spent, 200);
+  // second payday: more income, more tithe
+  const check2 = await call('/api/income/entries', { method: 'POST', body: { amount: 3819, label: 'payday 2' } });
+  assert.equal(byName(check2.body.state.categories, 'Church giving').dueNow, 381.9);
+  const two = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+  now = byName(two.body.state.categories, 'Church giving');
+  assert.equal(now.spent, 763.8);
+  if (now.expected === 2) assert.equal(now.paid, true);
+
+  // cleanup: untithe and unlog
   await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/income/entries/${check.body.id}`, { method: 'DELETE' });
+  await call(`/api/income/entries/${check2.body.id}`, { method: 'DELETE' });
   assert.equal(byName((await state()).categories, 'Church giving').spent, 0);
 });
 
@@ -1479,11 +1489,11 @@ test('the review counts pending suggestions for its accept button', async (t) =>
 
 // ---------------------------------------------------------------- budget tune-up
 
-test('budget suggestions come from past-month actuals', async (t) => {
+test('suggestions never propose spending more than income (Ramsey rule)', async (t) => {
   t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
   process.env.BACKDATE_GRACE_DAYS = await openGrace();
 
-  // seed a past month: groceries ran hot
+  // seed a hot month: groceries way past plan
   const last = monthOf(-1);
   const spend = await call('/api/transactions', {
     method: 'POST',
@@ -1493,32 +1503,93 @@ test('budget suggestions come from past-month actuals', async (t) => {
 
   const res = await call('/api/budget/suggestions');
   assert.equal(res.status, 200);
-  assert.ok(res.body.monthsConsidered.includes(last));
+  assert.ok(['fits', 'cut'].includes(res.body.mode));
+
+  // THE rule: bills + everyday + savings goal never exceeds income
+  const t2 = res.body.totals;
+  assert.ok(t2.ifAllApplied + t2.savingsGoal <= t2.income + 0.01,
+    `plan $${t2.ifAllApplied} + savings $${t2.savingsGoal} must fit under income $${t2.income}`);
+
   const g = res.body.suggestions.find((x) => x.name === 'Groceries');
-  assert.ok(g, 'groceries should get a suggestion');
-  assert.equal(g.current, 700);
-  assert.equal(g.suggested, 845, 'rounded to the nearest $5');
-  assert.ok(res.body.totals.income > 0);
+  if (g) {
+    assert.equal(g.essential, true, 'groceries are four-walls protected');
+    assert.ok(g.suggested <= Math.max(g.average ?? 0, g.current), 'never suggests spending more than reality');
+  }
+  // in cut mode, lifestyle categories carry the cuts
+  if (res.body.mode === 'cut') {
+    const lifestyleCuts = res.body.suggestions.filter((x) => !x.essential && x.delta < 0);
+    assert.ok(lifestyleCuts.length > 0, 'cut mode trims lifestyle categories');
+  }
 
-  // categories with no history are left alone
-  assert.equal(res.body.suggestions.find((x) => x.name === 'Personal - Chris'), undefined);
+  // the package applies as a whole (cuts + essential adjustments together)
+  if (res.body.suggestions.length) {
+    const before = await state();
+    const originals = res.body.suggestions.map((x) => ({
+      category_id: x.category_id,
+      budget: byName(before.categories, x.name).budget === undefined ? x.current : x.current,
+    }));
+    const apply = await call('/api/budget/apply', {
+      method: 'POST',
+      body: { changes: res.body.suggestions.map((x) => ({ category_id: x.category_id, budget: x.suggested })) },
+    });
+    assert.equal(apply.status, 200, JSON.stringify(apply.body).slice(0, 120));
+    const past = await call(`/api/state?month=${last}`);
+    assert.equal(byName(past.body.categories, 'Groceries').budget, 700, 'history unchanged');
+    // cherry-picking only the increases would break the rule — and is blocked
+    const increases = res.body.suggestions.filter((x) => x.delta > 0);
+    if (increases.length) {
+      const undoCuts = await call('/api/budget/apply', {
+        method: 'POST',
+        body: { changes: originals.filter((o) => res.body.suggestions.find((x) => x.category_id === o.category_id && x.delta < 0)) },
+      });
+      assert.equal(undoCuts.status, 400, 'restoring old lifestyle budgets on top of raised essentials must not fit');
+    }
+    // full restore
+    const restore = await call('/api/budget/apply', { method: 'POST', body: { changes: originals } });
+    assert.ok([200, 400].includes(restore.status));
+    if (restore.status === 400) {
+      // restore in a fitting order: cuts first, then raises
+      for (const o of originals.sort((a, b) => a.budget - b.budget)) {
+        await call('/api/budget/apply', { method: 'POST', body: { changes: [o] } }).catch(() => {});
+      }
+    }
+    for (const o of originals) {
+      await call(`/api/categories/${o.category_id}`, { method: 'PUT', body: { budget: o.budget } });
+    }
+  }
 
-  // apply it
-  const apply = await call('/api/budget/apply', {
-    method: 'POST',
-    body: { changes: [{ category_id: g.category_id, budget: g.suggested }] },
-  });
-  assert.equal(apply.status, 200);
-  assert.equal(byName(apply.body.state.categories, 'Groceries').budget, 845);
-
-  // past month keeps its own snapshot
-  const past = await call(`/api/state?month=${last}`);
-  assert.equal(byName(past.body.categories, 'Groceries').budget, 700);
-
-  // put everything back
-  await call('/api/budget/apply', { method: 'POST', body: { changes: [{ category_id: g.category_id, budget: 700 }] } });
   await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
 });
+
+test('the zero-based guard blocks raising budgets above income', async () => {
+  const s = await state();
+  const g = byName(s.categories, 'Groceries');
+  const res = await call('/api/budget/apply', {
+    method: 'POST',
+    body: { changes: [{ category_id: g.id, budget: 99999 }] },
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /more than you make/);
+  assert.equal(byName((await state()).categories, 'Groceries').budget, g.budget, 'nothing changed');
+});
+
+test('the Ramsey coach reports baby steps and percentage bands', async () => {
+  const res = await call('/api/plan/coach');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.steps.length, 7);
+  assert.ok(res.body.currentStep >= 1);
+  const step2 = res.body.steps.find((x) => x.n === 2);
+  assert.equal(step2.snowball.length, 5, 'all settlement debts in the snowball');
+  assert.match(step2.snowball[0].label, /LAWSUIT/i, 'the lawsuit outranks the snowball order');
+  const balances = step2.snowball.slice(1).map((d) => d.balance);
+  assert.deepEqual(balances, balances.slice().sort((a, b) => a - b), 'then smallest balance first');
+
+  const giving = res.body.bands.find((b) => b.group === 'Giving');
+  assert.equal(giving.pct, 10, 'the tithe holds the line at exactly 10%');
+  assert.equal(giving.status, 'ok');
+  assert.ok(res.body.bands.find((b) => b.group === 'Food'));
+});
+
 
 test('budget apply validates its input', async () => {
   const bad1 = await call('/api/budget/apply', { method: 'POST', body: { changes: [] } });
@@ -1580,7 +1651,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v12'],
+    ['/sw.js', 'lfb-v13'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

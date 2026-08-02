@@ -72,6 +72,12 @@ const DATA_MIGRATIONS = [
     billCadence: { name: 'Church giving', cadence: 'payday', perPay: 200 },
   },
   {
+    // They always tithe 10% of net income — the tithe follows the paychecks,
+    // not a fixed number.
+    key: '2026-08-tithe-ten-percent',
+    percentBill: { name: 'Church giving', percent: 10 },
+  },
+  {
     // Their real subscriptions, split into individual tracked line items
     // (amounts mined from seven months of statements). The old lump
     // "Subscriptions" bill is archived; its history stays.

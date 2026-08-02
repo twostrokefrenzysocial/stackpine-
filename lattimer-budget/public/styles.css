@@ -629,6 +629,28 @@ select.input {
 /* Month report card */
 .review-card { border-left: 4px solid var(--orange); }
 
+/* Ramsey coach */
+.coach-step { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.coach-step:last-of-type { border-bottom: 0; }
+.coach-n {
+  width: 26px; height: 26px; flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 13px;
+  background: var(--card-2); color: var(--muted);
+  border: 2px solid var(--line);
+}
+.coach-done .coach-n { background: var(--ok); border-color: var(--ok); color: #fff; }
+.coach-now .coach-n { background: var(--orange); border-color: var(--orange); color: #fff; }
+.coach-body { flex: 1; min-width: 0; }
+.coach-body b { display: block; font-size: 14px; }
+.coach-body .small { display: block; margin-top: 1px; }
+.coach-snowball { margin: 4px 0 8px 36px; padding: 8px 10px; background: var(--card-2); border-radius: 10px; }
+.coach-band { padding: 4px 0; }
+.coach-over span:last-child { color: var(--over); }
+.coach-under span:last-child { color: var(--muted); }
+.tune-fits { background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+
 /* Undo toast */
 .toast-undo {
   margin-left: 10px;

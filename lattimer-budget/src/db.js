@@ -176,6 +176,8 @@ function migrate(db) {
   // Bills that repeat every payday instead of once a month (tithing). For
   // these, budget_cents is the PER-PAYMENT amount.
   addColumnIfMissing(db, 'categories', 'cadence', 'TEXT');
+  // Percent-of-income bills: tithe is 10% of net income, not a fixed number.
+  addColumnIfMissing(db, 'categories', 'percent_income', 'INTEGER');
 }
 
 function seedOnce(db) {
@@ -234,6 +236,10 @@ function applyDataMigrations(db) {
       if (migration.billCadence) {
         db.prepare(`UPDATE categories SET cadence = ?, budget_cents = ? WHERE name = ? AND archived = 0`)
           .run(migration.billCadence.cadence, Math.round(migration.billCadence.perPay * 100), migration.billCadence.name);
+      }
+      if (migration.percentBill) {
+        db.prepare(`UPDATE categories SET percent_income = ? WHERE name = ? AND archived = 0`)
+          .run(migration.percentBill.percent, migration.percentBill.name);
       }
       if (migration.split) {
         db.prepare(`UPDATE categories SET archived = 1 WHERE name = ?`).run(migration.split.archive);

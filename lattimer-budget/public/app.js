@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 12;
+  var APP_VERSION = 13;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -585,7 +585,13 @@
 
   function billChecklistRow(c, d) {
     var extra = '';
-    if (c.cadence === 'payday' && !c.paid) {
+    if (c.percent && !c.paid) {
+      var owes = c.dueNow > 0
+        ? money(c.dueNow) + ' owed on what came in'
+        : (c.spent > 0 ? 'square so far' : 'log paychecks first');
+      extra = '<span class="bill-sub' + (c.dueNow > 0 ? ' bill-late' : '') + '">' +
+        esc(c.percent + '% of income · ' + owes) + '</span>';
+    } else if (c.cadence === 'payday' && !c.paid) {
       var due = c.dueStatus ? ' · ' + dueText(c) : '';
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
         esc(c.paidCount + ' of ' + c.expected + ' paydays paid' + due) + '</span>';
@@ -597,9 +603,11 @@
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
         esc(dueText(c)) + '</span>';
     }
-    var amt = c.cadence === 'payday'
-      ? money(c.perPay, { cents: false }) + ' ×' + c.expected
-      : money(c.budget, { cents: false });
+    var amt = c.percent
+      ? (c.dueNow > 0 ? money(c.dueNow) : c.percent + '%')
+      : c.cadence === 'payday'
+        ? money(c.perPay, { cents: false }) + ' ×' + c.expected
+        : money(c.budget, { cents: false });
     return '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
       ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
       '<span class="bill-box' + (c.cadence === 'payday' && c.paidCount > 0 && !c.paid ? ' bill-box-partial' : '') + '" aria-hidden="true">' +
@@ -859,6 +867,11 @@
         ' more than comes in. Trim budgets below or in Settings.</div>';
     }
 
+    // Ramsey coach: which Baby Step you're on, and the percentage check.
+    html += '<div class="section-title"><span>Coach</span><span>Ramsey Baby Steps</span></div>' +
+      '<section class="card" id="coach-box"><p class="muted small" style="margin:0">Checking the plan…</p></section>';
+    setTimeout(loadCoach, 0);
+
     // Paychecks: log actual amounts as they land.
     html += '<div class="section-title"><span>Income</span><span>' +
       money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
@@ -935,6 +948,43 @@
     return html;
   }
 
+  function loadCoach() {
+    api('/plan/coach').then(function (out) {
+      var box = el('coach-box');
+      if (!box) return;
+      var html = '';
+      out.steps.slice(0, 3).forEach(function (st) {
+        var isNow = st.n === out.currentStep;
+        html += '<div class="coach-step' + (st.done ? ' coach-done' : isNow ? ' coach-now' : '') + '">' +
+          '<span class="coach-n">' + (st.done ? '✓' : st.n) + '</span>' +
+          '<div class="coach-body"><b>' + esc(st.title) + '</b>' +
+          '<span class="small muted">' + esc(st.detail) + '</span>' +
+          (!st.done && st.progress > 0 ? barHtml(st.progress >= 100 ? 'ok' : 'warn', st.progress) : '') +
+          '</div></div>';
+        if (isNow && st.n === 2 && st.snowball && st.snowball.length) {
+          html += '<div class="coach-snowball"><span class="small muted">Snowball order — smallest first, lawsuit up top:</span>';
+          st.snowball.slice(0, 3).forEach(function (dbt, i2) {
+            html += '<div class="row small" style="padding:3px 0"><span>' + (i2 + 1) + '. ' + esc(dbt.name) + '</span>' +
+              '<span>settle ' + money(dbt.target, { cents: false }) + '</span></div>';
+          });
+          html += '</div>';
+        }
+      });
+      html += '<div class="small muted" style="margin:8px 0 6px"><b>How the plan compares to Ramsey\'s percentages:</b></div>';
+      out.bands.forEach(function (b) {
+        var label2 = b.note ? '·' : b.status === 'over' ? '▲' : b.status === 'under' ? '▽' : '✓';
+        html += '<div class="row small coach-band coach-' + esc(b.status) + '">' +
+          '<span>' + label2 + ' ' + esc(b.group) +
+          (b.note ? '' : ' <span class="muted">(' + (b.lo === b.hi ? b.lo + '%' : b.lo + '–' + b.hi + '%') + ')</span>') + '</span>' +
+          '<span>' + money(b.amount, { cents: false }) + ' = <b>' + b.pct + '%</b></span></div>';
+      });
+      box.innerHTML = html;
+    }).catch(function () {
+      var box = el('coach-box');
+      if (box) box.innerHTML = '<p class="muted small" style="margin:0">Could not load the coach right now.</p>';
+    });
+  }
+
   function planLine(label, value, sign) {
     return '<div class="plan-line"><span>' + esc(label) + '</span><b>' + sign + ' ' + money(value, { cents: false }) + '</b></div>';
   }
@@ -942,7 +992,13 @@
   // ------------------------------------------------------------ render: debt
 
   function viewDebt(d) {
-    var open = d.debts.filter(function (x) { return !x.settled; });
+    // Ramsey debt snowball: smallest balance first — the lawsuit outranks all.
+    var open = d.debts.filter(function (x) { return !x.settled; })
+      .sort(function (a, b) {
+        var la = /lawsuit/i.test(a.label) ? 1 : 0;
+        var lb = /lawsuit/i.test(b.label) ? 1 : 0;
+        return (lb - la) || (a.balance - b.balance);
+      });
     var settled = d.debts.filter(function (x) { return x.settled; });
     var targetTotal = d.debts.reduce(function (s, x) { return s + x.target; }, 0);
     var clearedTotal = settled.reduce(function (s, x) { return s + x.target; }, 0);
@@ -964,7 +1020,7 @@
       '<div class="cat-foot"><span>' + money(clearedTotal, { cents: false }) + ' of ' + money(targetTotal, { cents: false }) + ' in settlement targets</span></div>' +
       '</section>';
 
-    html += '<div class="section-title"><span>Settlement targets</span></div>';
+    html += '<div class="section-title"><span>Settlement targets</span><span>snowball order</span></div>';
     html += '<section class="card card-tight">';
     if (!open.length) html += '<div class="empty">Every target is settled. 🎉</div>';
     open.forEach(function (x) { html += debtHtml(x); });
@@ -1106,12 +1162,17 @@
       ? '<span class="muted small"> · starts ' + esc(monthLabel(c.startsMonth)) + '</span>'
       : '';
     var isPayday = c.cadence === 'payday';
+    var amountField = c.percent
+      ? '<label class="mini"><span>% of income</span>' +
+        '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="100" value="' + c.percent +
+        '" data-act="bill-percent" data-id="' + c.id + '" aria-label="Percent of income for ' + esc(c.name) + '"></label>'
+      : '<label class="mini"><span>' + (isPayday ? 'Per payday' : 'Amount') + '</span>' +
+        '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (isPayday ? c.perPay : c.budget) +
+        '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '"></label>';
     return '<div class="edit-card">' +
       '<div class="edit-card-name">' + esc(c.name) + note + '</div>' +
       '<div class="edit-card-controls edit-card-3">' +
-      '<label class="mini"><span>' + (isPayday ? 'Per payday' : 'Amount') + '</span>' +
-      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (isPayday ? c.perPay : c.budget) +
-      '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '"></label>' +
+      amountField +
       '<label class="mini"><span>Repeats</span>' +
       '<select class="input" data-act="bill-cadence" data-id="' + c.id + '" aria-label="How ' + esc(c.name) + ' repeats">' +
       '<option value="monthly"' + (isPayday ? '' : ' selected') + '>monthly</option>' +
@@ -1684,18 +1745,28 @@
           openSheet(body);
           return;
         }
+        body += out.mode === 'cut'
+          ? '<div class="card due-alert" style="margin:0 0 10px">Your real spending outruns your income. ' +
+            'These cuts bring the plan under what you make — lifestyle trims first, the four walls (food, fuel) last.</div>'
+          : '<div class="card tune-fits" style="margin:0 0 10px">Good news: your spending fits under your income. ' +
+            'These budgets track reality' +
+            (out.totals.leftover > 0 ? ', and <b>' + money(out.totals.leftover, { cents: false }) + ' is left over — give every dollar a job (savings or debt)</b>' : '') +
+            '.</div>';
         body += '<p class="muted small" style="margin-top:0">Based on ' +
           (out.monthsConsidered.length === 1
             ? monthLabel(out.monthsConsidered[0])
             : 'your last ' + out.monthsConsidered.length + ' months') +
-          '. Applies from this month forward — past months keep their numbers.</p>';
+          '. Applies this month forward. Accept them together — they only fit under your income as a set.</p>';
         TUNE.list.forEach(function (s, idx) {
           var up = s.delta > 0;
           body += '<div class="imp-row">' +
             '<label class="imp-check"><input type="checkbox" checked data-act="tune-check" data-idx="' + idx + '"></label>' +
             '<div class="imp-main">' +
-            '<div class="imp-desc">' + esc(s.name) + '</div>' +
-            '<div class="imp-meta">really spending ' + money(s.average) + ' · now budgeted ' + money(s.current, { cents: false }) + '</div>' +
+            '<div class="imp-desc">' + esc(s.name) +
+            (s.essential ? ' <span class="badge badge-ok">four walls</span>' : '') + '</div>' +
+            '<div class="imp-meta">' +
+            (s.average !== null ? 'really spending ' + money(s.average) + ' · ' : '') +
+            'now budgeted ' + money(s.current, { cents: false }) + ' · ' + esc(s.why) + '</div>' +
             '<div class="tune-move ' + (up ? 'tune-up' : 'tune-down') + '">' +
             money(s.current, { cents: false }) + ' → ' + money(s.suggested, { cents: false }) +
             ' (' + (up ? '+' : '−') + money(Math.abs(s.delta), { cents: false }) + ')</div>' +
@@ -2146,6 +2217,10 @@
       }
       mutate('/categories/' + id, { method: 'PUT', body: { due_day: raw === '' ? null : Number(raw) } },
         raw === '' ? 'Due date cleared' : 'Due date set');
+    } else if (act === 'bill-percent') {
+      var pctVal = Math.round(Number(node.value));
+      if (!(pctVal >= 1 && pctVal <= 100)) { toast('Percent must be 1–100', 'error'); render(); return; }
+      mutate('/categories/' + id, { method: 'PUT', body: { percent_income: pctVal } }, 'Now ' + pctVal + '% of income');
     } else if (act === 'bill-cadence') {
       mutate('/categories/' + id, { method: 'PUT', body: { cadence: node.value } },
         node.value === 'payday' ? 'Now repeats every payday' : 'Now monthly');

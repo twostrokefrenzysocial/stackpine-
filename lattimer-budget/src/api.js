@@ -168,14 +168,22 @@ function createApi(db) {
     return Math.max(1, paydaysInMonth(month).length);
   }
 
+  /** A category's monthly budget in cents, honouring payday and percent bills. */
+  function monthlyBudgetCents(c, month) {
+    // Percent-of-income bills (the tithe) follow expected net income.
+    if (c.percent_income) return Math.round((c.percent_income / 100) * liveIncomeCents());
+    // Per-payday bills budget their per-payment amount times the month's
+    // paydays: $200 → $400 normally, $600 in a three-check month.
+    if (c.cadence === 'payday') return c.budget_cents * paydayCount(month);
+    return c.budget_cents;
+  }
+
   /** Keep the current month's snapshot in step with live settings. */
   const syncCurrentMonth = db.transaction((month) => {
     for (const c of q.categories.all()) {
       // A bill scheduled to begin later stays off the budget until its month.
       if (c.starts_month && c.starts_month > month) continue;
-      // Per-payday bills budget their per-payment amount times the month's
-      // paydays: $200 tithe → $400 normally, $600 in a three-check month.
-      const budget = c.cadence === 'payday' ? c.budget_cents * paydayCount(month) : c.budget_cents;
+      const budget = monthlyBudgetCents(c, month);
       q.upsertMonthRow.run({
         month,
         category_id: c.id,
@@ -235,6 +243,9 @@ function createApi(db) {
     const liveById = new Map(live.map((c) => [c.id, c]));
     const isCurrent = month === currentMonth();
     const monthPaydays = paydaysInMonth(month);
+    const receivedSoFarCents = db
+      .prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries WHERE month = ?`)
+      .get(month).n;
 
     const categories = q.monthRows.all(month).map((row) => {
       const spent = spentMap.get(row.category_id) ?? 0;
@@ -260,12 +271,22 @@ function createApi(db) {
         dueStatus = dueIn < 0 ? 'overdue' : dueIn === 0 ? 'today' : dueIn <= 3 ? 'soon' : 'later';
       }
 
+      // Percent-of-income bills owe a share of what has actually come in.
+      const pctIncome = liveCat?.percent_income ?? null;
+      const dueNowCents = pctIncome
+        ? Math.max(0, Math.round((pctIncome / 100) * receivedSoFarCents) - (paidRow?.paid_cents ?? 0))
+        : null;
+
       return {
         id: row.category_id,
         name: row.name,
         kind: row.kind,
         cadence: isPayday ? 'payday' : null,
-        perPay: isPayday ? toDollars(liveCat.budget_cents) : null,
+        percent: pctIncome,
+        dueNow: pctIncome ? toDollars(dueNowCents) : null,
+        perPay: isPayday
+          ? toDollars(pctIncome ? Math.round(row.budget_cents / expected) : liveCat.budget_cents)
+          : null,
         expected: isPayday ? expected : null,
         paidCount,
         dueDay,
@@ -784,7 +805,26 @@ function createApi(db) {
       `).all(month, category.id);
       if (paid) {
         if (existing.length >= expected) throw bad('Every payday payment is already recorded this month.');
-        const amount = req.body?.amount === undefined ? category.budget_cents : readAmount(req.body.amount);
+        let amount;
+        if (req.body?.amount !== undefined) {
+          amount = readAmount(req.body.amount);
+        } else if (category.percent_income) {
+          // The tithe: a percent of what actually came in, minus what's paid.
+          const received = db
+            .prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries WHERE month = ?`)
+            .get(month).n;
+          const paidSoFar = db
+            .prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
+            .get(month, category.id).n;
+          amount = Math.max(0, Math.round((category.percent_income / 100) * received) - paidSoFar);
+          if (amount <= 0) {
+            throw bad(received === 0
+              ? 'Log the paychecks first — the tithe is ' + category.percent_income + '% of what actually comes in.'
+              : 'The tithe is fully paid on everything that has come in so far.');
+          }
+        } else {
+          amount = category.budget_cents;
+        }
         if (amount <= 0) throw bad('Set a per-payday amount for this bill first.');
         db.prepare(`
           INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at)
@@ -874,14 +914,23 @@ function createApi(db) {
     const dueDay = dueRaw === undefined ? category.due_day : dueRaw;
     const cadenceRaw = readBillCadence(body.cadence);
     const cadence = cadenceRaw === undefined ? category.cadence : cadenceRaw;
+    let percent = category.percent_income;
+    if (body.percent_income !== undefined) {
+      if (body.percent_income === null || body.percent_income === '') percent = null;
+      else {
+        const p2 = Math.round(Number(body.percent_income));
+        if (!Number.isFinite(p2) || p2 < 1 || p2 > 100) throw bad('Percent must be between 1 and 100.');
+        percent = p2;
+      }
+    }
 
     const clash = db.prepare(`SELECT id FROM categories WHERE name = ? AND id != ?`).get(name, category.id);
     if (clash) throw bad('A category with that name already exists.');
 
     db.prepare(`
-      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?
       WHERE id = ?
-    `).run(name, budget, kind, startsMonth, dueDay, cadence, category.id);
+    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
@@ -1375,6 +1424,19 @@ function createApi(db) {
 
   // ---------------------------------------------------------------- budget tune-up
 
+  // Four Walls (Ramsey): food, utilities, shelter, transportation come first.
+  // On the everyday side of this budget, that means groceries and fuel are
+  // protected — cuts land on lifestyle categories before essentials.
+  const FOUR_WALLS = new Set(['Groceries', 'Fuel']);
+
+  /**
+   * Zero-based, Ramsey-style suggestions. The one hard rule: the plan never
+   * spends more than comes in. When historical spending fits under income,
+   * budgets track reality and the surplus is called out for savings or debt
+   * (give every dollar a job). When it doesn't fit, this proposes CUTS —
+   * scaling lifestyle categories down first, essentials last — until
+   * bills + everyday + savings goal ≤ income.
+   */
   function computeSuggestions() {
     const cur = currentMonth();
     const pastMonths = q.months.all()
@@ -1386,39 +1448,84 @@ function createApi(db) {
       SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE month = ? AND category_id = ?
     `);
 
-    const suggestions = [];
-    for (const c of q.categories.all()) {
-      if (c.kind !== 'variable') continue;
-      if (c.starts_month && c.starts_month > cur) continue;
+    const incomeC = liveIncomeCents();
+    const active = q.categories.all().filter((c) => !c.starts_month || c.starts_month <= cur);
+    const fixedC = active.filter((c) => c.kind === 'fixed')
+      .reduce((s, c) => s + monthlyBudgetCents(c, cur), 0);
+    const savingsC = Number(db.prepare(`SELECT value FROM meta WHERE key = 'savings_target'`).get()?.value ?? 0);
+    const availableC = incomeC - fixedC - savingsC;
+
+    // What each everyday category really costs: history where it exists,
+    // the current budget as the proxy where it doesn't.
+    const rows = active.filter((c) => c.kind === 'variable').map((c) => {
       const history = pastMonths.map((m) => spentIn.get(m, c.id).n);
-      const monthsWithSpend = history.filter((n) => n > 0);
-      if (!monthsWithSpend.length) continue;
-      const avg = monthsWithSpend.reduce((s, n) => s + n, 0) / monthsWithSpend.length;
-      const suggested = Math.max(500, Math.round(avg / 500) * 500); // nearest $5, floor $5
-      if (Math.abs(suggested - c.budget_cents) < 500) continue;
-      suggestions.push({
-        category_id: c.id,
-        name: c.name,
-        current: toDollars(c.budget_cents),
-        lastMonth: toDollars(history[0] ?? 0),
-        average: toDollars(Math.round(avg)),
-        suggested: toDollars(suggested),
-        delta: toDollars(suggested - c.budget_cents),
-      });
+      const withSpend = history.filter((n) => n > 0);
+      const avg = withSpend.length ? withSpend.reduce((s, n) => s + n, 0) / withSpend.length : null;
+      return {
+        cat: c,
+        avg,
+        lastMonth: history[0] ?? 0,
+        proxy: avg ?? c.budget_cents,
+        essential: FOUR_WALLS.has(c.name),
+      };
+    });
+
+    const floor5 = (n) => Math.max(0, Math.floor(n / 500) * 500);
+    const round5 = (n) => Math.max(0, Math.round(n / 500) * 500);
+    const sumProxy = rows.reduce((s, r) => s + r.proxy, 0);
+    const fits = sumProxy <= availableC;
+
+    let targets;
+    if (fits) {
+      targets = rows.map((r) => ({ ...r, target: round5(r.proxy) }));
+    } else {
+      // Cuts: shrink lifestyle first, protect the four walls.
+      const essC = rows.filter((r) => r.essential).reduce((s, r) => s + r.proxy, 0);
+      const nonEssC = sumProxy - essC;
+      const overC = sumProxy - Math.max(0, availableC);
+      if (nonEssC >= overC && nonEssC > 0) {
+        const factor = (nonEssC - overC) / nonEssC;
+        targets = rows.map((r) => ({ ...r, target: r.essential ? floor5(r.proxy) : floor5(r.proxy * factor) }));
+      } else {
+        // Even zeroing lifestyle isn't enough: essentials shrink too.
+        const remainC = Math.max(0, availableC);
+        const factor = essC > 0 ? remainC / essC : 0;
+        targets = rows.map((r) => ({ ...r, target: r.essential ? floor5(r.proxy * factor) : 0 }));
+      }
     }
 
-    const currentTotal = q.categories.all()
-      .filter((c) => !c.starts_month || c.starts_month <= cur)
-      .reduce((s, c) => s + c.budget_cents, 0);
-    const suggestedTotal = currentTotal + suggestions.reduce((s, x) => s + Math.round(x.delta * 100), 0);
+    const suggestions = targets
+      .filter((r) => Math.abs(r.target - r.cat.budget_cents) >= 500)
+      .map((r) => ({
+        category_id: r.cat.id,
+        name: r.cat.name,
+        essential: r.essential,
+        current: toDollars(r.cat.budget_cents),
+        lastMonth: toDollars(r.lastMonth),
+        average: r.avg === null ? null : toDollars(Math.round(r.avg)),
+        suggested: toDollars(r.target),
+        delta: toDollars(r.target - r.cat.budget_cents),
+        why: fits
+          ? 'tracks what you actually spend'
+          : (r.essential ? 'four walls — protected, trimmed last' : 'cut to live on less than you make'),
+      }));
+
+    const currentTotal = active.reduce((s, c) => s + monthlyBudgetCents(c, cur), 0);
+    const variableAfterC = targets.reduce((s, r) => s + r.target, 0);
+    const projectedC = fixedC + variableAfterC;
+    const leftoverC = incomeC - projectedC - savingsC;
 
     return {
       monthsConsidered: pastMonths,
+      mode: fits ? 'fits' : 'cut',
       suggestions,
       totals: {
-        income: toDollars(liveIncomeCents()),
+        income: toDollars(incomeC),
+        bills: toDollars(fixedC),
+        savingsGoal: toDollars(savingsC),
         current: toDollars(currentTotal),
-        ifAllApplied: toDollars(suggestedTotal),
+        ifAllApplied: toDollars(projectedC),
+        leftover: toDollars(Math.max(0, leftoverC)),
       },
     };
   }
@@ -1427,10 +1534,112 @@ function createApi(db) {
     res.json(computeSuggestions());
   });
 
+  // ---------------------------------------------------------------- Ramsey coach
+
+  // Ramsey's recommended budget percentage bands (of take-home pay).
+  const RAMSEY_BANDS = [
+    { group: 'Giving', lo: 10, hi: 10, names: ['Church giving'] },
+    { group: 'Housing', lo: 0, hi: 25, names: ['Mortgage (Rocket)'] },
+    { group: 'Food', lo: 10, hi: 15, names: ['Groceries'] },
+    { group: 'Utilities', lo: 5, hi: 10, names: ['Natural gas', 'Electric', 'Water/sewer', 'AT&T phones'] },
+    { group: 'Transportation', lo: 0, hi: 10, names: ['Fuel', 'Truck (Credit Acceptance)', "Miriam's lease", 'Vehicle parts & maintenance'] },
+    { group: 'Insurance', lo: 10, hi: 25, names: ['GEICO'] },
+    { group: 'Lifestyle', lo: 5, hi: 10, names: ['Eating out & fun', 'Personal - Chris', 'Personal - Miriam', 'Apple services', 'Disney+', 'Pestie', 'Fabletics', 'Kindle Unlimited', 'Bitwarden', 'Ring', 'Subscriptions'] },
+    { group: 'Debt payoff', lo: 0, hi: 10, names: ['Discover', 'Apple Card', 'Dirt bike (Lendmark)', "Miriam's student loans", 'Settlement fund'] },
+    { group: 'Childcare', lo: 0, hi: 0, names: ['Child care (Kids Country)'], note: 'a necessity Ramsey budgets under essentials — no band' },
+  ];
+
+  router.get('/plan/coach', auth, (req, res) => {
+    const cur = currentMonth();
+    const incomeC = liveIncomeCents();
+    const active = q.categories.all().filter((c) => !c.starts_month || c.starts_month <= cur);
+
+    // Percentage bands vs the current plan
+    const named = new Set(RAMSEY_BANDS.flatMap((b) => b.names));
+    const bands = RAMSEY_BANDS.map((b) => {
+      const cents = active.filter((c) => b.names.includes(c.name))
+        .reduce((s, c) => s + monthlyBudgetCents(c, cur), 0);
+      const pct = incomeC > 0 ? Math.round((cents / incomeC) * 1000) / 10 : 0;
+      return {
+        group: b.group,
+        lo: b.lo,
+        hi: b.hi,
+        amount: toDollars(cents),
+        pct,
+        note: b.note || null,
+        status: b.note ? 'info' : pct > b.hi ? 'over' : pct < b.lo ? 'under' : 'ok',
+      };
+    });
+    const otherC = active.filter((c) => !named.has(c.name))
+      .reduce((s, c) => s + monthlyBudgetCents(c, cur), 0);
+    bands.push({
+      group: 'Everything else', lo: 0, hi: 10,
+      amount: toDollars(otherC),
+      pct: incomeC > 0 ? Math.round((otherC / incomeC) * 1000) / 10 : 0,
+      note: null,
+      status: otherC / incomeC > 0.10 ? 'over' : 'ok',
+    });
+
+    // Baby Steps
+    const savingsC = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM savings_entries`).get().n;
+    const debts = q.debts.all();
+    const open = debts.filter((d) => !d.settled);
+    // Snowball order: the lawsuit gets settled first, then smallest balance.
+    const snowball = open
+      .slice()
+      .sort((a, b) => (/lawsuit/i.test(b.label) ? 1 : 0) - (/lawsuit/i.test(a.label) ? 1 : 0) || a.balance_cents - b.balance_cents)
+      .map((d) => ({ name: d.name, balance: toDollars(d.balance_cents), target: toDollars(d.target_cents), label: d.label }));
+
+    const past3 = q.months.all().map((r) => r.month).filter((m) => m < cur).slice(0, 3);
+    const spendRows = past3.map((m) => db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS n FROM transactions WHERE month = ?`).get(m).n);
+    const avgSpendC = spendRows.length ? spendRows.reduce((s, n) => s + n, 0) / spendRows.length : incomeC;
+    const threeMonthsC = Math.round(avgSpendC * 3);
+
+    const steps = [
+      { n: 1, title: 'Save a $1,000 starter emergency fund',
+        done: savingsC >= 100000, progress: Math.min(100, Math.round(savingsC / 1000)), detail: '$' + toDollars(savingsC).toFixed(0) + ' of $1,000 saved' },
+      { n: 2, title: 'Pay off all debt but the house (debt snowball)',
+        done: open.length === 0,
+        progress: debts.length ? Math.round(((debts.length - open.length) / debts.length) * 100) : 0,
+        detail: (debts.length - open.length) + ' of ' + debts.length + ' settlement targets cleared', snowball },
+      { n: 3, title: 'Save 3–6 months of expenses',
+        done: savingsC >= threeMonthsC && threeMonthsC > 0,
+        progress: threeMonthsC > 0 ? Math.min(100, Math.round((savingsC / threeMonthsC) * 100)) : 0,
+        detail: '$' + toDollars(savingsC).toFixed(0) + ' of ~$' + toDollars(threeMonthsC).toFixed(0) + ' (3 months at your real spending)' },
+      { n: 4, title: 'Invest 15% of household income for retirement', done: false, progress: 0, detail: 'after steps 1–3' },
+      { n: 5, title: "Save for the kids' college", done: false, progress: 0, detail: 'after step 4' },
+      { n: 6, title: 'Pay off the house early', done: false, progress: 0, detail: 'after step 5' },
+      { n: 7, title: 'Build wealth and give', done: false, progress: 0, detail: 'the goal line' },
+    ];
+    const currentStep = (steps.find((s) => !s.done) || steps[6]).n;
+
+    res.json({ currentStep, steps, bands, income: toDollars(incomeC) });
+  });
+
   router.post('/budget/apply', auth, (req, res) => {
     const changes = Array.isArray(req.body?.changes) ? req.body.changes : [];
     if (!changes.length) throw bad('Nothing to apply.');
     if (changes.length > 100) throw bad('Too many changes at once.');
+
+    // Zero-based guard: an apply may never PUSH the plan above income.
+    // (Applies that reduce an already-over plan are always allowed.)
+    const cur = currentMonth();
+    const incomeC = liveIncomeCents();
+    const deltas = new Map(changes.map((ch) => [Number(ch.category_id), readAmount(ch.budget, { allowNegative: true })]));
+    const active = q.categories.all().filter((c) => !c.starts_month || c.starts_month <= cur);
+    const totalOf = (useNew) => active.reduce((s, c) => {
+      if (useNew && deltas.has(c.id) && !c.percent_income && c.cadence !== 'payday') {
+        return s + deltas.get(c.id);
+      }
+      return s + monthlyBudgetCents(c, cur);
+    }, 0);
+    const oldTotal = totalOf(false);
+    const newTotal = totalOf(true);
+    if (newTotal > incomeC && newTotal > oldTotal) {
+      throw bad('That plan would spend more than you make (' +
+        '$' + toDollars(newTotal).toFixed(0) + ' of $' + toDollars(incomeC).toFixed(0) +
+        '). Income minus outgo can never go below zero — cut somewhere else first.');
+    }
 
     db.transaction(() => {
       for (const change of changes) {
