@@ -22,7 +22,14 @@ function createApp(db) {
   const api = createApi(db);
   app.use('/api', api.router);
 
-  app.get('/healthz', (req, res) => res.json({ ok: true, sse: api.clientCount() }));
+  // db and pinSet let a deploy be verified from outside: the database path in
+  // use (should be on the volume) and whether FAMILY_PIN is set, never its value.
+  app.get('/healthz', (req, res) => res.json({
+    ok: true,
+    sse: api.clientCount(),
+    db: DB_PATH,
+    pinSet: Boolean(process.env.FAMILY_PIN),
+  }));
 
   app.use(
     express.static(PUBLIC_DIR, {
