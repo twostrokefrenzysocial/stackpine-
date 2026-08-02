@@ -21,6 +21,16 @@ the data; the phones install it straight from the browser, no app store.
 - **Scheduled bills** — a bill can be set to begin in a future month. It stays out of
   the budget until then, listed under *Coming up* along with what the budget will look
   like once it starts.
+- **Bank statement import** — History → Import. Export CSV from your bank (PNC:
+  Account Activity → Download), pick the file or paste it. Merchants are matched to
+  categories — first from what you picked on previous imports, then by keyword — you
+  review and fix anything wrong, and re-importing the same file never duplicates.
+  Deposits can be imported as income (off by default so logged paychecks don't
+  double-count).
+- **Smart budget tune-up** — Settings → Review budget suggestions. Compares each
+  spending budget to your actual spending over the last few closed months and
+  proposes new numbers (nearest $5), with a running check against income. You pick
+  which suggestions to apply; past months keep their snapshots.
 - **Real-time** — one phone adds something, the other updates in well under a second
   over Server-Sent Events, with 15-second polling as a fallback.
 - **History tab** — this month's transactions newest first, filter by category and

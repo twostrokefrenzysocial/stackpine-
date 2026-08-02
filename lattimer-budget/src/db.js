@@ -125,6 +125,21 @@ function migrate(db) {
   addColumnIfMissing(db, 'categories', 'starts_month', 'TEXT');
   // Day of the month a fixed bill is due (1-31); NULL means no due date.
   addColumnIfMissing(db, 'categories', 'due_day', 'INTEGER');
+  // Statement-import identity so re-importing the same file never duplicates.
+  addColumnIfMissing(db, 'transactions', 'import_hash', 'TEXT');
+  addColumnIfMissing(db, 'income_entries', 'import_hash', 'TEXT');
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_tx_import ON transactions (import_hash);
+    CREATE INDEX IF NOT EXISTS idx_income_import ON income_entries (import_hash);
+
+    -- Which category a merchant belongs to, learned from what the family
+    -- picked on previous imports.
+    CREATE TABLE IF NOT EXISTS merchant_rules (
+      merchant    TEXT PRIMARY KEY,
+      category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      updated_at  TEXT NOT NULL
+    );
+  `);
 }
 
 function seedOnce(db) {

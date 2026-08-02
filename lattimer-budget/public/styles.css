@@ -599,6 +599,22 @@ select.input {
 .week-head .week-in { text-transform: none; }
 @media (prefers-color-scheme: dark) { .week-head { color: var(--orange-soft); } }
 
+/* Statement import + tune-up rows */
+.imp-paste { min-height: 84px; padding: 10px 12px; font-size: 13px; font-family: ui-monospace, Menlo, monospace; resize: vertical; }
+.imp-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.imp-row:last-of-type { border-bottom: 0; }
+.imp-off { opacity: .45; }
+.imp-check { display: flex; align-items: flex-start; padding-top: 3px; }
+.imp-check input { width: 22px; height: 22px; accent-color: var(--orange); }
+.imp-main { flex: 1; min-width: 0; }
+.imp-desc { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-meta { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.imp-meta b { color: var(--text); }
+.imp-cat { margin-top: 6px; min-height: 40px; font-size: 14px; }
+.tune-move { margin-top: 4px; font-weight: 700; font-size: 14px; }
+.tune-up { color: var(--over); }
+.tune-down { color: var(--ok); }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

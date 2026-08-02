@@ -17,7 +17,8 @@ function createApp(db) {
   const app = express();
   app.disable('x-powered-by');
   app.set('etag', false);
-  app.use(express.json({ limit: '100kb' }));
+  // 2mb so a pasted bank statement fits; everything else stays tiny.
+  app.use(express.json({ limit: '2mb' }));
 
   const api = createApi(db);
   app.use('/api', api.router);

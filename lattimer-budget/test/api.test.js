@@ -844,6 +844,169 @@ test('debt details can be edited', async () => {
   assert.equal(updated.label, 'Called 7/12');
 });
 
+// ---------------------------------------------------------------- statement import
+
+const STATEMENT = () => {
+  const m = monthOf(0);
+  const d = (day) => `${m.slice(5, 7)}/${String(day).padStart(2, '0')}/${m.slice(0, 4)}`;
+  return [
+    'Date,Description,Withdrawals,Deposits,Balance',
+    `${d(1)},KROGER #945 CINCINNATI OH,82.13,,`,
+    `${d(1)},SPEEDWAY 08123 HILLSBORO,45.00,,`,
+    `${d(2)},MCDONALD'S F32191,12.87,,`,
+    `${d(2)},DIRECT DEP PAYROLL COMPANY,,1502.75,`,
+    `${d(2)},TOTALLY UNKNOWN MERCHANT LLC,33.33,,`,
+  ].join('\n');
+};
+
+test('statement preview parses, guesses categories, flags deposits', async () => {
+  const res = await call('/api/import/preview', { method: 'POST', body: { text: STATEMENT() } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.format, 'header-split');
+  assert.equal(res.body.rows.length, 5);
+
+  const s = await state();
+  const kroger = res.body.rows.find((r) => /KROGER/.test(r.description));
+  assert.equal(kroger.direction, 'out');
+  assert.equal(kroger.amount, 82.13);
+  assert.equal(kroger.category_id, byName(s.categories, 'Groceries').id);
+  assert.equal(kroger.guessedBy, 'keyword');
+
+  const speedway = res.body.rows.find((r) => /SPEEDWAY/.test(r.description));
+  assert.equal(speedway.category_id, byName(s.categories, 'Fuel').id);
+
+  const payroll = res.body.rows.find((r) => /PAYROLL/.test(r.description));
+  assert.equal(payroll.direction, 'in');
+  assert.equal(payroll.amount, 1502.75);
+
+  const unknown = res.body.rows.find((r) => /UNKNOWN/.test(r.description));
+  assert.equal(unknown.category_id, null, 'no guess for an unknown merchant');
+});
+
+test('committing imports rows, then a re-import skips all of them', async () => {
+  const s = await state();
+  const preview = await call('/api/import/preview', { method: 'POST', body: { text: STATEMENT() } });
+  const rows = preview.body.rows
+    .filter((r) => r.direction === 'out')
+    .map((r) => ({
+      date: r.date,
+      description: r.description,
+      amount: r.amount,
+      direction: r.direction,
+      category_id: r.category_id ?? byName(s.categories, 'Household & misc').id,
+    }));
+
+  const commit = await call('/api/import/commit', { method: 'POST', body: { rows } });
+  assert.equal(commit.status, 201);
+  assert.equal(commit.body.added, 4);
+  assert.equal(commit.body.skipped, 0);
+  const imported = commit.body.state.transactions.filter((t) => t.source === 'import');
+  assert.equal(imported.length, 4);
+
+  // exact same file again: everything is recognized and skipped
+  const again = await call('/api/import/commit', { method: 'POST', body: { rows } });
+  assert.equal(again.body.added, 0);
+  assert.equal(again.body.skipped, 4);
+
+  // and the preview now marks them as already imported
+  const preview2 = await call('/api/import/preview', { method: 'POST', body: { text: STATEMENT() } });
+  assert.equal(preview2.body.rows.filter((r) => r.alreadyImported).length, 4);
+});
+
+test('the import learned the corrected merchant for next time', async () => {
+  const preview = await call('/api/import/preview', {
+    method: 'POST',
+    body: { text: `Date,Description,Withdrawals,Deposits\n${monthOf(0).slice(5, 7)}/02/${monthOf(0).slice(0, 4)},TOTALLY UNKNOWN MERCHANT LLC AGAIN X99,21.00,` },
+  });
+  const s = await state();
+  const row = preview.body.rows[0];
+  assert.equal(row.category_id, byName(s.categories, 'Household & misc').id);
+  assert.equal(row.guessedBy, 'learned');
+});
+
+test('a deposit row imports as an income entry', async () => {
+  const preview = await call('/api/import/preview', { method: 'POST', body: { text: STATEMENT() } });
+  const dep = preview.body.rows.find((r) => r.direction === 'in');
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: dep.date, description: dep.description, amount: dep.amount, direction: 'in' }] },
+  });
+  assert.equal(commit.body.addedIncome, 1);
+  const entry = commit.body.state.income.entries.find((e) => e.note.includes('PAYROLL'));
+  assert.ok(entry);
+  assert.equal(entry.amount, 1502.75);
+  await call(`/api/income/entries/${entry.id}`, { method: 'DELETE' });
+});
+
+test('garbage statements are handled gracefully', async () => {
+  const empty = await call('/api/import/preview', { method: 'POST', body: { text: '   ' } });
+  assert.equal(empty.status, 400);
+  const junk = await call('/api/import/preview', { method: 'POST', body: { text: 'hello\nworld\nnot,a,statement' } });
+  assert.equal(junk.status, 200);
+  assert.equal(junk.body.rows.length, 0);
+});
+
+test('cleanup imported transactions', async () => {
+  const s = await state();
+  for (const t of s.transactions.filter((x) => x.source === 'import')) {
+    await call(`/api/transactions/${t.id}`, { method: 'DELETE' });
+  }
+  assert.equal((await state()).transactions.filter((t) => t.source === 'import').length, 0);
+});
+
+// ---------------------------------------------------------------- budget tune-up
+
+test('budget suggestions come from past-month actuals', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+
+  // seed a past month: groceries ran hot
+  const last = monthOf(-1);
+  const spend = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 843.4, date: `${last}-15`, note: 'past month total' },
+  });
+  assert.equal(spend.status, 201);
+
+  const res = await call('/api/budget/suggestions');
+  assert.equal(res.status, 200);
+  assert.ok(res.body.monthsConsidered.includes(last));
+  const g = res.body.suggestions.find((x) => x.name === 'Groceries');
+  assert.ok(g, 'groceries should get a suggestion');
+  assert.equal(g.current, 700);
+  assert.equal(g.suggested, 845, 'rounded to the nearest $5');
+  assert.ok(res.body.totals.income > 0);
+
+  // categories with no history are left alone
+  assert.equal(res.body.suggestions.find((x) => x.name === 'Personal - Chris'), undefined);
+
+  // apply it
+  const apply = await call('/api/budget/apply', {
+    method: 'POST',
+    body: { changes: [{ category_id: g.category_id, budget: g.suggested }] },
+  });
+  assert.equal(apply.status, 200);
+  assert.equal(byName(apply.body.state.categories, 'Groceries').budget, 845);
+
+  // past month keeps its own snapshot
+  const past = await call(`/api/state?month=${last}`);
+  assert.equal(byName(past.body.categories, 'Groceries').budget, 700);
+
+  // put everything back
+  await call('/api/budget/apply', { method: 'POST', body: { changes: [{ category_id: g.category_id, budget: 700 }] } });
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+});
+
+test('budget apply validates its input', async () => {
+  const bad1 = await call('/api/budget/apply', { method: 'POST', body: { changes: [] } });
+  assert.equal(bad1.status, 400);
+  const bad2 = await call('/api/budget/apply', {
+    method: 'POST',
+    body: { changes: [{ category_id: 99999, budget: 100 }] },
+  });
+  assert.equal(bad2.status, 404);
+});
+
 // ---------------------------------------------------------------- realtime
 
 test('the version stamp changes on every write', async () => {
@@ -894,7 +1057,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v3'],
+    ['/sw.js', 'lfb-v4'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

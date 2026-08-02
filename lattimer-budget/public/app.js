@@ -610,8 +610,10 @@
     var inTotal = rows.reduce(function (s, r) { return r.kind === 'in' ? s + r.amount : s; }, 0);
 
     var html = '<section class="card">' +
-      '<div class="chips" style="margin-bottom:10px">' +
+      '<div class="row" style="margin-bottom:10px"><div class="chips">' +
       typeChip('', 'Everything') + typeChip('out', 'Spending') + typeChip('in', 'Income') +
+      '</div>' +
+      (d.readOnly ? '' : '<button type="button" class="btn btn-sm" data-act="import-open">⇪ Import</button>') +
       '</div>' +
       '<label class="field"><span>Category</span><select class="input" data-act="filter-category">' +
       '<option value="">All categories</option>' +
@@ -785,6 +787,11 @@
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
     html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
     html += '</section>';
+
+    html += '<div class="section-title"><span>Smart tune-up</span></div><section class="card">' +
+      '<p class="muted small" style="margin:0 0 10px">Compares every spending budget to what you actually spent in past months and suggests new numbers. You pick which to apply.</p>' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="tuneup-open">Review budget suggestions</button>' +
+      '</section>';
 
     html += '<div class="section-title"><span>Fixed bill budgets</span></div><section class="card">';
     fixed.forEach(function (c) { html += billRow(c); });
@@ -1116,6 +1123,181 @@
       '<button type="button" class="btn btn-accent btn-block" data-act="dep-save">Add deposit</button>');
   }
 
+  // ---- bank statement import -------------------------------------------
+
+  var IMP = { rows: [], busy: false };
+
+  function openImport() {
+    IMP = { rows: [], busy: false };
+    openSheet(sheetHead('Import bank statement') +
+      '<p class="muted small" style="margin-top:0">Export transactions from your bank as CSV ' +
+      '(PNC: Account Activity → Download), then pick the file — or paste the text.</p>' +
+      '<label class="btn btn-block" style="margin-bottom:10px">Choose CSV file' +
+      '<input type="file" id="imp-file" accept=".csv,text/csv,text/plain" data-act="imp-file" hidden></label>' +
+      '<label class="field"><span>Or paste it</span>' +
+      '<textarea class="input imp-paste" id="imp-text" rows="4" placeholder="Date,Description,Withdrawals,Deposits…"></textarea></label>' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="imp-preview">Preview</button>' +
+      '<div id="imp-results"></div>');
+  }
+
+  function importPreview(text) {
+    if (!text || !text.trim()) { toast('Pick a file or paste the statement first', 'error'); return; }
+    var box = el('imp-results');
+    if (box) box.innerHTML = '<p class="muted small" style="text-align:center">Reading…</p>';
+    api('/import/preview', { method: 'POST', body: { text: text } })
+      .then(function (out) {
+        IMP.rows = out.rows.map(function (r) {
+          r.include = !r.alreadyImported && r.writable && r.direction === 'out' && !r.maybeManual;
+          if (r.direction === 'out' && !r.category_id) r.category_id = defaultImportCategory();
+          return r;
+        });
+        renderImportRows(out);
+      })
+      .catch(function (err) { toast(err.message, 'error'); if (box) box.innerHTML = ''; });
+  }
+
+  function defaultImportCategory() {
+    var misc = S.data.categories.filter(function (c) { return c.kind === 'variable' && !c.archived; })[0];
+    return misc ? misc.id : null;
+  }
+
+  function renderImportRows(meta) {
+    var box = el('imp-results');
+    if (!box) return;
+    if (!IMP.rows.length) {
+      box.innerHTML = '<div class="empty">No transactions found in that file. ' +
+        'Make sure it\'s the CSV export, not a PDF.</div>';
+      return;
+    }
+    var cats = S.data.categories.filter(function (c) { return !c.archived; });
+    var html = '<div class="section-title"><span>' + IMP.rows.length + ' rows found' +
+      (meta && meta.truncated ? ' (first 400)' : '') + '</span><span>tap to adjust</span></div>';
+
+    IMP.rows.forEach(function (r, idx) {
+      var status = '';
+      if (r.alreadyImported) status = '<span class="badge">already in</span>';
+      else if (!r.writable) status = '<span class="badge">closed month</span>';
+      else if (r.direction === 'in') status = '<span class="badge badge-ok">deposit → income</span>';
+      else if (r.maybeManual) status = '<span class="badge badge-alert">maybe entered by hand</span>';
+      else if (r.guessedBy === 'learned') status = '<span class="badge badge-ok">remembered</span>';
+
+      var disabled = r.alreadyImported || !r.writable;
+      html += '<div class="imp-row' + (disabled ? ' imp-off' : '') + '">' +
+        '<label class="imp-check"><input type="checkbox" data-act="imp-check" data-idx="' + idx + '"' +
+        (r.include ? ' checked' : '') + (disabled ? ' disabled' : '') + '></label>' +
+        '<div class="imp-main">' +
+        '<div class="imp-desc">' + esc(r.description || '(no description)') + '</div>' +
+        '<div class="imp-meta">' + esc(shortDate(r.date)) + ' · ' +
+        (r.direction === 'in' ? '<b class="week-in">+' : '<b>') + money(r.amount) + '</b> ' + status + '</div>' +
+        (r.direction === 'out' && !disabled
+          ? '<select class="input imp-cat" data-act="imp-cat" data-idx="' + idx + '">' +
+            cats.map(function (c) {
+              return '<option value="' + c.id + '"' + (c.id === r.category_id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+            }).join('') + '</select>'
+          : '') +
+        '</div></div>';
+    });
+
+    var n = IMP.rows.filter(function (r) { return r.include; }).length;
+    html += '<button type="button" class="btn btn-accent btn-block" style="margin-top:12px" data-act="imp-commit"' +
+      (n ? '' : ' disabled') + '>Import ' + n + ' selected</button>';
+    box.innerHTML = html;
+  }
+
+  function refreshImportButton() {
+    var btn = $('[data-act="imp-commit"]');
+    if (!btn) return;
+    var n = IMP.rows.filter(function (r) { return r.include; }).length;
+    btn.disabled = !n;
+    btn.textContent = 'Import ' + n + ' selected';
+  }
+
+  function importCommit() {
+    if (IMP.busy) return;
+    var chosen = IMP.rows.filter(function (r) { return r.include; }).map(function (r) {
+      return { date: r.date, description: r.description, amount: r.amount, direction: r.direction, category_id: r.category_id };
+    });
+    if (!chosen.length) return;
+    IMP.busy = true;
+    api('/import/commit', { method: 'POST', body: { rows: chosen } })
+      .then(function (out) {
+        closeSheet();
+        if (out.state) applyState(out.state);
+        var bits = [];
+        if (out.added) bits.push(out.added + ' spending');
+        if (out.addedIncome) bits.push(out.addedIncome + ' income');
+        if (out.skipped) bits.push(out.skipped + ' already in');
+        toast('Imported: ' + (bits.join(', ') || 'nothing new'));
+      })
+      .catch(function (err) { toast(err.message, 'error'); })
+      .then(function () { IMP.busy = false; });
+  }
+
+  // ---- budget tune-up ----------------------------------------------------
+
+  var TUNE = { list: [], totals: null };
+
+  function openTuneup() {
+    openSheet(sheetHead('Smart budget tune-up') +
+      '<p class="muted small" style="margin-top:0">Looking at what you actually spent…</p>');
+    api('/budget/suggestions')
+      .then(function (out) {
+        TUNE.list = out.suggestions.map(function (s) { s.include = true; return s; });
+        TUNE.totals = out.totals;
+        var body = sheetHead('Smart budget tune-up');
+        if (!TUNE.list.length) {
+          body += '<div class="empty">Nothing to suggest yet. Once a full month of spending is in ' +
+            'the books, this compares every budget to what really happened.</div>';
+          openSheet(body);
+          return;
+        }
+        body += '<p class="muted small" style="margin-top:0">Based on ' +
+          (out.monthsConsidered.length === 1
+            ? monthLabel(out.monthsConsidered[0])
+            : 'your last ' + out.monthsConsidered.length + ' months') +
+          '. Applies from this month forward — past months keep their numbers.</p>';
+        TUNE.list.forEach(function (s, idx) {
+          var up = s.delta > 0;
+          body += '<div class="imp-row">' +
+            '<label class="imp-check"><input type="checkbox" checked data-act="tune-check" data-idx="' + idx + '"></label>' +
+            '<div class="imp-main">' +
+            '<div class="imp-desc">' + esc(s.name) + '</div>' +
+            '<div class="imp-meta">really spending ' + money(s.average) + ' · now budgeted ' + money(s.current, { cents: false }) + '</div>' +
+            '<div class="tune-move ' + (up ? 'tune-up' : 'tune-down') + '">' +
+            money(s.current, { cents: false }) + ' → ' + money(s.suggested, { cents: false }) +
+            ' (' + (up ? '+' : '−') + money(Math.abs(s.delta), { cents: false }) + ')</div>' +
+            '</div></div>';
+        });
+        body += '<div id="tune-totals"></div>' +
+          '<button type="button" class="btn btn-primary btn-block" style="margin-top:12px" data-act="tune-apply">Apply selected</button>';
+        openSheet(body);
+        renderTuneTotals();
+      })
+      .catch(function (err) { toast(err.message, 'error'); closeSheet(); });
+  }
+
+  function renderTuneTotals() {
+    var box = el('tune-totals');
+    if (!box || !TUNE.totals) return;
+    var delta = TUNE.list.reduce(function (s, x) { return x.include ? s + x.delta : s; }, 0);
+    var projected = TUNE.totals.current + delta;
+    var over = projected - TUNE.totals.income;
+    box.innerHTML = '<div class="cat-foot" style="margin-top:10px"><span>Budget if applied</span>' +
+      '<span class="' + (over > 0 ? 'cat-over' : '') + '">' + money(projected, { cents: false }) +
+      ' of ' + money(TUNE.totals.income, { cents: false }) + ' income' +
+      (over > 0 ? ' — ' + money(over, { cents: false }) + ' over' : '') + '</span></div>';
+  }
+
+  function tuneApply() {
+    var changes = TUNE.list.filter(function (s) { return s.include; }).map(function (s) {
+      return { category_id: s.category_id, budget: s.suggested };
+    });
+    if (!changes.length) { toast('Nothing selected', 'error'); return; }
+    closeSheet();
+    mutate('/budget/apply', { method: 'POST', body: { changes: changes } },
+      'Updated ' + changes.length + ' budget' + (changes.length === 1 ? '' : 's'));
+  }
+
   // ---- settings sheets -------------------------------------------------
 
   function openAddCategory(kind) {
@@ -1324,6 +1506,12 @@
         render();
         break;
 
+      case 'import-open': openImport(); break;
+      case 'imp-preview': importPreview(el('imp-text') ? el('imp-text').value : ''); break;
+      case 'imp-commit': importCommit(); break;
+      case 'tuneup-open': openTuneup(); break;
+      case 'tune-apply': tuneApply(); break;
+
       case 'retry':
         refresh().then(function () { if (S.data) startRealtime(); });
         break;
@@ -1356,6 +1544,22 @@
     if (act === 'filter-category') {
       S.filters.category = node.value;
       render();
+    } else if (act === 'imp-file') {
+      var file = node.files && node.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () { importPreview(String(reader.result || '')); };
+      reader.onerror = function () { toast('Could not read that file', 'error'); };
+      reader.readAsText(file);
+    } else if (act === 'imp-check') {
+      var impRow = IMP.rows[Number(node.dataset.idx)];
+      if (impRow) { impRow.include = node.checked; refreshImportButton(); }
+    } else if (act === 'imp-cat') {
+      var catRow = IMP.rows[Number(node.dataset.idx)];
+      if (catRow) catRow.category_id = Number(node.value);
+    } else if (act === 'tune-check') {
+      var tuneRow = TUNE.list[Number(node.dataset.idx)];
+      if (tuneRow) { tuneRow.include = node.checked; renderTuneTotals(); }
     } else if (act === 'budget') {
       var budget = Number(node.value);
       if (!isFinite(budget) || budget < 0) { toast('Enter a positive number', 'error'); render(); return; }

@@ -24,6 +24,7 @@ const {
   pinMatches,
 } = require('./util');
 const { SETTLEMENT_FUND_CATEGORY } = require('./seed');
+const { parseStatement, merchantKey, keywordGuess, importHash } = require('./import');
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -906,6 +907,193 @@ function createApi(db) {
     db.prepare(`DELETE FROM fund_deposits WHERE id = ?`).run(dep.id);
     broadcast('fund:deposit-removed', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  // ---------------------------------------------------------------- statement import
+
+  const hashExists = db.prepare(`
+    SELECT (SELECT COUNT(*) FROM transactions WHERE import_hash = @h) +
+           (SELECT COUNT(*) FROM income_entries WHERE import_hash = @h) AS n
+  `);
+  const manualMatch = db.prepare(`
+    SELECT COUNT(*) AS n FROM transactions
+    WHERE date = ? AND amount_cents = ? AND source != 'import'
+  `);
+  const ruleFor = db.prepare(`SELECT category_id FROM merchant_rules WHERE merchant = ?`);
+  const upsertRule = db.prepare(`
+    INSERT INTO merchant_rules (merchant, category_id, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT (merchant) DO UPDATE SET category_id = excluded.category_id, updated_at = excluded.updated_at
+  `);
+
+  router.post('/import/preview', auth, (req, res) => {
+    const text = String(req.body?.text ?? '');
+    if (!text.trim()) throw bad('Paste or upload a statement first.');
+    if (text.length > 2_000_000) throw bad('That file is too large.');
+
+    const { rows, format } = parseStatement(text);
+    const active = q.categories.all().filter((c) => !c.starts_month || c.starts_month <= currentMonth());
+    const byName = new Map(active.map((c) => [c.name, c.id]));
+
+    const preview = rows.slice(0, 400).map((r, i) => {
+      const hash = importHash(r.date, r.cents, r.description);
+      const alreadyImported = hashExists.get({ h: hash }).n > 0;
+      const writable = isWritableMonth(r.date.slice(0, 7)) && r.date <= today();
+      const key = merchantKey(r.description);
+
+      let categoryId = null;
+      let guessedBy = null;
+      if (r.direction === 'out') {
+        const rule = key ? ruleFor.get(key) : null;
+        if (rule && active.some((c) => c.id === rule.category_id)) {
+          categoryId = rule.category_id;
+          guessedBy = 'learned';
+        } else {
+          const name = keywordGuess(r.description);
+          if (name && byName.has(name)) {
+            categoryId = byName.get(name);
+            guessedBy = 'keyword';
+          }
+        }
+      }
+
+      return {
+        i,
+        date: r.date,
+        description: r.description,
+        amount: toDollars(r.cents),
+        direction: r.direction,
+        category_id: categoryId,
+        guessedBy,
+        alreadyImported,
+        maybeManual: !alreadyImported && r.direction === 'out'
+          ? manualMatch.get(r.date, r.cents).n > 0
+          : false,
+        writable,
+      };
+    });
+
+    res.json({
+      format,
+      total: rows.length,
+      truncated: rows.length > 400,
+      rows: preview,
+    });
+  });
+
+  router.post('/import/commit', auth, (req, res) => {
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (!rows.length) throw bad('Nothing selected to import.');
+    if (rows.length > 400) throw bad('Too many rows at once.');
+
+    let added = 0;
+    let addedIncome = 0;
+    let skipped = 0;
+    const now = new Date().toISOString();
+
+    db.transaction(() => {
+      for (const raw of rows) {
+        const amount = readAmount(raw.amount);
+        const date = readDate(raw.date);
+        requireMonthWritable(date);
+        if (date > today()) throw bad('Statement rows cannot be in the future.');
+        const description = String(raw.description ?? '').trim().slice(0, 120);
+        const hash = importHash(date, amount, description);
+        if (hashExists.get({ h: hash }).n > 0) { skipped++; continue; }
+
+        if (raw.direction === 'in') {
+          db.prepare(`
+            INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, import_hash)
+            VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            (merchantKey(description) || 'Deposit').slice(0, 60),
+            amount, description, req.person, date, date.slice(0, 7), now, now, hash
+          );
+          addedIncome++;
+        } else {
+          const category = activeCategory(raw.category_id);
+          requireStarted(category, date.slice(0, 7));
+          db.prepare(`
+            INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, import_hash)
+            VALUES (?, ?, ?, ?, ?, ?, 'import', ?, ?, ?)
+          `).run(category.id, amount, description, req.person, date, date.slice(0, 7), now, now, hash);
+          added++;
+
+          const key = merchantKey(description);
+          if (key) upsertRule.run(key, category.id, now);
+        }
+      }
+    })();
+
+    broadcast('import:done', req.person);
+    res.status(201).json({ added, addedIncome, skipped, state: buildState(currentMonth(), req.person) });
+  });
+
+  // ---------------------------------------------------------------- budget tune-up
+
+  router.get('/budget/suggestions', auth, (req, res) => {
+    const cur = currentMonth();
+    const pastMonths = q.months.all()
+      .map((r) => r.month)
+      .filter((m) => m < cur)
+      .slice(0, 3);
+
+    const spentIn = db.prepare(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE month = ? AND category_id = ?
+    `);
+
+    const suggestions = [];
+    for (const c of q.categories.all()) {
+      if (c.kind !== 'variable') continue;
+      if (c.starts_month && c.starts_month > cur) continue;
+      const history = pastMonths.map((m) => spentIn.get(m, c.id).n);
+      const monthsWithSpend = history.filter((n) => n > 0);
+      if (!monthsWithSpend.length) continue;
+      const avg = monthsWithSpend.reduce((s, n) => s + n, 0) / monthsWithSpend.length;
+      const suggested = Math.max(500, Math.round(avg / 500) * 500); // nearest $5, floor $5
+      if (Math.abs(suggested - c.budget_cents) < 500) continue;
+      suggestions.push({
+        category_id: c.id,
+        name: c.name,
+        current: toDollars(c.budget_cents),
+        lastMonth: toDollars(history[0] ?? 0),
+        average: toDollars(Math.round(avg)),
+        suggested: toDollars(suggested),
+        delta: toDollars(suggested - c.budget_cents),
+      });
+    }
+
+    const currentTotal = q.categories.all()
+      .filter((c) => !c.starts_month || c.starts_month <= cur)
+      .reduce((s, c) => s + c.budget_cents, 0);
+    const suggestedTotal = currentTotal + suggestions.reduce((s, x) => s + Math.round(x.delta * 100), 0);
+
+    res.json({
+      monthsConsidered: pastMonths,
+      suggestions,
+      totals: {
+        income: toDollars(liveIncomeCents()),
+        current: toDollars(currentTotal),
+        ifAllApplied: toDollars(suggestedTotal),
+      },
+    });
+  });
+
+  router.post('/budget/apply', auth, (req, res) => {
+    const changes = Array.isArray(req.body?.changes) ? req.body.changes : [];
+    if (!changes.length) throw bad('Nothing to apply.');
+    if (changes.length > 100) throw bad('Too many changes at once.');
+
+    db.transaction(() => {
+      for (const change of changes) {
+        const category = activeCategory(change.category_id);
+        const budget = readAmount(change.budget, { allowNegative: true });
+        if (budget < 0) throw bad('Budget cannot be negative.');
+        db.prepare(`UPDATE categories SET budget_cents = ? WHERE id = ?`).run(budget, category.id);
+      }
+    })();
+
+    broadcast('budget:tuned', req.person);
+    res.json({ ok: true, applied: changes.length, state: buildState(currentMonth(), req.person) });
   });
 
   // ---------------------------------------------------------------- errors
