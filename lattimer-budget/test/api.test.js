@@ -693,6 +693,64 @@ test('a past month has weeks but no current-week pace', async (t) => {
   assert.equal(res.body.weeks.filter((w) => w.isCurrent).length, 0);
 });
 
+// ---------------------------------------------------------------- paydays
+
+test('payday anchors: seeded to Friday Aug 7 2026 biweekly, rolling forward', async () => {
+  const { nextOccurrence } = require('../src/util');
+  assert.equal(nextOccurrence('2026-08-07', 'biweekly', '2026-08-02'), '2026-08-07');
+  assert.equal(nextOccurrence('2026-08-07', 'biweekly', '2026-08-07'), '2026-08-07', 'payday itself counts');
+  assert.equal(nextOccurrence('2026-08-07', 'biweekly', '2026-08-08'), '2026-08-21');
+  assert.equal(nextOccurrence('2026-08-07', 'biweekly', '2026-12-25'), '2026-12-25', 'biweekly from Aug 7 lands on Dec 25');
+  assert.equal(nextOccurrence('2026-01-31', 'monthly', '2026-02-01'), '2026-02-28', 'monthly clamps short months');
+
+  const s = await state();
+  for (const src of s.income.sources.filter((x) => x.person)) {
+    assert.equal(src.cadence, 'biweekly', src.name + ' seeded biweekly');
+    assert.ok(src.nextPayday >= s.today, src.name + ' payday is never in the past');
+    assert.equal(typeof src.payInDays, 'number');
+  }
+});
+
+test('paydays are editable per source', async () => {
+  const s = await state();
+  const chris = s.income.sources.find((x) => x.person === 'Chris');
+  const res = await call(`/api/income/${chris.id}`, { method: 'PUT', body: { next_date: s.today, cadence: 'weekly' } });
+  assert.equal(res.status, 200);
+  const after = res.body.state.income.sources.find((x) => x.id === chris.id);
+  assert.equal(after.nextPayday, s.today);
+  assert.equal(after.payInDays, 0);
+  assert.equal(after.cadence, 'weekly');
+
+  const bad1 = await call(`/api/income/${chris.id}`, { method: 'PUT', body: { cadence: 'fortnightly' } });
+  assert.equal(bad1.status, 400);
+  const bad2 = await call(`/api/income/${chris.id}`, { method: 'PUT', body: { next_date: 'friday' } });
+  assert.equal(bad2.status, 400);
+
+  // put it back
+  await call(`/api/income/${chris.id}`, { method: 'PUT', body: { next_date: '2026-08-07', cadence: 'biweekly' } });
+});
+
+test('the payday nudge fires on the day and only on the day', async () => {
+  const { computePaydayNudge } = require('../src/push');
+  const s = await state();
+  const chris = s.income.sources.find((x) => x.person === 'Chris');
+
+  await call(`/api/income/${chris.id}`, { method: 'PUT', body: { next_date: s.today, cadence: 'biweekly' } });
+  const nudge = computePaydayNudge(db);
+  assert.ok(nudge, 'payday today → nudge');
+  assert.match(nudge.body, /Chris paycheck/);
+
+  await call(`/api/income/${chris.id}`, { method: 'PUT', body: { next_date: '2026-08-07', cadence: 'biweekly' } });
+  const miriam = s.income.sources.find((x) => x.person === 'Miriam');
+  // move both paydays off today unless today IS an occurrence
+  const off = computePaydayNudge(db);
+  const chrisNext = (await state()).income.sources.find((x) => x.id === chris.id).nextPayday;
+  const miriamNext = (await state()).income.sources.find((x) => x.id === miriam.id).nextPayday;
+  if (chrisNext !== (await state()).today && miriamNext !== (await state()).today) {
+    assert.equal(off, null, 'no payday, no nudge');
+  }
+});
+
 // ---------------------------------------------------------------- income received
 
 test('logging a paycheck records the actual amount against its source', async () => {
@@ -1451,7 +1509,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v10'],
+    ['/sw.js', 'lfb-v11'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

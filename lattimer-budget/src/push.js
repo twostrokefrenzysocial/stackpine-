@@ -5,7 +5,7 @@
 // there is nothing to configure.
 
 const webpush = require('web-push');
-const { today, currentMonth, previousMonth, TZ, dueDateIn, daysUntil, toDollars } = require('./util');
+const { today, currentMonth, previousMonth, TZ, dueDateIn, daysUntil, toDollars, nextOccurrence } = require('./util');
 
 function ensureVapid(db) {
   let pub = db.prepare(`SELECT value FROM meta WHERE key = 'vapid_public'`).get()?.value;
@@ -93,6 +93,20 @@ function computeReportNudge(db) {
   };
 }
 
+/** "It's payday — log your checks" on the day a source's payday lands. */
+function computePaydayNudge(db) {
+  const day = today();
+  const due = db.prepare(`SELECT name, next_date, cadence FROM income_sources WHERE next_date IS NOT NULL`).all()
+    .filter((s) => nextOccurrence(s.next_date, s.cadence || 'biweekly', day) === day);
+  if (!due.length) return null;
+  return {
+    title: 'Payday 💵',
+    body: due.map((s) => s.name).join(' and ') + ' land' + (due.length === 1 ? 's' : '') +
+      ' today — open the budget and tap Log when the money shows up.',
+    tag: 'payday',
+  };
+}
+
 function hourInFamilyTz() {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(new Date()));
 }
@@ -111,6 +125,8 @@ async function tick(db) {
     db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('push_last_digest', ?)`).run(day);
     const digest = computeDueDigest(db);
     if (digest) await sendToAll(db, digest);
+    const payday = computePaydayNudge(db);
+    if (payday) await sendToAll(db, payday);
   }
 
   const month = currentMonth();
@@ -133,4 +149,4 @@ function startScheduler(db) {
   return timer;
 }
 
-module.exports = { ensureVapid, sendToAll, computeDueDigest, computeReportNudge, startScheduler };
+module.exports = { ensureVapid, sendToAll, computeDueDigest, computeReportNudge, computePaydayNudge, startScheduler };

@@ -112,6 +112,28 @@ function addDays(dateStr, n) {
   return dt.toISOString().slice(0, 10);
 }
 
+const CADENCES = { weekly: 7, biweekly: 14 };
+
+/**
+ * The next occurrence of a repeating payday on or after today.
+ * Weekly/biweekly roll by days; monthly keeps the day-of-month (clamped).
+ */
+function nextOccurrence(anchor, cadence, todayIso) {
+  if (!anchor) return null;
+  let d = anchor;
+  let guard = 0;
+  while (d < todayIso && guard++ < 500) {
+    if (CADENCES[cadence]) d = addDays(d, CADENCES[cadence]);
+    else {
+      // monthly: same day next month, clamped to the month's length
+      const next = shiftMonth(d.slice(0, 7), 1);
+      const day = Math.min(Number(anchor.slice(8, 10)), Number(lastDayOfMonth(next).slice(8, 10)));
+      d = `${next}-${String(day).padStart(2, '0')}`;
+    }
+  }
+  return d;
+}
+
 /** Whole days from today to a date, negative when the date has passed. */
 function daysUntil(dateStr) {
   const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
@@ -194,6 +216,7 @@ module.exports = {
   lastDayOfMonth,
   weekStartOf,
   addDays,
+  nextOccurrence,
   dueDateIn,
   daysUntil,
   isValidDate,

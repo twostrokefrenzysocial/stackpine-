@@ -1,6 +1,6 @@
 /* Lattimer Family Budget service worker: offline app shell, never cached API. */
 
-var VERSION = 'lfb-v10';
+var VERSION = 'lfb-v11';
 var SHELL = [
   '/',
   '/index.html',

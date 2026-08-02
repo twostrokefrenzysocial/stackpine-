@@ -14,6 +14,7 @@ const {
   lastDayOfMonth,
   weekStartOf,
   addDays,
+  nextOccurrence,
   dueDateIn,
   daysUntil,
   isValidDate,
@@ -480,6 +481,7 @@ function createApi(db) {
         received: toDollars(receivedCents),
         sources: q.incomeSources.all().map((s) => {
           const got = receivedMap.get(s.id);
+          const payday = s.next_date ? nextOccurrence(s.next_date, s.cadence || 'biweekly', today()) : null;
           return {
             id: s.id,
             name: s.name,
@@ -489,6 +491,9 @@ function createApi(db) {
             monthly: toDollars(s.amount_cents * s.per_month),
             received: got ? toDollars(got.total) : 0,
             checks: got ? got.n : 0,
+            cadence: s.cadence || null,
+            nextPayday: payday,
+            payInDays: payday ? daysUntil(payday) : null,
           };
         }),
         entries: incomeEntryRows.map((e) => ({
@@ -887,6 +892,20 @@ function createApi(db) {
     res.json({ ok: true, state: buildState(existing.month, req.person) });
   });
 
+  function readCadence(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!['weekly', 'biweekly', 'monthly'].includes(value)) throw bad('Cadence must be weekly, biweekly or monthly.');
+    return value;
+  }
+
+  function readPaydayDate(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!isValidDate(value)) throw bad('Payday must be YYYY-MM-DD.');
+    return value;
+  }
+
   router.post('/income', auth, (req, res) => {
     const body = req.body || {};
     const name = readName(body.name);
@@ -894,10 +913,12 @@ function createApi(db) {
     if (amount < 0) throw bad('Income cannot be negative.');
     const perMonth = Math.max(1, Math.min(12, Math.round(Number(body.per_month ?? 1)) || 1));
     const person = body.person && PEOPLE.includes(body.person) ? body.person : '';
+    const nextDate = readPaydayDate(body.next_date) ?? null;
+    const cadence = readCadence(body.cadence) ?? (nextDate ? 'biweekly' : null);
     const next = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM income_sources`).get().n;
     const id = db
-      .prepare(`INSERT INTO income_sources (name, person, amount_cents, per_month, sort_order) VALUES (?, ?, ?, ?, ?)`)
-      .run(name, person, amount, perMonth, next).lastInsertRowid;
+      .prepare(`INSERT INTO income_sources (name, person, amount_cents, per_month, sort_order, next_date, cadence) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(name, person, amount, perMonth, next, nextDate, cadence).lastInsertRowid;
     broadcast('income:add', req.person);
     res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
   });
@@ -915,8 +936,12 @@ function createApi(db) {
     const person = body.person === undefined
       ? src.person
       : PEOPLE.includes(body.person) ? body.person : '';
-    db.prepare(`UPDATE income_sources SET name = ?, person = ?, amount_cents = ?, per_month = ? WHERE id = ?`)
-      .run(name, person, amount, perMonth, src.id);
+    const nextDateRaw = readPaydayDate(body.next_date);
+    const nextDate = nextDateRaw === undefined ? src.next_date : nextDateRaw;
+    const cadenceRaw = readCadence(body.cadence);
+    const cadence = cadenceRaw === undefined ? src.cadence : cadenceRaw;
+    db.prepare(`UPDATE income_sources SET name = ?, person = ?, amount_cents = ?, per_month = ?, next_date = ?, cadence = ? WHERE id = ?`)
+      .run(name, person, amount, perMonth, nextDate, cadence, src.id);
     broadcast('income:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
   });

@@ -170,6 +170,9 @@ function migrate(db) {
 
   // Savings entries can belong to a named goal.
   addColumnIfMissing(db, 'savings_entries', 'goal_id', 'INTEGER REFERENCES savings_goals(id) ON DELETE SET NULL');
+  // Payday tracking: the next expected check date and how often it repeats.
+  addColumnIfMissing(db, 'income_sources', 'next_date', 'TEXT');
+  addColumnIfMissing(db, 'income_sources', 'cadence', 'TEXT');
 }
 
 function seedOnce(db) {
@@ -221,6 +224,10 @@ function applyDataMigrations(db) {
     if (done.get(migration.key)) continue;
 
     db.transaction(() => {
+      if (migration.paydays) {
+        db.prepare(`UPDATE income_sources SET next_date = ?, cadence = ? WHERE next_date IS NULL`)
+          .run(migration.paydays.next_date, migration.paydays.cadence);
+      }
       const spec = migration.category;
       if (spec) {
         const existing = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(spec.name);

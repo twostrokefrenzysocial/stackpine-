@@ -60,6 +60,12 @@ const SETTLEMENT_FUND_CATEGORY = 'Settlement fund';
  */
 const DATA_MIGRATIONS = [
   {
+    // The family starts using the app in earnest on payday, Friday Aug 7 2026.
+    // Anchor every income source without a payday to that date, biweekly.
+    key: '2026-08-payday-anchors',
+    paydays: { next_date: '2026-08-07', cadence: 'biweekly' },
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

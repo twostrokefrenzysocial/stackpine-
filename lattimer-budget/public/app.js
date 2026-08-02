@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 10;
+  var APP_VERSION = 11;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -428,7 +428,7 @@
       '<div class="summary-grid">' +
       '<button type="button" class="summary-cell summary-tap" data-act="income-sheet">' +
       '<span class="summary-cap">Money in ›</span><b>' + money(d.totals.received, { cents: false }) + '</b>' +
-      '<span class="summary-sub">of ' + money(d.totals.income, { cents: false }) + ' — tap to log</span></button>' +
+      '<span class="summary-sub">' + esc(paydayHint(d) || ('of ' + money(d.totals.income, { cents: false }) + ' — tap to log')) + '</span></button>' +
       summaryCell('Spent', d.totals.spent) +
       summaryCell('Budgeted', d.totals.budgeted) +
       summaryCell('Bills left', billsLeft) +
@@ -600,6 +600,25 @@
       '</button>';
   }
 
+  function weekdayOf(dateStr) {
+    var p = dateStr.split('-');
+    return new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])))
+      .toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+  }
+
+  /** "payday today 💵" / "payday Friday" for the soonest upcoming check. */
+  function paydayHint(d) {
+    var days = null;
+    d.income.sources.forEach(function (s) {
+      if (s.payInDays != null && (days === null || s.payInDays < days)) days = s.payInDays;
+    });
+    if (days === null || days > 6) return null;
+    if (days === 0) return 'payday today 💵 — tap to log';
+    if (days === 1) return 'payday tomorrow';
+    var src = d.income.sources.filter(function (s) { return s.payInDays === days; })[0];
+    return 'payday ' + weekdayOf(src.nextPayday);
+  }
+
   /** The income sources with their Log buttons — used by the sheet and Plan. */
   function incomeRowsHtml(d) {
     var html = '';
@@ -607,6 +626,12 @@
       var sub = s.received > 0
         ? 'got ' + money(s.received) + ' (' + s.checks + ' of ' + s.per_month + ' checks)'
         : money(s.amount, { cents: false }) + ' × ' + s.per_month + ' per month';
+      if (s.nextPayday && s.payInDays != null && s.payInDays >= 0) {
+        sub += ' · ' + (s.payInDays === 0 ? 'today 💵'
+          : s.payInDays === 1 ? 'tomorrow'
+          : s.payInDays <= 6 ? weekdayOf(s.nextPayday)
+          : monthDay(s.nextPayday));
+      }
       html += '<div class="bill">' +
         '<span class="tx-avatar" data-person="' + esc(s.person) + '">' + esc((s.person || s.name).charAt(0)) + '</span>' +
         '<span class="bill-name">' + esc(s.name) + '<span class="bill-sub">' + esc(sub) + '</span></span>' +
@@ -992,13 +1017,24 @@
     var html = '<div class="section-title"><span>Income</span><span>' + money(d.income.total, { cents: false }) + ' / mo</span></div>';
     html += '<section class="card">';
     d.income.sources.forEach(function (s) {
-      html += '<div class="edit-row">' +
-        '<span class="edit-name">' + esc(s.name) +
-        '<br><span class="muted small">' + s.per_month + ' × per month' + (s.person ? ' · ' + esc(s.person) : '') + '</span></span>' +
+      html += '<div class="edit-card">' +
+        '<div class="edit-card-name">' + esc(s.name) +
+        '<span class="muted small"> · ' + s.per_month + '×/mo' + (s.person ? ' · ' + esc(s.person) : '') + '</span></div>' +
+        '<div class="edit-card-controls edit-card-3">' +
+        '<label class="mini"><span>Per check</span>' +
         '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + s.amount +
-        '" data-act="income-amount" data-id="' + s.id + '" aria-label="Amount for ' + esc(s.name) + '">' +
+        '" data-act="income-amount" data-id="' + s.id + '" aria-label="Amount for ' + esc(s.name) + '"></label>' +
+        '<label class="mini"><span>Next payday</span>' +
+        '<input class="input" type="date" value="' + esc(s.nextPayday || '') +
+        '" data-act="income-payday" data-id="' + s.id + '" aria-label="Next payday for ' + esc(s.name) + '"></label>' +
+        '<label class="mini"><span>Repeats</span>' +
+        '<select class="input" data-act="income-cadence" data-id="' + s.id + '" aria-label="Pay cadence for ' + esc(s.name) + '">' +
+        ['biweekly', 'weekly', 'monthly'].map(function (c) {
+          return '<option value="' + c + '"' + ((s.cadence || 'biweekly') === c ? ' selected' : '') + '>' +
+            (c === 'biweekly' ? 'every 2 weeks' : c) + '</option>';
+        }).join('') + '</select></label>' +
         '<button type="button" class="icon-del" data-act="del-income" data-id="' + s.id + '" aria-label="Delete income source">✕</button>' +
-        '</div>';
+        '</div></div>';
     });
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
     html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
@@ -2095,6 +2131,11 @@
       }
       mutate('/categories/' + id, { method: 'PUT', body: { due_day: raw === '' ? null : Number(raw) } },
         raw === '' ? 'Due date cleared' : 'Due date set');
+    } else if (act === 'income-payday') {
+      mutate('/income/' + id, { method: 'PUT', body: { next_date: node.value || null } },
+        node.value ? 'Payday set' : 'Payday cleared');
+    } else if (act === 'income-cadence') {
+      mutate('/income/' + id, { method: 'PUT', body: { cadence: node.value } }, 'Updated');
     } else if (act === 'income-amount') {
       var amount = Number(node.value);
       if (!isFinite(amount) || amount < 0) { toast('Enter a positive number', 'error'); render(); return; }
