@@ -1,6 +1,6 @@
 /* Lattimer Family Budget service worker: offline app shell, never cached API. */
 
-var VERSION = 'lfb-v5';
+var VERSION = 'lfb-v6';
 var SHELL = [
   '/',
   '/index.html',
@@ -31,6 +31,32 @@ self.addEventListener('activate', function (event) {
       }));
     }).then(function () {
       return self.clients.claim();
+    })
+  );
+});
+
+// Lock-screen notifications: bill reminders and the month report.
+self.addEventListener('push', function (event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { /* plain text */ }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Lattimer Family Budget', {
+      body: data.body || '',
+      tag: data.tag || 'lfb',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow('/');
     })
   );
 });

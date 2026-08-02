@@ -10,7 +10,7 @@
     month: null,
     data: null,
     tab: 'dashboard',
-    filters: { category: '', person: '', type: '' },
+    filters: { category: '', person: '', type: '', search: '' },
     pinned: false,
     sse: null,
     pollTimer: null,
@@ -111,13 +111,27 @@
   function pct(value) { return Math.max(0, Math.min(100, Number(value) || 0)); }
 
   var toastTimer = null;
+  var undoFn = null;
+
   function toast(message, kind) {
     var node = el('toast');
     node.textContent = message;
     node.dataset.kind = kind || 'info';
     node.hidden = false;
+    undoFn = null;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { node.hidden = true; }, kind === 'error' ? 4200 : 2400);
+  }
+
+  /** Delete-style toast with a 6-second Undo button — faster and safer than "are you sure?". */
+  function toastUndo(message, onUndo) {
+    var node = el('toast');
+    node.dataset.kind = 'info';
+    node.innerHTML = esc(message) + ' <button type="button" class="toast-undo" data-act="toast-undo">Undo</button>';
+    node.hidden = false;
+    undoFn = onUndo;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { node.hidden = true; undoFn = null; }, 6000);
   }
 
   // ------------------------------------------------------------ api
@@ -427,9 +441,12 @@
             '<span class="cat-over">' + money(o.spent) + ' of ' + money(o.budget, { cents: false }) +
             ' (+' + money(o.over) + ')</span></div>';
         });
-        html += '<button type="button" class="btn btn-sm btn-primary btn-block" style="margin-top:8px" data-act="tuneup-open">Fix the budgets</button>';
       } else {
         html += '<p class="small" style="margin:8px 0 4px">Every category stayed under budget. 👏</p>';
+      }
+      if (rv.suggestionCount > 0) {
+        html += '<button type="button" class="btn btn-sm btn-primary btn-block" style="margin-top:8px" data-act="tuneup-open">' +
+          rv.suggestionCount + ' budget change' + (rv.suggestionCount === 1 ? '' : 's') + ' suggested — review &amp; accept</button>';
       }
       // The save-it nudge only fires on real tracked income; a "leftover"
       // computed from the plan alone is hypothetical money.
@@ -617,26 +634,48 @@
     var showOut = S.filters.type !== 'in';
     var showIn = S.filters.type !== 'out';
 
-    var rows = [];
+    var needle = S.filters.search.trim().toLowerCase();
+    var matches = function (r) {
+      if (!needle) return true;
+      return (r.title + ' ' + r.meta).toLowerCase().indexOf(needle) !== -1;
+    };
+
+    // allRows respects everything except the person filter, so the per-person
+    // totals always show both of them side by side.
+    var allRows = [];
     if (showOut) {
       d.transactions.forEach(function (t) {
         if (S.filters.category && String(t.category_id) !== S.filters.category) return;
-        if (S.filters.person && t.person !== S.filters.person) return;
-        rows.push({ kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount,
-          title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) });
+        var r = { kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount,
+          title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) };
+        if (matches(r)) allRows.push(r);
       });
     }
     if (showIn && !S.filters.category) {
       d.income.entries.forEach(function (e) {
-        if (S.filters.person && e.person !== S.filters.person) return;
-        rows.push({ kind: 'in', id: e.id, date: e.date, person: e.person, amount: e.amount,
-          title: e.label, meta: e.note || 'Received' });
+        var r = { kind: 'in', id: e.id, date: e.date, person: e.person, amount: e.amount,
+          title: e.label, meta: e.note || 'Received' };
+        if (matches(r)) allRows.push(r);
       });
     }
+
+    var rows = S.filters.person
+      ? allRows.filter(function (r) { return r.person === S.filters.person; })
+      : allRows;
     rows.sort(function (a, b) {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return b.id - a.id;
     });
+
+    var perPerson = d.people.map(function (p) {
+      var out = 0;
+      var inn = 0;
+      allRows.forEach(function (r) {
+        if (r.person !== p) return;
+        if (r.kind === 'in') inn += r.amount; else out += r.amount;
+      });
+      return { person: p, out: out, inn: inn };
+    }).filter(function (x) { return x.out > 0 || x.inn > 0; });
 
     var outTotal = rows.reduce(function (s, r) { return r.kind === 'out' ? s + r.amount : s; }, 0);
     var inTotal = rows.reduce(function (s, r) { return r.kind === 'in' ? s + r.amount : s; }, 0);
@@ -657,7 +696,24 @@
       '<div class="chips">' +
       personChip('', 'Everyone') +
       d.people.map(function (p) { return personChip(p, p); }).join('') +
-      '</div></section>';
+      '</div>' +
+      '<input class="input" type="search" style="margin-top:10px" placeholder="Search — Kroger, brakes, cheer…"' +
+      ' data-act="filter-search" value="' + esc(S.filters.search) + '">' +
+      '</section>';
+
+    if (perPerson.length > 1) {
+      html += '<section class="card card-tight"><div class="who-totals">' +
+        perPerson.map(function (x) {
+          return '<div class="who-total"><span class="tx-avatar" data-person="' + esc(x.person) + '">' +
+            esc(x.person.charAt(0)) + '</span><div><b>' + esc(x.person) + '</b>' +
+            '<span class="small muted">' +
+            (x.out > 0 ? '−' + money(x.out) : '') +
+            (x.out > 0 && x.inn > 0 ? ' · ' : '') +
+            (x.inn > 0 ? '<b class="week-in">+' + money(x.inn) + '</b>' : '') +
+            '</span></div></div>';
+        }).join('') +
+        '</div></section>';
+    }
 
     var headline = [];
     if (outTotal || showOut) headline.push('−' + money(outTotal));
@@ -768,6 +824,19 @@
     } else {
       html += '<p class="muted small" style="margin:10px 0 0">No monthly goal set — add one in Settings and this turns into a progress bar.</p>';
     }
+    // Named goals: Christmas, emergency fund, the next dirt bike...
+    if (d.savings.goals.length) {
+      d.savings.goals.forEach(function (g) {
+        html += '<div class="goal" data-act="goal-edit" data-id="' + g.id + '" role="button" tabindex="0">' +
+          '<div class="cat-head"><span class="cat-name">' + esc(g.name) + '</span>' +
+          '<span class="cat-nums">' + money(g.saved) + (g.target > 0 ? ' / ' + money(g.target, { cents: false }) : '') + '</span></div>' +
+          (g.target > 0 ? barHtml(g.pct >= 100 ? 'ok' : 'warn', g.pct) : '') +
+          (g.pct >= 100 && g.target > 0 ? '<div class="cat-foot"><span class="week-in">Goal reached 🎉</span></div>' : '') +
+          '</div>';
+      });
+    }
+    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="goal-add">+ Add a named goal (Christmas, emergency fund…)</button>';
+
     if (d.savings.entries.length) {
       html += '<div style="margin-top:10px">';
       d.savings.entries.slice(0, 5).forEach(function (e) {
@@ -911,6 +980,19 @@
     html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
     html += '</section>';
 
+    if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
+      html += '<div class="section-title"><span>Reminders</span></div><section class="card">' +
+        '<p class="muted small" style="margin:0 0 10px">A morning heads-up on this phone when bills are due ' +
+        'or overdue, and when a new month\'s report is ready.</p>' +
+        '<div id="push-status" class="muted small" style="margin-bottom:10px">Checking…</div>' +
+        '<div class="stack">' +
+        '<button type="button" class="btn btn-primary btn-block" data-act="push-enable">Turn on reminders</button>' +
+        '<button type="button" class="btn btn-block btn-sm" data-act="push-test">Send a test</button>' +
+        '<button type="button" class="btn btn-block btn-sm" data-act="push-disable">Turn off on this phone</button>' +
+        '</div></section>';
+      setTimeout(refreshPushStatus, 0);
+    }
+
     html += '<div class="section-title"><span>Savings goal</span></div><section class="card">' +
       '<div class="edit-row" style="grid-template-columns:1fr 118px">' +
       '<span class="edit-name">Put away each month<br><span class="muted small">Progress shows on the Plan tab</span></span>' +
@@ -978,6 +1060,66 @@
       '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '">' +
       '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id + '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
       '</div>';
+  }
+
+  // ------------------------------------------------------------ push notifications
+
+  function urlB64ToUint8(base64) {
+    var padding = '='.repeat((4 - (base64.length % 4)) % 4);
+    var raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  function refreshPushStatus() {
+    var box = el('push-status');
+    if (!box) return;
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).then(function (sub) {
+      var granted = Notification.permission === 'granted';
+      box.textContent = sub && granted
+        ? 'On for this phone ✓'
+        : Notification.permission === 'denied'
+          ? 'Blocked in this phone\'s browser settings — allow notifications for this app to use reminders.'
+          : 'Off on this phone';
+    }).catch(function () { box.textContent = 'Off on this phone'; });
+  }
+
+  function enablePush() {
+    if (!('PushManager' in window)) { toast('This phone does not support notifications', 'error'); return; }
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') { toast('Notifications were not allowed', 'error'); refreshPushStatus(); return; }
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return api('/push/vapid-key').then(function (out) {
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlB64ToUint8(out.key),
+          });
+        });
+      }).then(function (sub) {
+        return api('/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON() } });
+      }).then(function () {
+        toast('Reminders are on for this phone 🔔');
+        refreshPushStatus();
+      });
+    }).catch(function (err) { toast(err.message, 'error'); refreshPushStatus(); });
+  }
+
+  function disablePush() {
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).then(function (sub) {
+      if (!sub) { toast('Already off'); refreshPushStatus(); return; }
+      var endpoint = sub.endpoint;
+      return sub.unsubscribe().then(function () {
+        return api('/push/unsubscribe', { method: 'POST', body: { endpoint: endpoint } });
+      }).then(function () {
+        toast('Reminders are off on this phone');
+        refreshPushStatus();
+      });
+    }).catch(function (err) { toast(err.message, 'error'); });
   }
 
   // ------------------------------------------------------------ sheets
@@ -1255,12 +1397,21 @@
 
   // ---- savings -----------------------------------------------------------
 
-  function openSavings(direction, prefill) {
+  function openSavings(direction, prefill, goalId) {
     QA.person = S.person;
+    var goalField = '';
+    if (S.data.savings.goals.length) {
+      goalField = '<label class="field"><span>Toward</span><select class="input" id="sav-goal">' +
+        '<option value=""' + (goalId ? '' : ' selected') + '>General savings</option>' +
+        S.data.savings.goals.map(function (g) {
+          return '<option value="' + g.id + '"' + (Number(goalId) === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>';
+        }).join('') + '</select></label>';
+    }
     openSheet(sheetHead(direction === 'out' ? 'Take out of savings' : 'Add to savings') +
       '<label class="field"><span>Amount</span>' +
       '<input class="input" id="sav-amount" type="number" inputmode="decimal" step="0.01" min="0.01"' +
       (prefill ? ' value="' + prefill + '"' : ' placeholder="0.00"') + '></label>' +
+      goalField +
       '<label class="field"><span>Note</span>' +
       '<input class="input" id="sav-note" maxlength="200" placeholder="' +
       (direction === 'out' ? 'What it went to' : 'Leftover from July, extra check…') + '"></label>' +
@@ -1273,10 +1424,35 @@
   function saveSavings(direction) {
     var amount = Number($('#sav-amount').value);
     if (!(amount > 0)) { toast('Enter an amount', 'error'); return; }
-    var body = { amount: amount, direction: direction, note: $('#sav-note').value, person: QA.person };
+    var goalSel = $('#sav-goal');
+    var body = {
+      amount: amount,
+      direction: direction,
+      note: $('#sav-note').value,
+      person: QA.person,
+      goal_id: goalSel && goalSel.value ? Number(goalSel.value) : null,
+    };
     closeSheet();
     mutate('/savings/entries', { method: 'POST', body: body },
       direction === 'out' ? money(amount) + ' taken out' : '+' + money(amount) + ' saved 🎉');
+  }
+
+  function openGoalSheet(goal) {
+    openSheet(sheetHead(goal ? 'Edit goal' : 'New savings goal') +
+      '<label class="field"><span>Name</span>' +
+      '<input class="input" id="goal-name" maxlength="60" placeholder="Christmas, emergency fund…"' +
+      (goal ? ' value="' + esc(goal.name) + '"' : '') + '></label>' +
+      '<label class="field"><span>Target (optional)</span>' +
+      '<input class="input" id="goal-target" type="number" inputmode="decimal" step="0.01" min="0"' +
+      (goal && goal.target ? ' value="' + goal.target + '"' : ' placeholder="0.00"') + '></label>' +
+      '<div class="stack">' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="goal-save"' +
+      (goal ? ' data-id="' + goal.id + '"' : '') + '>' + (goal ? 'Save' : 'Add goal') + '</button>' +
+      (goal
+        ? '<button type="button" class="btn btn-in btn-block" data-act="save-add-goal" data-id="' + goal.id + '">+ Put money toward it</button>' +
+          '<button type="button" class="btn btn-danger btn-block" data-act="goal-del" data-id="' + goal.id + '">Delete goal (money stays in savings)</button>'
+        : '') +
+      '</div>');
   }
 
   // ---- bank statement import -------------------------------------------
@@ -1498,6 +1674,14 @@
     switch (act) {
       case 'close-sheet': closeSheet(); break;
 
+      case 'toast-undo': {
+        var fn = undoFn;
+        undoFn = null;
+        el('toast').hidden = true;
+        if (fn) fn();
+        break;
+      }
+
       case 'toggle-bill': {
         var cat = S.data.categories.filter(function (c) { return c.id === Number(id); })[0];
         if (!cat) break;
@@ -1508,12 +1692,21 @@
 
       case 'edit-tx': openEditTx(id); break;
       case 'tx-save': saveTx(id); break;
-      case 'tx-delete':
-        if (confirm('Delete this transaction?')) {
-          closeSheet();
-          mutate('/transactions/' + id, { method: 'DELETE' }, 'Deleted');
-        }
+      case 'tx-delete': {
+        var deadTx = S.data.transactions.filter(function (x) { return x.id === Number(id); })[0];
+        closeSheet();
+        mutate('/transactions/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadTx) {
+            toastUndo(money(deadTx.amount) + ' ' + deadTx.category + ' deleted', function () {
+              mutate('/transactions/restore', { method: 'POST', body: {
+                category_id: deadTx.category_id, amount: deadTx.amount, note: deadTx.note,
+                person: deadTx.person, date: deadTx.date, source: deadTx.source,
+              } }, 'Restored');
+            });
+          }
+        });
         break;
+      }
 
       case 'filter-person':
         S.filters.person = node.dataset.person;
@@ -1559,9 +1752,19 @@
         mutate('/fund/deposits', { method: 'POST', body: depBody }, 'Deposit added');
         break;
       }
-      case 'del-deposit':
-        if (confirm('Delete this deposit?')) mutate('/fund/deposits/' + id, { method: 'DELETE' }, 'Deposit removed');
+      case 'del-deposit': {
+        var deadDep = S.data.fund.deposits.filter(function (x) { return x.id === Number(id); })[0];
+        mutate('/fund/deposits/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadDep) {
+            toastUndo(money(deadDep.amount) + ' deposit removed', function () {
+              mutate('/fund/deposits', { method: 'POST', body: {
+                amount: deadDep.amount, note: deadDep.note, person: deadDep.person, date: deadDep.date,
+              } }, 'Restored');
+            });
+          }
+        });
         break;
+      }
 
       case 'add-category': openAddCategory(node.dataset.kind); break;
       case 'cat-save': {
@@ -1578,10 +1781,18 @@
         break;
       }
       case 'del-category': {
-        var target = S.data.categories.filter(function (c) { return c.id === Number(id); })[0];
-        if (target && confirm('Remove "' + target.name + '"? Past transactions stay in history.')) {
-          mutate('/categories/' + id, { method: 'DELETE' }, 'Removed');
-        }
+        var deadCat = S.data.categories.concat(S.data.upcoming || [])
+          .filter(function (c) { return c.id === Number(id); })[0];
+        mutate('/categories/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadCat) {
+            toastUndo('"' + deadCat.name + '" removed', function () {
+              mutate('/categories', { method: 'POST', body: {
+                name: deadCat.name, kind: deadCat.kind, budget: deadCat.budget,
+                starts_month: deadCat.startsMonth || null,
+              } }, 'Restored');
+            });
+          }
+        });
         break;
       }
 
@@ -1599,9 +1810,19 @@
         mutate('/income', { method: 'POST', body: incBody }, 'Income added');
         break;
       }
-      case 'del-income':
-        if (confirm('Delete this income source?')) mutate('/income/' + id, { method: 'DELETE' }, 'Removed');
+      case 'del-income': {
+        var deadSrc = S.data.income.sources.filter(function (x) { return x.id === Number(id); })[0];
+        mutate('/income/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadSrc) {
+            toastUndo('"' + deadSrc.name + '" removed', function () {
+              mutate('/income', { method: 'POST', body: {
+                name: deadSrc.name, amount: deadSrc.amount, per_month: deadSrc.per_month, person: deadSrc.person,
+              } }, 'Restored');
+            });
+          }
+        });
         break;
+      }
 
       case 'pick-person': {
         QA.person = node.dataset.person;
@@ -1655,28 +1876,86 @@
       }
       case 'edit-inc': openEditIncome(id); break;
       case 'inc-entry-save': saveIncomeEntry(id); break;
-      case 'inc-entry-delete':
-        if (confirm('Delete this income entry?')) {
-          closeSheet();
-          mutate('/income/entries/' + id, { method: 'DELETE' }, 'Deleted');
-        }
+      case 'inc-entry-delete': {
+        var deadInc = S.data.income.entries.filter(function (x) { return x.id === Number(id); })[0];
+        closeSheet();
+        mutate('/income/entries/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadInc) {
+            toastUndo('+' + money(deadInc.amount) + ' ' + deadInc.label + ' deleted', function () {
+              mutate('/income/entries/restore', { method: 'POST', body: {
+                source_id: deadInc.source_id, label: deadInc.label, amount: deadInc.amount,
+                note: deadInc.note, person: deadInc.person, date: deadInc.date,
+              } }, 'Restored');
+            });
+          }
+        });
         break;
+      }
       case 'filter-type':
         S.filters.type = node.dataset.type;
         render();
         break;
 
       case 'import-open': openImport(); break;
+      case 'push-enable': enablePush(); break;
+      case 'push-disable': disablePush(); break;
+      case 'push-test':
+        api('/push/test', { method: 'POST' })
+          .then(function (out) {
+            toast(out.sent ? 'Test sent to ' + out.sent + ' phone' + (out.sent === 1 ? '' : 's') : 'No phones have reminders on yet', out.sent ? 'info' : 'error');
+          })
+          .catch(function (err) { toast(err.message, 'error'); });
+        break;
       case 'review-dismiss':
         localStorage.setItem('lfb.review.' + node.dataset.month, 'seen');
         render();
         break;
       case 'save-add': openSavings('in', node.dataset.amount || ''); break;
+      case 'save-add-goal': openSavings('in', '', node.dataset.id); break;
       case 'save-out': openSavings('out', ''); break;
       case 'sav-save': saveSavings(node.dataset.direction); break;
-      case 'save-del':
-        if (confirm('Delete this savings entry?')) mutate('/savings/entries/' + id, { method: 'DELETE' }, 'Removed');
+      case 'goal-add': openGoalSheet(null); break;
+      case 'goal-edit': {
+        var goal = S.data.savings.goals.filter(function (g) { return g.id === Number(id); })[0];
+        if (goal) openGoalSheet(goal);
         break;
+      }
+      case 'goal-save': {
+        var goalName = $('#goal-name').value.trim();
+        if (!goalName) { toast('Give it a name', 'error'); break; }
+        var goalBody = { name: goalName, target: Number($('#goal-target').value) || 0 };
+        closeSheet();
+        if (id) mutate('/savings/goals/' + id, { method: 'PUT', body: goalBody }, 'Saved');
+        else mutate('/savings/goals', { method: 'POST', body: goalBody }, 'Goal added');
+        break;
+      }
+      case 'goal-del': {
+        var deadGoal = S.data.savings.goals.filter(function (g) { return g.id === Number(id); })[0];
+        closeSheet();
+        mutate('/savings/goals/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadGoal) {
+            toastUndo('"' + deadGoal.name + '" goal deleted', function () {
+              mutate('/savings/goals', { method: 'POST', body: { name: deadGoal.name, target: deadGoal.target } }, 'Restored');
+            });
+          }
+        });
+        break;
+      }
+      case 'save-del': {
+        var deadSav = S.data.savings.entries.filter(function (x) { return x.id === Number(id); })[0];
+        mutate('/savings/entries/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadSav) {
+            toastUndo(money(Math.abs(deadSav.amount)) + ' savings entry removed', function () {
+              mutate('/savings/entries', { method: 'POST', body: {
+                amount: Math.abs(deadSav.amount),
+                direction: deadSav.amount < 0 ? 'out' : 'in',
+                note: deadSav.note, person: deadSav.person, date: deadSav.date, goal_id: deadSav.goal_id,
+              } }, 'Restored');
+            });
+          }
+        });
+        break;
+      }
       case 'imp-preview': importPreview(el('imp-text') ? el('imp-text').value : ''); break;
       case 'imp-commit': importCommit(); break;
       case 'tuneup-open': openTuneup(); break;
@@ -1770,6 +2049,23 @@
   function wireApp() {
     document.addEventListener('click', handleClick);
     document.addEventListener('change', handleChange);
+
+    // Live search in History; re-render keeps focus by restoring the value.
+    var searchTimer = null;
+    document.addEventListener('input', function (e) {
+      var node = e.target.closest ? e.target.closest('[data-act="filter-search"]') : null;
+      if (!node) return;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        S.filters.search = node.value;
+        render();
+        var again = $('[data-act="filter-search"]');
+        if (again) {
+          again.focus();
+          again.setSelectionRange(again.value.length, again.value.length);
+        }
+      }, 250);
+    });
 
     el('scrim').addEventListener('click', closeSheet);
     document.addEventListener('keydown', function (e) {

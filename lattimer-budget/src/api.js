@@ -378,6 +378,9 @@ function createApi(db) {
           overTotal: toDollars(overs.reduce((s, x) => s + Math.round(x.over * 100), 0)),
           leftover: toDollars(basis - prevSpentTotal),
           leftoverBasis: prevReceived > 0 ? 'received' : 'planned',
+          // How many budget changes the tune-up would propose right now, so
+          // the report can say "3 suggestions ready — review & accept".
+          suggestionCount: computeSuggestions().suggestions.length,
         };
       }
     }
@@ -436,12 +439,25 @@ function createApi(db) {
         balance: toDollars(savingsBalance),
         thisMonth: toDollars(savedThisMonth),
         target: toDollars(savingsTarget),
+        goals: db.prepare(`SELECT * FROM savings_goals ORDER BY sort_order, id`).all().map((g) => {
+          const saved = savingsRows
+            .filter((e) => e.goal_id === g.id)
+            .reduce((s, e) => s + e.amount_cents, 0);
+          return {
+            id: g.id,
+            name: g.name,
+            target: toDollars(g.target_cents),
+            saved: toDollars(saved),
+            pct: g.target_cents > 0 ? Math.min(100, Math.round((saved / g.target_cents) * 1000) / 10) : 0,
+          };
+        }),
         entries: savingsRows.slice(0, 12).map((e) => ({
           id: e.id,
           amount: toDollars(e.amount_cents),
           note: e.note,
           person: e.person,
           date: e.date,
+          goal_id: e.goal_id,
         })),
       },
       transactions,
@@ -969,6 +985,119 @@ function createApi(db) {
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
   });
 
+  // ---------------------------------------------------------------- push notifications
+
+  router.get('/push/vapid-key', auth, (req, res) => {
+    // Generated on first use and kept in the database — nothing to configure.
+    const { ensureVapid } = require('./push');
+    res.json({ key: ensureVapid(db) });
+  });
+
+  router.post('/push/subscribe', auth, (req, res) => {
+    const sub = req.body?.subscription;
+    if (!sub || typeof sub.endpoint !== 'string' || !sub.endpoint.startsWith('https://') || !sub.keys) {
+      throw bad('That does not look like a push subscription.');
+    }
+    db.prepare(`
+      INSERT INTO push_subscriptions (endpoint, keys_json, person, created_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (endpoint) DO UPDATE SET keys_json = excluded.keys_json, person = excluded.person
+    `).run(sub.endpoint.slice(0, 1000), JSON.stringify(sub.keys), req.person, new Date().toISOString());
+    res.status(201).json({ ok: true });
+  });
+
+  router.post('/push/unsubscribe', auth, (req, res) => {
+    const endpoint = String(req.body?.endpoint || '');
+    db.prepare(`DELETE FROM push_subscriptions WHERE endpoint = ?`).run(endpoint);
+    res.json({ ok: true });
+  });
+
+  router.post('/push/test', auth, async (req, res) => {
+    const { sendToAll } = require('./push');
+    const sent = await sendToAll(db, {
+      title: 'Lattimer Family Budget',
+      body: `Notifications are working on this account. — ${req.person}`,
+      tag: 'test',
+    });
+    res.json({ ok: true, sent });
+  });
+
+  // ---------------------------------------------------------------- restore (the undo button)
+
+  router.post('/transactions/restore', auth, (req, res) => {
+    const body = req.body || {};
+    const category = activeCategory(body.category_id);
+    const amount = readAmount(body.amount);
+    const date = readDate(body.date);
+    if (date > today()) throw bad('Cannot restore into the future.');
+    const source = ['manual', 'billpay', 'import'].includes(body.source) ? body.source : 'manual';
+    const now = new Date().toISOString();
+    const id = db.prepare(`
+      INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, import_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      category.id, amount, readNote(body.note), readPerson(body.person, req.person),
+      date, date.slice(0, 7), source, now, now,
+      typeof body.import_hash === 'string' ? body.import_hash.slice(0, 64) : null
+    ).lastInsertRowid;
+    broadcast('transaction:restored', req.person);
+    res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
+  });
+
+  router.post('/income/entries/restore', auth, (req, res) => {
+    const body = req.body || {};
+    const amount = readAmount(body.amount);
+    const date = readDate(body.date);
+    if (date > today()) throw bad('Cannot restore into the future.');
+    const source = readIncomeSource(body.source_id);
+    const now = new Date().toISOString();
+    const id = db.prepare(`
+      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, import_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      source ? source.id : null,
+      String(body.label ?? 'Income').trim().slice(0, 60) || 'Income',
+      amount, readNote(body.note), readPerson(body.person, req.person),
+      date, date.slice(0, 7), now, now,
+      typeof body.import_hash === 'string' ? body.import_hash.slice(0, 64) : null
+    ).lastInsertRowid;
+    broadcast('income:restored', req.person);
+    res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
+  });
+
+  // ---------------------------------------------------------------- savings goals
+
+  router.post('/savings/goals', auth, (req, res) => {
+    const name = readName(req.body?.name);
+    const target = readAmount(req.body?.target ?? 0, { allowNegative: true });
+    if (target < 0) throw bad('Target cannot be negative.');
+    const next = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM savings_goals`).get().n;
+    const id = db.prepare(`INSERT INTO savings_goals (name, target_cents, sort_order, created_at) VALUES (?, ?, ?, ?)`)
+      .run(name, target, next, new Date().toISOString()).lastInsertRowid;
+    broadcast('savings:goal-added', req.person);
+    res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
+  });
+
+  router.put('/savings/goals/:id', auth, (req, res) => {
+    const goal = db.prepare(`SELECT * FROM savings_goals WHERE id = ?`).get(Number(req.params.id));
+    if (!goal) throw notFound('Goal not found.');
+    const body = req.body || {};
+    const name = body.name === undefined ? goal.name : readName(body.name);
+    const target = body.target === undefined ? goal.target_cents : readAmount(body.target, { allowNegative: true });
+    if (target < 0) throw bad('Target cannot be negative.');
+    db.prepare(`UPDATE savings_goals SET name = ?, target_cents = ? WHERE id = ?`).run(name, target, goal.id);
+    broadcast('savings:goal-edited', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  router.delete('/savings/goals/:id', auth, (req, res) => {
+    const goal = db.prepare(`SELECT * FROM savings_goals WHERE id = ?`).get(Number(req.params.id));
+    if (!goal) throw notFound('Goal not found.');
+    // Entries keep their money; they just lose the label.
+    db.prepare(`DELETE FROM savings_goals WHERE id = ?`).run(goal.id);
+    broadcast('savings:goal-removed', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
   // ---------------------------------------------------------------- savings
 
   router.post('/savings/entries', auth, (req, res) => {
@@ -979,9 +1108,15 @@ function createApi(db) {
     if (date > today()) throw bad('Savings entries cannot be in the future.');
     const person = readPerson(body.person, req.person);
     const note = readNote(body.note);
+    let goalId = null;
+    if (body.goal_id !== undefined && body.goal_id !== null && body.goal_id !== '') {
+      const goal = db.prepare(`SELECT id FROM savings_goals WHERE id = ?`).get(Number(body.goal_id));
+      if (!goal) throw notFound('Goal not found.');
+      goalId = goal.id;
+    }
     const id = db.prepare(`
-      INSERT INTO savings_entries (amount_cents, note, person, date, created_at) VALUES (?, ?, ?, ?, ?)
-    `).run(signed, note, person, date, new Date().toISOString()).lastInsertRowid;
+      INSERT INTO savings_entries (amount_cents, note, person, date, created_at, goal_id) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(signed, note, person, date, new Date().toISOString(), goalId).lastInsertRowid;
     broadcast(signed >= 0 ? 'savings:added' : 'savings:withdrawn', req.person);
     res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
   });
@@ -1140,7 +1275,7 @@ function createApi(db) {
 
   // ---------------------------------------------------------------- budget tune-up
 
-  router.get('/budget/suggestions', auth, (req, res) => {
+  function computeSuggestions() {
     const cur = currentMonth();
     const pastMonths = q.months.all()
       .map((r) => r.month)
@@ -1177,7 +1312,7 @@ function createApi(db) {
       .reduce((s, c) => s + c.budget_cents, 0);
     const suggestedTotal = currentTotal + suggestions.reduce((s, x) => s + Math.round(x.delta * 100), 0);
 
-    res.json({
+    return {
       monthsConsidered: pastMonths,
       suggestions,
       totals: {
@@ -1185,7 +1320,11 @@ function createApi(db) {
         current: toDollars(currentTotal),
         ifAllApplied: toDollars(suggestedTotal),
       },
-    });
+    };
+  }
+
+  router.get('/budget/suggestions', auth, (req, res) => {
+    res.json(computeSuggestions());
   });
 
   router.post('/budget/apply', auth, (req, res) => {

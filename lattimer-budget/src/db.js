@@ -149,7 +149,27 @@ function migrate(db) {
       date         TEXT NOT NULL,
       created_at   TEXT NOT NULL
     );
+
+    -- Named savings goals ("Christmas", "Emergency fund").
+    CREATE TABLE IF NOT EXISTS savings_goals (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      target_cents INTEGER NOT NULL DEFAULT 0,
+      sort_order   INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL
+    );
+
+    -- One row per phone that turned on notifications.
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      endpoint   TEXT PRIMARY KEY,
+      keys_json  TEXT NOT NULL,
+      person     TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
+
+  // Savings entries can belong to a named goal.
+  addColumnIfMissing(db, 'savings_entries', 'goal_id', 'INTEGER REFERENCES savings_goals(id) ON DELETE SET NULL');
 }
 
 function seedOnce(db) {

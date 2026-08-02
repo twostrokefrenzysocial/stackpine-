@@ -8,6 +8,7 @@ const path = require('path');
 const express = require('express');
 const { open, DEFAULT_DB_PATH } = require('./src/db');
 const { createApi } = require('./src/api');
+const { startScheduler } = require('./src/push');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DB_PATH = process.env.DB_PATH || DEFAULT_DB_PATH;
@@ -61,6 +62,7 @@ function createApp(db) {
 function start() {
   const db = open(DB_PATH);
   const app = createApp(db);
+  startScheduler(db); // daily bill reminders + month-report pushes
   const server = app.listen(PORT, () => {
     console.log(`Lattimer Family Budget listening on :${PORT}`);
     console.log(`  database: ${DB_PATH}`);

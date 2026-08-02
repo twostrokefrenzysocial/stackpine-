@@ -625,6 +625,27 @@ select.input {
 /* Month report card */
 .review-card { border-left: 4px solid var(--orange); }
 
+/* Undo toast */
+.toast-undo {
+  margin-left: 10px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* Per-person totals in History */
+.who-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; }
+.who-total { display: flex; align-items: center; gap: 10px; }
+.who-total b { display: block; font-size: 14px; }
+.who-total .small { display: block; }
+
+/* Savings goals */
+.goal { padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 10px; cursor: pointer; }
+.goal:focus { outline: 2px solid var(--navy-soft); border-radius: 8px; }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

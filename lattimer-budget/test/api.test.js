@@ -1108,6 +1108,138 @@ test('the savings goal is settable and survives in state', async () => {
   assert.equal(clear.body.state.savings.target, 0);
 });
 
+// ---------------------------------------------------------------- savings goals
+
+test('goals: create, fund, progress, delete keeps the money', async () => {
+  const goal = await call('/api/savings/goals', { method: 'POST', body: { name: 'Christmas', target: 600 } });
+  assert.equal(goal.status, 201);
+  const g = goal.body.state.savings.goals.find((x) => x.name === 'Christmas');
+  assert.equal(g.target, 600);
+  assert.equal(g.saved, 0);
+
+  const put = await call('/api/savings/entries', { method: 'POST', body: { amount: 150, goal_id: g.id, note: 'first' } });
+  const funded = put.body.state.savings.goals.find((x) => x.id === g.id);
+  assert.equal(funded.saved, 150);
+  assert.equal(funded.pct, 25);
+  assert.equal(put.body.state.savings.balance, 150, 'goal money counts in the overall balance');
+
+  const renamed = await call(`/api/savings/goals/${g.id}`, { method: 'PUT', body: { target: 300 } });
+  assert.equal(renamed.body.state.savings.goals.find((x) => x.id === g.id).pct, 50);
+
+  const del = await call(`/api/savings/goals/${g.id}`, { method: 'DELETE' });
+  assert.equal(del.status, 200);
+  assert.equal(del.body.state.savings.goals.length, 0);
+  assert.equal(del.body.state.savings.balance, 150, 'deleting a goal never deletes money');
+
+  // unknown goal on an entry is refused
+  const badEntry = await call('/api/savings/entries', { method: 'POST', body: { amount: 10, goal_id: 424242 } });
+  assert.equal(badEntry.status, 404);
+
+  // cleanup
+  const s = await state();
+  for (const e of s.savings.entries) await call(`/api/savings/entries/${e.id}`, { method: 'DELETE' });
+});
+
+// ---------------------------------------------------------------- restore (undo)
+
+test('a deleted transaction can be restored, even an imported one in a closed month', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  const last = monthOf(-1);
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: `${last}-09`, description: 'RESTORE ME', amount: 12.5, direction: 'out', category_id: groceriesId }] },
+  });
+  assert.equal(commit.body.added, 1);
+  // the commit reply carries the current month; the row lives in last month
+  const tx = (await call(`/api/state?month=${last}`)).body.transactions.find((x) => x.note === 'RESTORE ME');
+  assert.ok(tx, 'imported row found in last month');
+
+  const del = await call(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+  assert.equal(del.status, 200);
+
+  const restored = await call('/api/transactions/restore', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 12.5, note: 'RESTORE ME', person: tx.person, date: `${last}-09`, source: 'import' },
+  });
+  assert.equal(restored.status, 201);
+  const back = restored.body.state.transactions.find((x) => x.note === 'RESTORE ME');
+  assert.ok(back);
+  assert.equal(back.source, 'import');
+
+  await call(`/api/transactions/${back.id}`, { method: 'DELETE' });
+});
+
+test('a deleted income entry can be restored', async () => {
+  const made = await call('/api/income/entries', { method: 'POST', body: { amount: 77, label: 'undo me' } });
+  await call(`/api/income/entries/${made.body.id}`, { method: 'DELETE' });
+  const restored = await call('/api/income/entries/restore', {
+    method: 'POST',
+    body: { amount: 77, label: 'undo me', person: 'Chris', date: (await state()).today },
+  });
+  assert.equal(restored.status, 201);
+  const back = restored.body.state.income.entries.find((e) => e.label === 'undo me');
+  assert.equal(back.amount, 77);
+  await call(`/api/income/entries/${back.id}`, { method: 'DELETE' });
+});
+
+// ---------------------------------------------------------------- push
+
+test('push: vapid key, subscribe, unsubscribe', async () => {
+  const key = await call('/api/push/vapid-key');
+  assert.equal(key.status, 200);
+  assert.ok(key.body.key.length > 60);
+  const key2 = await call('/api/push/vapid-key');
+  assert.equal(key2.body.key, key.body.key, 'the key is stable across calls');
+
+  const sub = await call('/api/push/subscribe', {
+    method: 'POST',
+    body: { subscription: { endpoint: 'https://push.example/abc123', keys: { p256dh: 'x', auth: 'y' } } },
+  });
+  assert.equal(sub.status, 201);
+
+  const junk = await call('/api/push/subscribe', { method: 'POST', body: { subscription: { endpoint: 'http://insecure' } } });
+  assert.equal(junk.status, 400);
+
+  const bye = await call('/api/push/unsubscribe', { method: 'POST', body: { endpoint: 'https://push.example/abc123' } });
+  assert.equal(bye.status, 200);
+});
+
+test('the due-bill digest only counts unpaid dated bills', async () => {
+  const { computeDueDigest } = require('../src/push');
+  const s = await state();
+  const gas = byName(s.categories, 'Natural gas');
+  assert.equal(computeDueDigest(db), null, 'no due days set, nothing to say');
+
+  const dayToday = Number(s.today.slice(8, 10));
+  await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: dayToday } });
+  const digest = computeDueDigest(db);
+  assert.ok(digest, 'a bill due today makes the digest');
+  assert.match(digest.body, /Natural gas/);
+
+  await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(computeDueDigest(db), null, 'paying it clears the digest');
+
+  await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: null } });
+});
+
+test('the review counts pending suggestions for its accept button', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+
+  const last = monthOf(-1);
+  const spend = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 843.4, date: `${last}-15` },
+  });
+  const s = await state();
+  assert.ok(s.review, 'review present');
+  assert.ok(s.review.suggestionCount >= 1, 'the groceries suggestion is counted');
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+});
+
 // ---------------------------------------------------------------- budget tune-up
 
 test('budget suggestions come from past-month actuals', async (t) => {
@@ -1211,7 +1343,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v5'],
+    ['/sw.js', 'lfb-v6'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

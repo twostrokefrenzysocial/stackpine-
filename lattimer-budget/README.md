@@ -42,6 +42,17 @@ the data; the phones install it straight from the browser, no app store.
   spending budget to your actual spending over the last few closed months and
   proposes new numbers (nearest $5), with a running check against income. You pick
   which suggestions to apply; past months keep their snapshots.
+- **Reminders on the lock screen** — Settings → Reminders → Turn on (per phone). A
+  morning push when bills are due within two days or overdue, and a nudge when a new
+  month's report is ready. VAPID keys generate themselves on first use and live in
+  the database; nothing to configure. iPhone requires iOS 16.4+ and the app installed
+  to the home screen.
+- **Undo everywhere** — deleting anything shows a 6-second Undo toast instead of an
+  "are you sure?" dialog.
+- **Search & who-spent-what** — History has a search box and per-person totals for
+  whatever filter is active.
+- **Named savings goals** — "Christmas", "Emergency fund" — each with its own target
+  and progress bar on the Plan tab, funded from the same savings ledger.
 - **Real-time** — one phone adds something, the other updates in well under a second
   over Server-Sent Events, with 15-second polling as a fallback.
 - **History tab** — this month's transactions newest first, filter by category and
