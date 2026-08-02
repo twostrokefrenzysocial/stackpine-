@@ -384,6 +384,8 @@ select.input {
   font-weight: 800;
 }
 .bill[aria-pressed="true"] .bill-box { background: var(--ok); border-color: var(--ok); color: #fff; }
+/* A per-payday bill partway through the month: shows how many are in. */
+.bill-box-partial { background: var(--warn-bg); border-color: var(--warn) !important; color: var(--warn) !important; font-size: 14px; }
 .bill-name { flex: 1; font-weight: 600; }
 .bill[aria-pressed="true"] .bill-name { color: var(--muted); text-decoration: line-through; }
 .bill-amt { font-weight: 700; white-space: nowrap; }

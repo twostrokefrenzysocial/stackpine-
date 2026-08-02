@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 11;
+  var APP_VERSION = 12;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -566,13 +566,14 @@
 
   /** Human wording for a bill's due date: "Overdue by 2 days", "Due Fri the 15th". */
   function dueText(c) {
-    if (!c.dueDay) return '';
+    if (!c.dueDay && !c.dueDate) return '';
     if (c.dueStatus === 'overdue') {
       var late = Math.abs(c.dueIn);
       return 'Overdue by ' + late + (late === 1 ? ' day' : ' days');
     }
     if (c.dueStatus === 'today') return 'Due today';
     if (c.dueStatus === 'soon') return 'Due in ' + c.dueIn + (c.dueIn === 1 ? ' day' : ' days');
+    if (!c.dueDay && c.dueDate) return 'Due ' + monthDay(c.dueDate);
     return 'Due the ' + ordinal(c.dueDay);
   }
 
@@ -584,19 +585,27 @@
 
   function billChecklistRow(c, d) {
     var extra = '';
-    if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
+    if (c.cadence === 'payday' && !c.paid) {
+      var due = c.dueStatus ? ' · ' + dueText(c) : '';
+      extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
+        esc(c.paidCount + ' of ' + c.expected + ' paydays paid' + due) + '</span>';
+    } else if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
       extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
-    } else if (!c.paid && c.spent > 0) {
+    } else if (!c.paid && c.spent > 0 && c.cadence !== 'payday') {
       extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
-    } else if (c.dueDay) {
+    } else if (!c.paid && c.dueDay) {
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
         esc(dueText(c)) + '</span>';
     }
+    var amt = c.cadence === 'payday'
+      ? money(c.perPay, { cents: false }) + ' ×' + c.expected
+      : money(c.budget, { cents: false });
     return '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
       ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
-      '<span class="bill-box" aria-hidden="true">✓</span>' +
+      '<span class="bill-box' + (c.cadence === 'payday' && c.paidCount > 0 && !c.paid ? ' bill-box-partial' : '') + '" aria-hidden="true">' +
+      (c.cadence === 'payday' && c.paidCount > 0 && !c.paid ? c.paidCount : '✓') + '</span>' +
       '<span class="bill-name">' + esc(c.name) + (c.archived ? ' <span class="badge">closed</span>' : '') + extra + '</span>' +
-      '<span class="bill-amt">' + money(c.budget, { cents: false }) + '</span>' +
+      '<span class="bill-amt">' + amt + '</span>' +
       '</button>';
   }
 
@@ -1096,16 +1105,22 @@
     var note = c.startsMonth
       ? '<span class="muted small"> · starts ' + esc(monthLabel(c.startsMonth)) + '</span>'
       : '';
+    var isPayday = c.cadence === 'payday';
     return '<div class="edit-card">' +
       '<div class="edit-card-name">' + esc(c.name) + note + '</div>' +
-      '<div class="edit-card-controls">' +
-      '<label class="mini"><span>Amount</span>' +
-      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + c.budget +
+      '<div class="edit-card-controls edit-card-3">' +
+      '<label class="mini"><span>' + (isPayday ? 'Per payday' : 'Amount') + '</span>' +
+      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (isPayday ? c.perPay : c.budget) +
       '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '"></label>' +
+      '<label class="mini"><span>Repeats</span>' +
+      '<select class="input" data-act="bill-cadence" data-id="' + c.id + '" aria-label="How ' + esc(c.name) + ' repeats">' +
+      '<option value="monthly"' + (isPayday ? '' : ' selected') + '>monthly</option>' +
+      '<option value="payday"' + (isPayday ? ' selected' : '') + '>every payday</option>' +
+      '</select></label>' +
       '<label class="mini"><span>Due day</span>' +
-      '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="31" placeholder="—" value="' +
-      (c.dueDay == null ? '' : c.dueDay) +
-      '" data-act="due-day" data-id="' + c.id + '" aria-label="Day of month ' + esc(c.name) + ' is due"></label>' +
+      '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="31" placeholder="' + (isPayday ? 'auto' : '—') + '" value="' +
+      (c.dueDay == null ? '' : c.dueDay) + '"' + (isPayday ? ' disabled' : '') +
+      ' data-act="due-day" data-id="' + c.id + '" aria-label="Day of month ' + esc(c.name) + ' is due"></label>' +
       '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id +
       '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
       '</div></div>';
@@ -2131,6 +2146,9 @@
       }
       mutate('/categories/' + id, { method: 'PUT', body: { due_day: raw === '' ? null : Number(raw) } },
         raw === '' ? 'Due date cleared' : 'Due date set');
+    } else if (act === 'bill-cadence') {
+      mutate('/categories/' + id, { method: 'PUT', body: { cadence: node.value } },
+        node.value === 'payday' ? 'Now repeats every payday' : 'Now monthly');
     } else if (act === 'income-payday') {
       mutate('/income/' + id, { method: 'PUT', body: { next_date: node.value || null } },
         node.value ? 'Payday set' : 'Payday cleared');

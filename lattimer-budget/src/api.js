@@ -146,17 +146,42 @@ function createApi(db) {
       .reduce((sum, s) => sum + s.amount_cents * s.per_month, 0);
   }
 
+  /** Every distinct payday date falling inside a month, across all sources. */
+  function paydaysInMonth(month) {
+    const monthEnd = lastDayOfMonth(month);
+    const dates = new Set();
+    for (const s of q.incomeSources.all()) {
+      if (!s.next_date) continue;
+      let d = nextOccurrence(s.next_date, s.cadence || 'biweekly', `${month}-01`);
+      let guard = 0;
+      while (d && d <= monthEnd && guard++ < 10) {
+        if (d >= `${month}-01`) dates.add(d);
+        // next occurrence strictly after d, keeping the original anchor
+        d = nextOccurrence(s.next_date, s.cadence || 'biweekly', addDays(d, 1));
+      }
+    }
+    return [...dates].sort();
+  }
+
+  /** How many payments a per-payday bill makes in a month (at least one). */
+  function paydayCount(month) {
+    return Math.max(1, paydaysInMonth(month).length);
+  }
+
   /** Keep the current month's snapshot in step with live settings. */
   const syncCurrentMonth = db.transaction((month) => {
     for (const c of q.categories.all()) {
       // A bill scheduled to begin later stays off the budget until its month.
       if (c.starts_month && c.starts_month > month) continue;
+      // Per-payday bills budget their per-payment amount times the month's
+      // paydays: $200 tithe → $400 normally, $600 in a three-check month.
+      const budget = c.cadence === 'payday' ? c.budget_cents * paydayCount(month) : c.budget_cents;
       q.upsertMonthRow.run({
         month,
         category_id: c.id,
         name: c.name,
         kind: c.kind,
-        budget_cents: c.budget_cents,
+        budget_cents: budget,
         sort_order: c.sort_order,
       });
     }
@@ -207,20 +232,30 @@ function createApi(db) {
       }));
 
     const dueDays = new Map(live.filter((c) => c.due_day).map((c) => [c.id, c.due_day]));
+    const liveById = new Map(live.map((c) => [c.id, c]));
     const isCurrent = month === currentMonth();
+    const monthPaydays = paydaysInMonth(month);
 
     const categories = q.monthRows.all(month).map((row) => {
       const spent = spentMap.get(row.category_id) ?? 0;
       const budget = row.budget_cents;
       const pct = budget > 0 ? (spent / budget) * 100 : spent > 0 ? 101 : 0;
       const paidRow = paidMap.get(row.category_id);
+      const liveCat = liveById.get(row.category_id);
+      const isPayday = liveCat?.cadence === 'payday' && row.kind === 'fixed';
+
+      // Per-payday bills complete over several payments in the month.
+      const expected = isPayday ? Math.max(1, monthPaydays.length) : 1;
+      const paidCount = paidRow ? paidRow.n : 0;
+      const fullyPaid = isPayday ? paidCount >= expected : Boolean(paidRow);
 
       // Due-date state, only meaningful for an unpaid bill in the live month.
       const dueDay = dueDays.get(row.category_id) ?? null;
-      const dueDate = dueDay ? dueDateIn(month, dueDay) : null;
+      let dueDate = dueDay ? dueDateIn(month, dueDay) : null;
+      if (isPayday) dueDate = monthPaydays[Math.min(paidCount, monthPaydays.length - 1)] ?? null;
       let dueIn = null;
       let dueStatus = null;
-      if (dueDate && isCurrent && !paidRow) {
+      if (dueDate && isCurrent && !fullyPaid) {
         dueIn = daysUntil(dueDate);
         dueStatus = dueIn < 0 ? 'overdue' : dueIn === 0 ? 'today' : dueIn <= 3 ? 'soon' : 'later';
       }
@@ -229,6 +264,10 @@ function createApi(db) {
         id: row.category_id,
         name: row.name,
         kind: row.kind,
+        cadence: isPayday ? 'payday' : null,
+        perPay: isPayday ? toDollars(liveCat.budget_cents) : null,
+        expected: isPayday ? expected : null,
+        paidCount,
         dueDay,
         dueDate,
         dueIn,
@@ -241,7 +280,7 @@ function createApi(db) {
         // A category retired mid-month keeps showing while it still holds
         // spending, so the dashboard total always matches History.
         archived: !liveIds.has(row.category_id),
-        paid: row.kind === 'fixed' ? Boolean(paidRow) : undefined,
+        paid: row.kind === 'fixed' ? fullyPaid : undefined,
         paidAmount: paidRow ? toDollars(paidRow.paid_cents) : undefined,
       };
     });
@@ -626,6 +665,13 @@ function createApi(db) {
     }
   }
 
+  function readBillCadence(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '' || value === 'monthly') return null;
+    if (value !== 'payday') throw bad('Bill cadence must be monthly or payday.');
+    return 'payday';
+  }
+
   function readDueDay(value) {
     if (value === undefined) return undefined;
     if (value === null || value === '') return null;
@@ -726,7 +772,28 @@ function createApi(db) {
     if (date.slice(0, 7) !== month) throw bad('That date is not in the month being paid.');
     requireMonthWritable(date);
 
-    if (paid) {
+    const isPayday = category.cadence === 'payday';
+    const now = new Date().toISOString();
+
+    if (isPayday) {
+      // Per-payday bills accumulate one payment per tap, up to the month's
+      // payday count; untapping removes the most recent payment.
+      const expected = paydayCount(month);
+      const existing = db.prepare(`
+        SELECT id FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay' ORDER BY id DESC
+      `).all(month, category.id);
+      if (paid) {
+        if (existing.length >= expected) throw bad('Every payday payment is already recorded this month.');
+        const amount = req.body?.amount === undefined ? category.budget_cents : readAmount(req.body.amount);
+        if (amount <= 0) throw bad('Set a per-payday amount for this bill first.');
+        db.prepare(`
+          INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at)
+          VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?)
+        `).run(category.id, amount, req.person, date, month, now, now);
+      } else if (existing.length) {
+        db.prepare(`DELETE FROM transactions WHERE id = ?`).run(existing[0].id);
+      }
+    } else if (paid) {
       const snapshot = db
         .prepare(`SELECT budget_cents FROM month_budgets WHERE month = ? AND category_id = ?`)
         .get(month, category.id);
@@ -734,7 +801,6 @@ function createApi(db) {
         ? snapshot?.budget_cents ?? category.budget_cents
         : readAmount(req.body.amount);
       if (amount <= 0) throw bad('Set a budget for this bill before marking it paid.');
-      const now = new Date().toISOString();
       db.transaction(() => {
         db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
           .run(month, category.id);
@@ -763,6 +829,7 @@ function createApi(db) {
 
     const startsMonth = readStartsMonth(body.starts_month) ?? null;
     const dueDay = readDueDay(body.due_day) ?? null;
+    const newCadence = readBillCadence(body.cadence) ?? null;
 
     const clash = db.prepare(`SELECT id, archived FROM categories WHERE name = ?`).get(name);
     if (clash && !clash.archived) throw bad('A category with that name already exists.');
@@ -770,9 +837,9 @@ function createApi(db) {
     let id;
     if (clash) {
       db.prepare(`
-        UPDATE categories SET archived = 0, kind = ?, budget_cents = ?, starts_month = ?, due_day = ?
+        UPDATE categories SET archived = 0, kind = ?, budget_cents = ?, starts_month = ?, due_day = ?, cadence = ?
         WHERE id = ?
-      `).run(kind, budget, startsMonth, dueDay, clash.id);
+      `).run(kind, budget, startsMonth, dueDay, newCadence, clash.id);
       id = clash.id;
     } else {
       const next = db
@@ -780,10 +847,10 @@ function createApi(db) {
         .get(kind).n;
       id = db
         .prepare(`
-          INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month, due_day)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month, due_day, cadence)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `)
-        .run(name, kind, budget, next, startsMonth, dueDay).lastInsertRowid;
+        .run(name, kind, budget, next, startsMonth, dueDay, newCadence).lastInsertRowid;
     }
 
     broadcast('category:add', req.person);
@@ -805,14 +872,16 @@ function createApi(db) {
     const startsMonth = startsRaw === undefined ? category.starts_month : startsRaw;
     const dueRaw = readDueDay(body.due_day);
     const dueDay = dueRaw === undefined ? category.due_day : dueRaw;
+    const cadenceRaw = readBillCadence(body.cadence);
+    const cadence = cadenceRaw === undefined ? category.cadence : cadenceRaw;
 
     const clash = db.prepare(`SELECT id FROM categories WHERE name = ? AND id != ?`).get(name, category.id);
     if (clash) throw bad('A category with that name already exists.');
 
     db.prepare(`
-      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?
       WHERE id = ?
-    `).run(name, budget, kind, startsMonth, dueDay, category.id);
+    `).run(name, budget, kind, startsMonth, dueDay, cadence, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });

@@ -194,7 +194,15 @@ const KEYWORD_GUESSES = [
   { match: /CREDIT ACCEPT/, category: 'Truck (Credit Acceptance)' },
   { match: /LENDMARK/, category: 'Dirt bike (Lendmark)' },
   { match: /CHURCH|TITHE|GIVING|RIVERTREE/, category: 'Church giving' },
-  { match: /NETFLIX|HULU|SPOTIFY|DISNEY|PARAMOUNT|PEACOCK|MAX\b|APPLE COM|PRIME VIDEO|BITWARDEN|KINDLE|RING (SOLO|BASIC|PROTECT)|PESTIE|FABLETICS|SUBSCRIPTION/, category: 'Subscriptions' },
+  // Individual subscription line items (specific before the generic bucket).
+  { match: /APPLE COM/, category: 'Apple services' },
+  { match: /DISNEY ?PLUS|DISNEY\b/, category: 'Disney+' },
+  { match: /PESTIE/, category: 'Pestie' },
+  { match: /FABLETICS/, category: 'Fabletics' },
+  { match: /KINDLE/, category: 'Kindle Unlimited' },
+  { match: /BITWARDEN/, category: 'Bitwarden' },
+  { match: /RING (SOLO|BASIC|PROTECT|MONTHLY)/, category: 'Ring' },
+  { match: /NETFLIX|HULU|SPOTIFY|PARAMOUNT|PEACOCK|MAX\b|PRIME VIDEO|SUBSCRIPTION/, category: 'Subscriptions' },
 ];
 
 function keywordGuess(description) {

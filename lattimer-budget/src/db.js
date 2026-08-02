@@ -173,6 +173,9 @@ function migrate(db) {
   // Payday tracking: the next expected check date and how often it repeats.
   addColumnIfMissing(db, 'income_sources', 'next_date', 'TEXT');
   addColumnIfMissing(db, 'income_sources', 'cadence', 'TEXT');
+  // Bills that repeat every payday instead of once a month (tithing). For
+  // these, budget_cents is the PER-PAYMENT amount.
+  addColumnIfMissing(db, 'categories', 'cadence', 'TEXT');
 }
 
 function seedOnce(db) {
@@ -227,6 +230,20 @@ function applyDataMigrations(db) {
       if (migration.paydays) {
         db.prepare(`UPDATE income_sources SET next_date = ?, cadence = ? WHERE next_date IS NULL`)
           .run(migration.paydays.next_date, migration.paydays.cadence);
+      }
+      if (migration.billCadence) {
+        db.prepare(`UPDATE categories SET cadence = ?, budget_cents = ? WHERE name = ? AND archived = 0`)
+          .run(migration.billCadence.cadence, Math.round(migration.billCadence.perPay * 100), migration.billCadence.name);
+      }
+      if (migration.split) {
+        db.prepare(`UPDATE categories SET archived = 1 WHERE name = ?`).run(migration.split.archive);
+        for (const [name, dollars] of migration.split.categories) {
+          const exists = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(name);
+          if (exists) continue;
+          const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = 'variable'`).get().n;
+          db.prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order) VALUES (?, 'variable', ?, ?)`)
+            .run(name, Math.round(dollars * 100), order);
+        }
       }
       const spec = migration.category;
       if (spec) {

@@ -66,6 +66,30 @@ const DATA_MIGRATIONS = [
     paydays: { next_date: '2026-08-07', cadence: 'biweekly' },
   },
   {
+    // Tithing comes out every payday Friday, not once a month: $200 per
+    // check ($400 in a normal month, $600 when a third payday lands).
+    key: '2026-08-tithe-per-payday',
+    billCadence: { name: 'Church giving', cadence: 'payday', perPay: 200 },
+  },
+  {
+    // Their real subscriptions, split into individual tracked line items
+    // (amounts mined from seven months of statements). The old lump
+    // "Subscriptions" bill is archived; its history stays.
+    key: '2026-08-split-subscriptions',
+    split: {
+      archive: 'Subscriptions',
+      categories: [
+        ['Apple services', 45],
+        ['Disney+', 14],
+        ['Pestie', 15],
+        ['Fabletics', 12],
+        ['Kindle Unlimited', 5],
+        ['Bitwarden', 3],
+        ['Ring', 3],
+      ],
+    },
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

@@ -81,8 +81,10 @@ test('a tampered token is rejected', async () => {
 
 test('seed data loads once with the expected shape', async () => {
   const s = await state();
-  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 16);
-  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 7);
+  // 15 active fixed (Subscriptions is archived into split line items),
+  // 14 variable (7 seed + 7 individual subscriptions)
+  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 15);
+  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 14);
   assert.equal(s.income.total, 7638);
   assert.equal(s.totals.income, 7638);
   assert.equal(byName(s.categories, 'Mortgage (Rocket)').budget, 1004);
@@ -100,7 +102,7 @@ test('re-opening the database does not re-seed', () => {
   const again = open(dbPath);
   const count = again.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
   again.close();
-  assert.equal(count, 24); // 16 fixed + the scheduled student loan + 7 variable
+  assert.equal(count, 31); // 16 fixed (incl archived Subscriptions) + loan + 7 variable + 7 subscription items
 });
 
 // ---------------------------------------------------------------- transactions
@@ -252,7 +254,7 @@ test('a past month renders read-only with its own snapshot', async (t) => {
   assert.equal(res.body.readOnly, true);
   assert.equal(res.body.month, monthOf(-1));
   assert.equal(res.body.transactions.length, 0);
-  assert.equal(res.body.categories.length, 23);
+  assert.equal(res.body.categories.length, 29);
 });
 
 // ---------------------------------------------------------------- back-dating grace
@@ -749,6 +751,75 @@ test('the payday nudge fires on the day and only on the day', async () => {
   if (chrisNext !== (await state()).today && miriamNext !== (await state()).today) {
     assert.equal(off, null, 'no payday, no nudge');
   }
+});
+
+// ---------------------------------------------------------------- per-payday bills & split subscriptions
+
+test('tithing repeats every payday: $200 per check, month budget follows the payday count', async () => {
+  const s = await state();
+  const tithe = byName(s.categories, 'Church giving');
+  assert.equal(tithe.cadence, 'payday');
+  assert.equal(tithe.perPay, 200);
+  assert.ok(tithe.expected >= 2, 'biweekly from Aug 7 means at least 2 paydays a month');
+  assert.equal(tithe.budget, 200 * tithe.expected, 'monthly budget = per-pay × paydays');
+  assert.equal(tithe.paid, false);
+  assert.equal(tithe.paidCount, 0);
+
+  // first tap: one payday paid, bill not complete
+  const one = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+  let now = byName(one.body.state.categories, 'Church giving');
+  assert.equal(now.paidCount, 1);
+  assert.equal(now.paid, false, 'one of two paydays is not done');
+  assert.equal(now.spent, 200);
+
+  // second tap completes it; a third is refused
+  await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+  const s2 = await state();
+  now = byName(s2.categories, 'Church giving');
+  if (now.expected === 2) {
+    assert.equal(now.paid, true);
+    assert.equal(now.spent, 400);
+    const extra = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: true } });
+    assert.equal(extra.status, 400, 'cannot overpay the payday count');
+  }
+
+  // untap removes one payment at a time
+  const undo = await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: false } });
+  now = byName(undo.body.state.categories, 'Church giving');
+  assert.equal(now.paidCount, 1);
+  assert.equal(now.spent, 200);
+  await call(`/api/bills/${tithe.id}/pay`, { method: 'POST', body: { paid: false } });
+  assert.equal(byName((await state()).categories, 'Church giving').spent, 0);
+});
+
+test('a bill can be switched between monthly and payday cadence', async () => {
+  const s = await state();
+  const gas = byName(s.categories, 'Natural gas');
+  const flip = await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { cadence: 'payday' } });
+  assert.equal(byName(flip.body.state.categories, 'Natural gas').cadence, 'payday');
+  const back = await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { cadence: 'monthly' } });
+  assert.equal(byName(back.body.state.categories, 'Natural gas').cadence, null);
+  const junk = await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { cadence: 'fortnightly' } });
+  assert.equal(junk.status, 400);
+});
+
+test('subscriptions are split into individual line items', async () => {
+  const s = await state();
+  assert.equal(byName(s.categories, 'Subscriptions'), undefined, 'the lump category is archived');
+  for (const [name, budget] of [['Apple services', 45], ['Disney+', 14], ['Pestie', 15], ['Kindle Unlimited', 5], ['Bitwarden', 3]]) {
+    const c = byName(s.categories, name);
+    assert.ok(c, name + ' exists');
+    assert.equal(c.kind, 'variable', name + ' tracks itself from imports');
+    assert.equal(c.budget, budget);
+  }
+
+  // the matcher files each service into its own line
+  const { keywordGuess } = require('../src/import');
+  assert.equal(keywordGuess('APPLE.COM/BILL 866-712-7753'), 'Apple services');
+  assert.equal(keywordGuess('DISNEY PLUS 888-905-7888'), 'Disney+');
+  assert.equal(keywordGuess('SP PESTIE INC'), 'Pestie');
+  assert.equal(keywordGuess('KINDLE UNLTD*2K4EA35'), 'Kindle Unlimited');
+  assert.equal(keywordGuess('NETFLIX.COM'), 'Subscriptions', 'unsplit services still hit the bucket');
 });
 
 // ---------------------------------------------------------------- income received
@@ -1509,7 +1580,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v11'],
+    ['/sw.js', 'lfb-v12'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {
