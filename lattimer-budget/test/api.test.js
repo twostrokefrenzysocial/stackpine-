@@ -991,6 +991,14 @@ test('a PDF statement previews with sections, years and directions right', async
     'Banking/Debit Card Withdrawals and Purchases',
     `${mm}/03 KROGER #945 CINCINNATI OH 82.13`,
     `${mm}/05 SPEEDWAY 08123 HILLSBORO OH 45.00`,
+    `${mm}/06 61.20 GETGO FUEL 4412 HILLSBORO`,                       // amount before description
+    `${mm}/07 DOLLAR GENERAL 2210 12.50 1,204.33`,                     // trailing running balance
+    `${mm}/09 AUTOZONE 4118 33.10 ${mm}/10 WENDYS 887 9.87`,           // two merged onto one line
+    `${mm}/11 POS PURCHASE KROGER ${mm}/10 55.00`,                     // embedded posting date
+    'Checks and Other Deductions',
+    `1024 ${mm}/12 250.00`,                                            // check number before the date
+    'Daily Balance Detail',
+    `${mm}/01 5,000.00 ${mm}/02 4,900.00`,                             // balances, not transactions
     'Deposits and Other Additions',
     `${mm}/02 DIRECT DEP PAYROLL COMPANY 1,502.75`,
   ]);
@@ -998,19 +1006,41 @@ test('a PDF statement previews with sections, years and directions right', async
   const res = await call('/api/import/preview', { method: 'POST', body: { pdf: pdf.toString('base64') } });
   assert.equal(res.status, 200);
   assert.equal(res.body.format, 'pdf');
-  assert.equal(res.body.rows.length, 3);
+  assert.equal(res.body.rows.length, 9, 'all 8 spends + 1 deposit, no balance rows');
 
   const s = await state();
-  const kroger = res.body.rows.find((r) => /KROGER/.test(r.description));
+  const kroger = res.body.rows.find((r) => /KROGER #945/.test(r.description));
   assert.equal(kroger.date, `${last}-03`, 'year inferred from the statement period');
   assert.equal(kroger.direction, 'out');
   assert.equal(kroger.amount, 82.13);
-  assert.ok(kroger.category_id, 'kroger gets a category guess');
+  assert.equal(byName(s.categories, 'Groceries').id, kroger.category_id);
+
+  const getgo = res.body.rows.find((r) => /GETGO/.test(r.description));
+  assert.equal(getgo.amount, 61.2, 'amount-first layout parses');
+  assert.equal(getgo.category_id, byName(s.categories, 'Fuel').id);
+
+  const dollarGeneral = res.body.rows.find((r) => /DOLLAR GENERAL/.test(r.description));
+  assert.equal(dollarGeneral.amount, 12.5, 'amount taken, running balance ignored');
+
+  const autozone = res.body.rows.find((r) => /AUTOZONE/.test(r.description));
+  const wendys = res.body.rows.find((r) => /WENDYS/.test(r.description));
+  assert.equal(autozone.amount, 33.1, 'first of two merged transactions');
+  assert.equal(wendys.amount, 9.87, 'second of two merged transactions');
+  assert.equal(wendys.date, `${last}-10`);
+
+  const pos = res.body.rows.find((r) => /POS PURCHASE/.test(r.description));
+  assert.equal(pos.date, `${last}-11`, 'embedded posting date does not split the row');
+  assert.equal(pos.amount, 55);
+
+  const check = res.body.rows.find((r) => /1024/.test(r.description));
+  assert.equal(check.amount, 250, 'check number before the date still parses');
+  assert.equal(check.direction, 'out');
 
   const payroll = res.body.rows.find((r) => /PAYROLL/.test(r.description));
   assert.equal(payroll.direction, 'in', 'the deposits section flips direction');
   assert.equal(payroll.amount, 1502.75);
-  assert.equal(byName(s.categories, 'Groceries').id, kroger.category_id);
+
+  assert.equal(res.body.rows.filter((r) => !r.description).length, 0, 'no empty descriptions');
 });
 
 test('a last-month statement imports even though the month is closed to manual edits', async (t) => {
@@ -1343,7 +1373,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v6'],
+    ['/sw.js', 'lfb-v7'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

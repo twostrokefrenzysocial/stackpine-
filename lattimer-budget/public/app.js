@@ -2,6 +2,10 @@
 (function () {
   'use strict';
 
+  // Bumped with every release; shown in Settings so "am I on the newest
+  // version?" is a glance, not a guess.
+  var APP_VERSION = 7;
+
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
   var S = {
@@ -1018,7 +1022,8 @@
     html += '<div class="section-title"><span>App</span></div><section class="card stack">' +
       '<div class="row"><span class="muted small">Signed in as</span><b>' + esc(d.person) + '</b></div>' +
       '<div class="row"><span class="muted small">Sync</span><b>' + esc(S.sync) + '</b></div>' +
-      '<div class="row"><span class="muted small">Time zone</span><b>' + esc(d.timezone) + '</b></div>';
+      '<div class="row"><span class="muted small">Time zone</span><b>' + esc(d.timezone) + '</b></div>' +
+      '<div class="row"><span class="muted small">App version</span><b>v' + APP_VERSION + '</b></div>';
     if (S.installPrompt) {
       html += '<button type="button" class="btn btn-accent btn-block" data-act="install">Install on this phone</button>';
     }

@@ -61,62 +61,126 @@ async function extractLines(buffer) {
 const IN_SECTION = /deposit|additions|credits|money in|interest paid/i;
 const OUT_SECTION = /withdrawal|purchases|debits|money out|checks|payments|fees|charges/i;
 
-const LINE = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(.+?)\s+\(?-?\$?([\d,]+\.\d{2})\)?(?:\s+[\d,]+\.\d{2})?$/;
+const DATE_TOKEN = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g;
+const MONEY_TOKEN = /\(?-?\$?(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/g;
 
 /**
  * Statement text lines → normalized rows { date, description, cents, direction }.
- * Bank statements group transactions under section headings ("Deposits and
- * Other Additions", "Banking/Debit Card Withdrawals..."), so direction comes
- * from the current section; a leading minus or parentheses forces "out".
- * Years are inferred from the statement period when dates omit them.
+ *
+ * Real statements are messy: amounts may sit before or after the description,
+ * a running-balance column can trail the amount, a posting date is often
+ * embedded mid-description, and two-column pages merge two transactions onto
+ * one visual line. So instead of one strict line pattern, each line is walked
+ * token by token: a transaction starts at a date token, collects text, takes
+ * the FIRST money token as its amount (whatever follows is balance/reference),
+ * and a new date token after money has been seen starts the next transaction.
+ *
+ * Direction comes from the current section heading ("Deposits and Other
+ * Additions" vs "…Withdrawals and Purchases"); parentheses or a minus on the
+ * amount force money-out. Years missing from dates come from the statement
+ * period, e.g. "07/01/2026 to 07/31/2026".
  */
 function parsePdfLines(lines, todayIso) {
-  // Find a statement-period year, e.g. "07/01/2026 to 07/31/2026".
   let periodYear = null;
   let periodMonth = null;
-  for (const line of lines.slice(0, 40)) {
+  for (const line of lines.slice(0, 60)) {
     const m = line.match(/(\d{1,2})\/\d{1,2}\/(\d{4})\s*(?:to|through|-|–)\s*\d{1,2}\/\d{1,2}\/\d{4}/i);
     if (m) { periodMonth = Number(m[1]); periodYear = Number(m[2]); break; }
   }
   const nowYear = Number(todayIso.slice(0, 4));
   const nowMonth = Number(todayIso.slice(5, 7));
 
-  let direction = 'out'; // safest default for a bank statement
+  const resolveYear = (mo, explicit) => {
+    if (explicit) {
+      let y = Number(explicit);
+      if (y < 100) y += 2000;
+      return y;
+    }
+    if (periodYear !== null && periodMonth !== null) {
+      // A December statement can carry January rows across the year boundary.
+      const y = mo < periodMonth ? periodYear + 1 : periodYear;
+      return y > nowYear ? periodYear : y;
+    }
+    return mo > nowMonth ? nowYear - 1 : nowYear;
+  };
+
+  let direction = 'out'; // the safe default for a bank statement
   const rows = [];
 
   for (const line of lines) {
-    if (OUT_SECTION.test(line) && !LINE.test(line)) { direction = 'out'; continue; }
-    if (IN_SECTION.test(line) && !LINE.test(line)) { direction = 'in'; continue; }
-
-    const m = line.match(LINE);
-    if (!m) continue;
-    const mo = Number(m[1]);
-    const day = Number(m[2]);
-    if (mo < 1 || mo > 12 || day < 1 || day > 31) continue;
-
-    let year;
-    if (m[3]) {
-      year = Number(m[3]);
-      if (year < 100) year += 2000;
-    } else if (periodYear !== null && periodMonth !== null) {
-      // Statement spanning a year boundary: January rows on a December statement.
-      year = mo < periodMonth ? periodYear + 1 : periodYear;
-      if (year > nowYear) year = periodYear;
-    } else {
-      year = mo > nowMonth ? nowYear - 1 : nowYear;
+    const hasDate = /\b\d{1,2}\/\d{1,2}\b/.test(line);
+    if (!hasDate) {
+      // Pure heading lines steer the direction of what follows.
+      if (OUT_SECTION.test(line)) direction = 'out';
+      else if (IN_SECTION.test(line)) direction = 'in';
+      continue;
     }
 
-    const cents = Math.round(Number(m[5].replace(/,/g, '')) * 100);
-    if (!cents) continue;
-    const negative = /-\$?[\d,]+\.\d{2}\)?$/.test(line) || /\([\d,]+\.\d{2}\)$/.test(line);
+    // Tokenize: positions of every date and every money value on the line.
+    const dates = [];
+    let dm;
+    DATE_TOKEN.lastIndex = 0;
+    while ((dm = DATE_TOKEN.exec(line))) {
+      dates.push({ index: dm.index, length: dm[0].length, mo: Number(dm[1]), day: Number(dm[2]), year: dm[3] });
+    }
+    const moneys = [];
+    let mm;
+    MONEY_TOKEN.lastIndex = 0;
+    while ((mm = MONEY_TOKEN.exec(line))) {
+      moneys.push({ index: mm.index, length: mm[0].length, raw: mm[0] });
+    }
+    if (!dates.length || !moneys.length) continue;
 
-    const date = `${year}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    rows.push({
-      date,
-      description: m[4].trim().slice(0, 120),
-      cents,
-      direction: negative ? 'out' : direction,
-    });
+    // Segment: starts at a date token; the next segment starts at the first
+    // date token that appears AFTER this segment's money has been seen, so an
+    // embedded posting date never splits a transaction in two.
+    const segments = [];
+    let seg = null;
+    for (const d of dates) {
+      if (d.mo < 1 || d.mo > 12 || d.day < 1 || d.day > 31) continue;
+      const moneyInSeg = seg ? moneys.find((m2) => m2.index > seg.start.index && m2.index < d.index) : null;
+      if (!seg) {
+        seg = { start: d, end: line.length };
+      } else if (moneyInSeg) {
+        seg.end = d.index;
+        segments.push(seg);
+        seg = { start: d, end: line.length };
+      }
+      // date token with no money since the segment started: posting date, skip
+    }
+    if (seg) segments.push(seg);
+
+    for (const s of segments) {
+      const segMoneys = moneys.filter((m2) => m2.index >= s.start.index && m2.index < s.end);
+      if (!segMoneys.length) continue;
+      const amountTok = segMoneys[0];
+      const cents = Math.round(Number(amountTok.raw.replace(/[$,()\s-]/g, '')) * 100);
+      if (!cents) continue;
+      const negative = /^\(|-/.test(amountTok.raw.replace(/^\$/, ''));
+
+      // Description: everything in the segment except the leading date and
+      // the money tokens (amount, balance, references with decimals).
+      let desc = line.slice(s.start.index + s.start.length, s.end);
+      for (const m2 of segMoneys) {
+        desc = desc.replace(m2.raw, ' ');
+      }
+      // Check rows put the number before the date ("1024  07/15  250.00").
+      if (s === segments[0]) {
+        const prefix = line.slice(0, s.start.index).replace(MONEY_TOKEN, ' ').replace(/\s+/g, ' ').trim();
+        if (prefix && prefix.length <= 20) desc = prefix + ' ' + desc;
+      }
+      desc = desc.replace(/\s+/g, ' ').trim().slice(0, 120);
+      // Date + amount with no words is a daily-balance row, not a transaction.
+      if (!desc) continue;
+
+      const year = resolveYear(s.start.mo, s.start.year);
+      rows.push({
+        date: `${year}-${String(s.start.mo).padStart(2, '0')}-${String(s.start.day).padStart(2, '0')}`,
+        description: desc,
+        cents,
+        direction: negative ? 'out' : direction,
+      });
+    }
   }
 
   return { rows, format: 'pdf' };
