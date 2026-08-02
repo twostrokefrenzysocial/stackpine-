@@ -169,33 +169,40 @@ function merchantKey(description) {
   return tokens.slice(0, 2).join(' ');
 }
 
-// Keyword fallbacks aimed at this family's seed categories. Learned rules
-// (what they actually picked last time) always take precedence.
+// Keyword fallbacks tuned against the family's real statements. Patterns are
+// matched against a space-normalized description (punctuation collapsed), so
+// "DOLLAR-GENERAL #123" and "TST* SOME DINER" both land. Learned rules (what
+// they actually picked last time) always take precedence.
 const KEYWORD_GUESSES = [
-  { match: /KROGER|ALDI|MEIJER|WAL.?MART|SAVE.?A.?LOT|GIANT EAGLE|FOOD|GROCER|IGA\b/, category: 'Groceries' },
-  { match: /SHELL|SPEEDWAY|MARATHON|BP\b|CIRCLE K|SUNOCO|EXXON|VALERO|GETGO|FUEL|GAS STATION|PILOT|LOVES/, category: 'Fuel' },
-  { match: /MCDONALD|WENDY|BURGER|TACO|CHIPOTLE|PIZZA|SUBWAY|CHICK.?FIL|KFC|ARBY|SONIC|DAIRY QUEEN|RESTAURANT|GRUBHUB|DOORDASH|STARBUCKS|DUNKIN|CINEMA|NETFLIX GAME|BOWL/, category: 'Eating out & fun' },
-  { match: /AUTOZONE|O.?REILLY|ADVANCE AUTO|NAPA|TIRE|JIFFY LUBE|VALVOLINE|CAR WASH|PARTS/, category: 'Vehicle parts & maintenance' },
-  { match: /DOLLAR (GENERAL|TREE)|FAMILY DOLLAR|TARGET|LOWES|HOME DEPOT|MENARDS|ACE HARDWARE|HOUSEHOLD/, category: 'Household & misc' },
+  { match: /KROGER|ALDI|MEIJER|WAL ?MART|WM SUPERCENTER|SAVE ?A ?LOT|GIANT EAGLE|ACME (NO|\d|FRESH|STORE)|SAMS ?CLUB|COSTCO|CORNERSTONE MARKET|NESPRESSO|FOOD|GROCER|IGA\b/, category: 'Groceries' },
+  { match: /SHELL|SPEEDWAY|MARATHON|BP\b|CIRCLE ?K|SUNOCO|EXXON|VALERO|GET ?GO|SHEETZ|CASEYS|MURPHY USA|\bARCO\b|FUEL|GAS STATION|PILOT|LOVES/, category: 'Fuel' },
+  { match: /MCDONALD|WENDY|BURGER|TACO|CHIPOTLE|PIZZA|SUBWAY|CHICK ?FIL|KFC|ARBY|SONIC|DAIRY QUEEN|RESTAURANT|GRUBHUB|DOORDASH|STARBUCKS|DUNKIN|COFFEE|CAFE\b|\bTST\b|NOODLES|PANERA|FIVE GUYS|CINEMA|LOTTO|LOTTERY|BOWL|JIMMY JOHN|LITTLE CAESAR|BEILER|AKRON ZOO|TIM HORTON|FREDDY|HILTON/, category: 'Eating out & fun' },
+  { match: /AUTOZONE|O ?REILLY|ADVANCE AUTO|NAPA|TIRE|JIFFY LUBE|VALVOLINE|CAR WASH|PARTS|AUTO TITLE|OH BUREAU|\bBMV\b/, category: 'Vehicle parts & maintenance' },
+  { match: /DOLLAR (GENERAL|TREE)|\bDG\b|FAMILY DOLLAR|TARGET|LOWES|HOME DEPOT|MENARDS|ACE HARDWARE|CVS|WALGREENS|RITE AID|PETCO|PETSMART|CHEWY|AMAZON|AMZN|FIVE BELOW|KOHL|MICHAELS|VILLAGE DISCOUNT|HOUSEHOLD/, category: 'Household & misc' },
   { match: /ROCKET MTG|ROCKET MORTGAGE|MORTGAGE/, category: 'Mortgage (Rocket)' },
-  { match: /COLUMBIA GAS|DOMINION|NATURAL GAS/, category: 'Natural gas' },
-  { match: /AEP|DUKE ENERGY|ELECTRIC/, category: 'Electric' },
-  { match: /WATER|SEWER|AQUA/, category: 'Water/sewer' },
-  { match: /AT.?T|ATT\b/, category: 'AT&T phones' },
+  { match: /TEL LEASE|STELLANTIS/, category: "Miriam's lease" },
+  { match: /HOPETOWN/, category: 'Church giving' },
+  // Only applies if the family adds this category; harmless otherwise.
+  { match: /SHOPIFY|PRINTFUL|GOOGLE ADS|SQUARESPACE|GODADDY|NAMECHEAP/, category: 'Business (Stackpine)' },
+  { match: /COLUMBIA GAS|DOMINION|ENBRIDGE|NATURAL GAS/, category: 'Natural gas' },
+  { match: /AEP|DUKE ENERGY|FIRSTENERGY|OHIO EDISON|ILLUMINATING|ELECTRIC/, category: 'Electric' },
+  { match: /AKRON ?UTILITIES|WATER|SEWER|AQUA/, category: 'Water/sewer' },
+  { match: /\bAT ?T\b|ATT\b/, category: 'AT&T phones' },
   { match: /KIDS COUNTRY|CHILD ?CARE|DAYCARE/, category: 'Child care (Kids Country)' },
   { match: /GEICO/, category: 'GEICO' },
   { match: /DISCOVER/, category: 'Discover' },
   { match: /APPLECARD|APPLE CARD|GS BANK/, category: 'Apple Card' },
   { match: /CREDIT ACCEPT/, category: 'Truck (Credit Acceptance)' },
   { match: /LENDMARK/, category: 'Dirt bike (Lendmark)' },
-  { match: /CHURCH|TITHE|GIVING/, category: 'Church giving' },
-  { match: /NETFLIX|HULU|SPOTIFY|DISNEY|PARAMOUNT|PEACOCK|MAX\b|APPLE\.COM|PRIME VIDEO|SUBSCRIPTION/, category: 'Subscriptions' },
+  { match: /CHURCH|TITHE|GIVING|RIVERTREE/, category: 'Church giving' },
+  { match: /NETFLIX|HULU|SPOTIFY|DISNEY|PARAMOUNT|PEACOCK|MAX\b|APPLE COM|PRIME VIDEO|BITWARDEN|KINDLE|RING (SOLO|BASIC|PROTECT)|PESTIE|FABLETICS|SUBSCRIPTION/, category: 'Subscriptions' },
 ];
 
 function keywordGuess(description) {
-  const upper = String(description || '').toUpperCase();
+  // Normalize the way banks mangle names: punctuation to spaces, collapsed.
+  const norm = String(description || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
   for (const rule of KEYWORD_GUESSES) {
-    if (rule.match.test(upper)) return rule.category;
+    if (rule.match.test(norm)) return rule.category;
   }
   return null;
 }

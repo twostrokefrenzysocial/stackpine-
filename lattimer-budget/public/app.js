@@ -651,7 +651,7 @@
     if (showOut) {
       d.transactions.forEach(function (t) {
         if (S.filters.category && String(t.category_id) !== S.filters.category) return;
-        var r = { kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount,
+        var r = { kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount, src: t.source,
           title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) };
         if (matches(r)) allRows.push(r);
       });
@@ -775,7 +775,7 @@
       }
       html += '<button type="button" class="tx' + (r.kind === 'in' ? ' tx-in' : '') + '"' +
         ' data-act="' + (r.kind === 'in' ? 'edit-inc' : 'edit-tx') + '" data-id="' + r.id + '"' +
-        (d.readOnly ? ' disabled' : '') + '>' +
+        (d.readOnly && r.src !== 'import' ? ' disabled' : '') + '>' +
         '<span class="tx-avatar" data-person="' + esc(r.person) + '">' + esc(r.person.charAt(0)) + '</span>' +
         '<span class="tx-main"><span class="tx-cat">' + esc(r.title) + '</span>' +
         '<span class="tx-meta">' + esc(r.meta) + ' · ' + esc(shortDate(r.date)) + '</span></span>' +

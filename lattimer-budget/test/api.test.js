@@ -1137,6 +1137,35 @@ test('the month report flags last-month overspending', async () => {
   assert.equal(fuelOver.over, 95); // 445 spent vs 350 budget
 });
 
+test('imported rows in a closed month can be recategorized', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  const last = monthOf(-1);
+  const s = await state();
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: `${last}-11`, description: 'MYSTERY SHOP', amount: 20, direction: 'out', category_id: groceriesId }] },
+  });
+  assert.equal(commit.status, 201);
+  const past = await call(`/api/state?month=${last}`);
+  const tx = past.body.transactions.find((x) => x.note === 'MYSTERY SHOP');
+
+  const fixed = await call(`/api/transactions/${tx.id}`, {
+    method: 'PUT',
+    body: { category_id: byName(s.categories, 'Household & misc').id },
+  });
+  assert.equal(fixed.status, 200, 'imported history stays correctable');
+  const after = (await call(`/api/state?month=${last}`)).body.transactions.find((x) => x.id === tx.id);
+  assert.equal(after.category, 'Household & misc');
+
+  // manual rows in closed months stay locked
+  const manual = await call(`/api/transactions/999999`, { method: 'PUT', body: { amount: 5 } });
+  assert.equal(manual.status, 404); // (no such row; the rule itself is covered elsewhere)
+
+  await call(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+});
+
 test('imported rows in a closed month can be deleted (mistakes stay fixable)', async (t) => {
   process.env.BACKDATE_GRACE_DAYS = '0';
   t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });

@@ -661,7 +661,10 @@ function createApi(db) {
   router.put('/transactions/:id', auth, (req, res) => {
     const existing = q.txById.get(Number(req.params.id));
     if (!existing) throw notFound('Transaction not found.');
-    requireMonthWritable(existing.date);
+    // Imported history stays correctable in closed months (recategorizing a
+    // mislabeled merchant); hand-entered history keeps the closed-month rule.
+    const isImport = existing.source === 'import';
+    if (!isImport) requireMonthWritable(existing.date);
 
     const body = req.body || {};
     const category = body.category_id === undefined
@@ -670,7 +673,7 @@ function createApi(db) {
     if (!category) throw notFound('Category not found.');
     const amount = body.amount === undefined ? existing.amount_cents : readAmount(body.amount);
     const date = body.date === undefined ? existing.date : readDate(body.date);
-    requireMonthWritable(date);
+    if (!isImport || date !== existing.date) requireMonthWritable(date);
     requireStarted(category, date.slice(0, 7));
     const person = readPerson(body.person, existing.person);
     const note = body.note === undefined ? existing.note : readNote(body.note);
