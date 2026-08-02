@@ -105,11 +105,20 @@ function createApi(db) {
       SELECT month FROM (
         SELECT DISTINCT month FROM transactions
         UNION SELECT month FROM month_budgets
+        UNION SELECT DISTINCT month FROM income_entries
       ) ORDER BY month DESC
     `),
     billPaidRows: db.prepare(`
       SELECT category_id, SUM(amount_cents) AS paid_cents, COUNT(*) AS n
       FROM transactions WHERE month = ? AND source = 'billpay' GROUP BY category_id
+    `),
+    incomeEntriesForMonth: db.prepare(`
+      SELECT * FROM income_entries WHERE month = ? ORDER BY date DESC, id DESC
+    `),
+    incomeEntryById: db.prepare(`SELECT * FROM income_entries WHERE id = ?`),
+    receivedBySource: db.prepare(`
+      SELECT source_id, SUM(amount_cents) AS total, COUNT(*) AS n
+      FROM income_entries WHERE month = ? GROUP BY source_id
     `),
     debts: db.prepare(`SELECT * FROM debts ORDER BY settled, sort_order, id`),
     debtById: db.prepare(`SELECT * FROM debts WHERE id = ?`),
@@ -245,6 +254,11 @@ function createApi(db) {
     const incomeCents = q.monthIncome.get(month)?.income_cents ?? liveIncomeCents();
     const spentCents = categories.reduce((s, c) => s + Math.round(c.spent * 100), 0);
 
+    // Actual money received this month, overall and per source.
+    const incomeEntryRows = q.incomeEntriesForMonth.all(month);
+    const receivedCents = incomeEntryRows.reduce((s, e) => s + e.amount_cents, 0);
+    const receivedMap = new Map(q.receivedBySource.all(month).map((r) => [r.source_id, r]));
+
     const transactions = q.txForMonth.all(month).map((t) => ({
       id: t.id,
       category_id: t.category_id,
@@ -301,6 +315,7 @@ function createApi(db) {
       people: PEOPLE,
       totals: {
         income: toDollars(incomeCents),
+        received: toDollars(receivedCents),
         spent: toDollars(spentCents),
         remaining: toDollars(incomeCents - spentCents),
         budgeted: toDollars(categories.reduce((s, c) => s + Math.round(c.budget * 100), 0)),
@@ -324,13 +339,28 @@ function createApi(db) {
       },
       income: {
         total: toDollars(incomeCents),
-        sources: q.incomeSources.all().map((s) => ({
-          id: s.id,
-          name: s.name,
-          person: s.person,
-          amount: toDollars(s.amount_cents),
-          per_month: s.per_month,
-          monthly: toDollars(s.amount_cents * s.per_month),
+        received: toDollars(receivedCents),
+        sources: q.incomeSources.all().map((s) => {
+          const got = receivedMap.get(s.id);
+          return {
+            id: s.id,
+            name: s.name,
+            person: s.person,
+            amount: toDollars(s.amount_cents),
+            per_month: s.per_month,
+            monthly: toDollars(s.amount_cents * s.per_month),
+            received: got ? toDollars(got.total) : 0,
+            checks: got ? got.n : 0,
+          };
+        }),
+        entries: incomeEntryRows.map((e) => ({
+          id: e.id,
+          source_id: e.source_id,
+          label: e.label,
+          amount: toDollars(e.amount_cents),
+          note: e.note,
+          person: e.person,
+          date: e.date,
         })),
       },
     };
@@ -647,6 +677,71 @@ function createApi(db) {
     db.prepare(`UPDATE categories SET archived = 1 WHERE id = ?`).run(category.id);
     broadcast('category:remove', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  // ---- actual paychecks / money received -------------------------------
+
+  function readIncomeSource(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const source = db.prepare(`SELECT * FROM income_sources WHERE id = ?`).get(Number(value));
+    if (!source) throw notFound('Income source not found.');
+    return source;
+  }
+
+  router.post('/income/entries', auth, (req, res) => {
+    const body = req.body || {};
+    const amount = readAmount(body.amount);
+    const date = readDate(body.date);
+    requireMonthWritable(date);
+    const person = readPerson(body.person, req.person);
+    const note = readNote(body.note);
+    const source = readIncomeSource(body.source_id);
+    const rawLabel = String(body.label ?? '').trim();
+    const label = (rawLabel || (source ? source.name : 'Income')).slice(0, 60);
+    const now = new Date().toISOString();
+
+    const id = db.prepare(`
+      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(source ? source.id : null, label, amount, note, person, date, date.slice(0, 7), now, now).lastInsertRowid;
+
+    broadcast('income:received', req.person);
+    res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
+  });
+
+  router.put('/income/entries/:id', auth, (req, res) => {
+    const existing = q.incomeEntryById.get(Number(req.params.id));
+    if (!existing) throw notFound('Income entry not found.');
+    requireMonthWritable(existing.date);
+
+    const body = req.body || {};
+    const amount = body.amount === undefined ? existing.amount_cents : readAmount(body.amount);
+    const date = body.date === undefined ? existing.date : readDate(body.date);
+    requireMonthWritable(date);
+    const person = readPerson(body.person, existing.person);
+    const note = body.note === undefined ? existing.note : readNote(body.note);
+    const source = body.source_id === undefined ? undefined : readIncomeSource(body.source_id);
+    const sourceId = source === undefined ? existing.source_id : source ? source.id : null;
+    const rawLabel = body.label === undefined ? existing.label : String(body.label ?? '').trim();
+    const label = (rawLabel || (source ? source.name : existing.label) || 'Income').slice(0, 60);
+
+    db.prepare(`
+      UPDATE income_entries
+      SET source_id = ?, label = ?, amount_cents = ?, note = ?, person = ?, date = ?, month = ?, updated_at = ?
+      WHERE id = ?
+    `).run(sourceId, label, amount, note, person, date, date.slice(0, 7), new Date().toISOString(), existing.id);
+
+    broadcast('income:edited', req.person);
+    res.json({ ok: true, state: buildState(date.slice(0, 7), req.person) });
+  });
+
+  router.delete('/income/entries/:id', auth, (req, res) => {
+    const existing = q.incomeEntryById.get(Number(req.params.id));
+    if (!existing) throw notFound('Income entry not found.');
+    requireMonthWritable(existing.date);
+    db.prepare(`DELETE FROM income_entries WHERE id = ?`).run(existing.id);
+    broadcast('income:entry-removed', req.person);
+    res.json({ ok: true, state: buildState(existing.month, req.person) });
   });
 
   router.post('/income', auth, (req, res) => {

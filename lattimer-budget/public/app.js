@@ -10,7 +10,7 @@
     month: null,
     data: null,
     tab: 'dashboard',
-    filters: { category: '', person: '' },
+    filters: { category: '', person: '', type: '' },
     pinned: false,
     sse: null,
     pollTimer: null,
@@ -385,7 +385,10 @@
   }
 
   function viewDashboard(d) {
-    var fixed = d.categories.filter(function (c) { return c.kind === 'fixed'; });
+    // Unpaid bills stay on top (already due-date sorted by the server);
+    // paid ones sink so what still needs doing is always first.
+    var fixed = d.categories.filter(function (c) { return c.kind === 'fixed'; })
+      .sort(function (a, b) { return (a.paid ? 1 : 0) - (b.paid ? 1 : 0); });
     var variable = d.categories.filter(function (c) { return c.kind === 'variable'; });
     var billsLeft = fixed.reduce(function (sum, c) { return c.paid ? sum : sum + c.budget; }, 0);
 
@@ -395,11 +398,30 @@
       '<div class="summary-cap">Left to spend</div>' +
       '<div class="summary-big' + (d.totals.remaining < 0 ? ' summary-neg' : '') + '">' + money(d.totals.remaining, { cents: false }) + '</div>' +
       '<div class="summary-grid">' +
-      summaryCell('Income', d.totals.income) +
+      summaryCell('Money in', d.totals.received, 'of ' + money(d.totals.income, { cents: false }) + ' expected') +
       summaryCell('Spent', d.totals.spent) +
       summaryCell('Budgeted', d.totals.budgeted) +
       summaryCell('Bills left', billsLeft) +
       '</div></section>';
+
+    // Money in: tap Log when a paycheck lands and record what it actually was.
+    html += '<div class="section-title"><span>Income</span><span>' +
+      money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
+    html += '<section class="card card-tight">';
+    d.income.sources.forEach(function (s) {
+      var sub = s.received > 0
+        ? 'got ' + money(s.received) + ' (' + s.checks + ' of ' + s.per_month + ' checks)'
+        : money(s.amount, { cents: false }) + ' × ' + s.per_month + ' per month';
+      html += '<div class="bill">' +
+        '<span class="tx-avatar" data-person="' + esc(s.person) + '">' + esc((s.person || s.name).charAt(0)) + '</span>' +
+        '<span class="bill-name">' + esc(s.name) + '<span class="bill-sub">' + esc(sub) + '</span></span>' +
+        (d.readOnly ? '' : '<button type="button" class="btn btn-sm btn-in" data-act="log-income" data-id="' + s.id + '">Log</button>') +
+        '</div>';
+    });
+    if (!d.readOnly) {
+      html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="log-income" data-id="">+ Other income (bonus, sale, refund…)</button></div>';
+    }
+    html += '</section>';
 
     // Scheduled bills sit directly under the summary: if one of them puts the
     // budget underwater, that needs seeing before the checklist.
@@ -502,23 +524,47 @@
     return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
   }
 
-  function summaryCell(label, value) {
+  function summaryCell(label, value, sub) {
     return '<div class="summary-cell"><span class="summary-cap">' + esc(label) + '</span>' +
-      '<b>' + money(value, { cents: false }) + '</b></div>';
+      '<b>' + money(value, { cents: false }) + '</b>' +
+      (sub ? '<span class="summary-sub">' + esc(sub) + '</span>' : '') +
+      '</div>';
   }
 
   // ------------------------------------------------------------ render: history
 
   function viewHistory(d) {
-    var list = d.transactions.filter(function (t) {
-      if (S.filters.category && String(t.category_id) !== S.filters.category) return false;
-      if (S.filters.person && t.person !== S.filters.person) return false;
-      return true;
+    var showOut = S.filters.type !== 'in';
+    var showIn = S.filters.type !== 'out';
+
+    var rows = [];
+    if (showOut) {
+      d.transactions.forEach(function (t) {
+        if (S.filters.category && String(t.category_id) !== S.filters.category) return;
+        if (S.filters.person && t.person !== S.filters.person) return;
+        rows.push({ kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount,
+          title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) });
+      });
+    }
+    if (showIn && !S.filters.category) {
+      d.income.entries.forEach(function (e) {
+        if (S.filters.person && e.person !== S.filters.person) return;
+        rows.push({ kind: 'in', id: e.id, date: e.date, person: e.person, amount: e.amount,
+          title: e.label, meta: e.note || 'Received' });
+      });
+    }
+    rows.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return b.id - a.id;
     });
 
-    var total = list.reduce(function (sum, t) { return sum + t.amount; }, 0);
+    var outTotal = rows.reduce(function (s, r) { return r.kind === 'out' ? s + r.amount : s; }, 0);
+    var inTotal = rows.reduce(function (s, r) { return r.kind === 'in' ? s + r.amount : s; }, 0);
 
     var html = '<section class="card">' +
+      '<div class="chips" style="margin-bottom:10px">' +
+      typeChip('', 'Everything') + typeChip('out', 'Spending') + typeChip('in', 'Income') +
+      '</div>' +
       '<label class="field"><span>Category</span><select class="input" data-act="filter-category">' +
       '<option value="">All categories</option>' +
       d.categories.map(function (c) {
@@ -531,32 +577,40 @@
       d.people.map(function (p) { return personChip(p, p); }).join('') +
       '</div></section>';
 
-    html += '<div class="section-title"><span>' + list.length + ' transaction' + (list.length === 1 ? '' : 's') +
-      '</span><span>' + money(total) + '</span></div>';
+    var headline = [];
+    if (outTotal || showOut) headline.push('−' + money(outTotal));
+    if (inTotal) headline.push('+' + money(inTotal));
+    html += '<div class="section-title"><span>' + rows.length + ' entr' + (rows.length === 1 ? 'y' : 'ies') +
+      '</span><span>' + headline.join(' · ') + '</span></div>';
 
-    if (!list.length) {
+    if (!rows.length) {
       html += '<div class="card empty">Nothing recorded yet for ' + esc(monthLabel(d.month)) + '.</div>';
       return html;
     }
 
     html += '<section class="card card-tight">';
     var lastDay = null;
-    list.forEach(function (t) {
-      if (t.date !== lastDay) {
-        lastDay = t.date;
-        html += '<div class="day-head">' + esc(dayLabel(t.date)) + '</div>';
+    rows.forEach(function (r) {
+      if (r.date !== lastDay) {
+        lastDay = r.date;
+        html += '<div class="day-head">' + esc(dayLabel(r.date)) + '</div>';
       }
-      html += '<button type="button" class="tx" data-act="edit-tx" data-id="' + t.id + '"' +
+      html += '<button type="button" class="tx' + (r.kind === 'in' ? ' tx-in' : '') + '"' +
+        ' data-act="' + (r.kind === 'in' ? 'edit-inc' : 'edit-tx') + '" data-id="' + r.id + '"' +
         (d.readOnly ? ' disabled' : '') + '>' +
-        '<span class="tx-avatar" data-person="' + esc(t.person) + '">' + esc(t.person.charAt(0)) + '</span>' +
-        '<span class="tx-main"><span class="tx-cat">' + esc(t.category) + '</span>' +
-        '<span class="tx-meta">' + esc(t.note || (t.source === 'billpay' ? 'Bill paid' : t.person)) +
-        ' · ' + esc(shortDate(t.date)) + '</span></span>' +
-        '<span class="tx-amt">' + money(t.amount) + '</span>' +
+        '<span class="tx-avatar" data-person="' + esc(r.person) + '">' + esc(r.person.charAt(0)) + '</span>' +
+        '<span class="tx-main"><span class="tx-cat">' + esc(r.title) + '</span>' +
+        '<span class="tx-meta">' + esc(r.meta) + ' · ' + esc(shortDate(r.date)) + '</span></span>' +
+        '<span class="tx-amt">' + (r.kind === 'in' ? '+' : '') + money(r.amount) + '</span>' +
         '</button>';
     });
     html += '</section>';
     return html;
+  }
+
+  function typeChip(value, label) {
+    return '<button type="button" class="chip" data-act="filter-type" data-type="' + esc(value) + '"' +
+      ' aria-pressed="' + (S.filters.type === value ? 'true' : 'false') + '">' + esc(label) + '</button>';
   }
 
   function personChip(value, label) {
@@ -660,6 +714,7 @@
         '</div>';
     });
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
+    html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
     html += '</section>';
 
     html += '<div class="section-title"><span>Fixed bill budgets</span></div><section class="card">';
@@ -751,22 +806,43 @@
 
   // ---- quick add -------------------------------------------------------
 
-  var QA = { digits: '', step: 1, note: '', date: null, person: null, details: false };
+  var QA = { digits: '', step: 1, note: '', date: null, person: null, details: false, mode: 'out', sourceId: null, sourceLabel: '', locked: false };
 
   function qaAmount() { return Number(QA.digits || '0') / 100; }
 
-  function openQuickAdd() {
+  function openQuickAdd(mode, source) {
     if (!S.data) { toast('Still loading — try again in a second', 'error'); return; }
     if (S.data.readOnly) { toast('Switch to ' + monthLabel(S.data.currentMonth) + ' to add', 'error'); return; }
-    QA = { digits: '', step: 1, note: '', date: defaultDate(), person: S.person, details: false };
+    QA = {
+      digits: source ? String(Math.round(source.amount * 100)) : '',
+      step: 1,
+      note: '',
+      date: defaultDate(),
+      person: source && source.person ? source.person : S.person,
+      details: false,
+      mode: mode === 'in' ? 'in' : 'out',
+      sourceId: source ? source.id : null,
+      sourceLabel: source ? source.name : '',
+      locked: Boolean(source),
+    };
     renderQuickAdd();
   }
 
   function renderQuickAdd() {
     if (QA.step === 1) {
       var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-      var html = sheetHead('Quick add') +
-        '<div class="amount-display' + (QA.digits ? '' : ' dim') + '">' + money(qaAmount(), { cents: true }) + '</div>' +
+      var title = QA.locked ? QA.sourceLabel : 'Quick add';
+      var html = sheetHead(title);
+      if (!QA.locked) {
+        html += '<div class="chips mode-toggle">' +
+          '<button type="button" class="chip" data-act="qa-mode" data-mode="out" aria-pressed="' + (QA.mode === 'out') + '">Spending</button>' +
+          '<button type="button" class="chip chip-in" data-act="qa-mode" data-mode="in" aria-pressed="' + (QA.mode === 'in') + '">Income</button>' +
+          '</div>';
+      } else {
+        html += '<p class="muted small" style="margin:0 0 4px;text-align:center">How much actually came in?</p>';
+      }
+      html += '<div class="amount-display' + (QA.digits ? '' : ' dim') + (QA.mode === 'in' ? ' amount-in' : '') + '">' +
+        (QA.mode === 'in' ? '+' : '') + money(qaAmount(), { cents: true }) + '</div>' +
         '<div class="keypad">' +
         keys.map(function (k) { return '<button type="button" class="key" data-act="key" data-key="' + k + '">' + k + '</button>'; }).join('') +
         '<button type="button" class="key" data-act="key" data-key="back" aria-label="Backspace">⌫</button>' +
@@ -784,9 +860,27 @@
         html += '<button type="button" class="detail-toggle" data-act="qa-details">+ Note, date or person</button>';
       }
 
+      var nextLabel = QA.mode === 'in'
+        ? (QA.locked ? 'Save paycheck' : 'Choose source →')
+        : 'Choose category →';
       html += '<button type="button" class="btn btn-accent btn-block" data-act="qa-next"' +
-        (QA.digits ? '' : ' disabled') + '>Choose category →</button>';
+        (QA.digits ? '' : ' disabled') + '>' + nextLabel + '</button>';
       openSheet(html);
+      return;
+    }
+
+    if (QA.mode === 'in') {
+      var srcBody = sheetHead('+' + money(qaAmount()) + ' — where from?') +
+        '<div class="cat-grid">' +
+        S.data.income.sources.map(function (s) {
+          return '<button type="button" class="cat-pick" data-act="qa-save-income" data-id="' + s.id + '">' +
+            '<b>' + esc(s.name) + '</b><span>usually ' + money(s.amount, { cents: false }) + '</span></button>';
+        }).join('') +
+        '<button type="button" class="cat-pick" data-act="qa-save-income" data-id="">' +
+        '<b>Other income</b><span>bonus, sale, refund…</span></button>' +
+        '</div>' +
+        '<button type="button" class="btn btn-block" style="margin-top:14px" data-act="qa-back">← Change amount</button>';
+      openSheet(srcBody);
       return;
     }
 
@@ -814,6 +908,21 @@
     var body = { category_id: Number(categoryId), amount: amount, note: QA.note, date: QA.date, person: QA.person };
     closeSheet();
     mutate('/transactions', { method: 'POST', body: body }, money(amount) + ' saved');
+  }
+
+  function quickAddSaveIncome(sourceId) {
+    var amount = qaAmount();
+    if (!(amount > 0)) return;
+    var body = {
+      amount: amount,
+      source_id: sourceId === '' || sourceId == null ? null : Number(sourceId),
+      note: QA.note,
+      date: QA.date,
+      person: QA.person,
+    };
+    if (!body.source_id) body.label = 'Other income';
+    closeSheet();
+    mutate('/income/entries', { method: 'POST', body: body }, '+' + money(amount) + ' received 🎉');
   }
 
   // ---- edit transaction ------------------------------------------------
@@ -853,6 +962,47 @@
     if (!(body.amount > 0)) { toast('Enter an amount above zero', 'error'); return; }
     closeSheet();
     mutate('/transactions/' + id, { method: 'PUT', body: body }, 'Saved');
+  }
+
+  // ---- edit income entry -----------------------------------------------
+
+  function openEditIncome(id) {
+    var e = S.data.income.entries.filter(function (x) { return x.id === Number(id); })[0];
+    if (!e) return;
+    QA.person = e.person;
+    openSheet(sheetHead('Edit income') +
+      '<label class="field"><span>Amount</span>' +
+      '<input class="input" id="inc-amount" type="number" inputmode="decimal" step="0.01" min="0.01" value="' + e.amount + '"></label>' +
+      '<label class="field"><span>Source</span><select class="input" id="inc-source">' +
+      '<option value=""' + (e.source_id ? '' : ' selected') + '>Other income</option>' +
+      S.data.income.sources.map(function (s) {
+        return '<option value="' + s.id + '"' + (s.id === e.source_id ? ' selected' : '') + '>' + esc(s.name) + '</option>';
+      }).join('') + '</select></label>' +
+      '<label class="field"><span>Label</span>' +
+      '<input class="input" id="inc-label" maxlength="60" value="' + esc(e.label) + '"></label>' +
+      '<label class="field"><span>Date</span>' +
+      '<input class="input" id="inc-date" type="date" value="' + esc(e.date) + '"' + dateBounds() + '></label>' +
+      '<div class="field"><span>Who</span>' + personPicker(e.person) + '</div>' +
+      '<label class="field"><span>Note</span>' +
+      '<input class="input" id="inc-note" maxlength="200" value="' + esc(e.note) + '"></label>' +
+      '<div class="stack">' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="inc-entry-save" data-id="' + e.id + '">Save changes</button>' +
+      '<button type="button" class="btn btn-danger btn-block" data-act="inc-entry-delete" data-id="' + e.id + '">Delete</button>' +
+      '</div>');
+  }
+
+  function saveIncomeEntry(id) {
+    var body = {
+      amount: Number($('#inc-amount').value),
+      source_id: $('#inc-source').value || null,
+      label: $('#inc-label').value,
+      date: $('#inc-date').value,
+      note: $('#inc-note').value,
+      person: QA.person,
+    };
+    if (!(body.amount > 0)) { toast('Enter an amount above zero', 'error'); return; }
+    closeSheet();
+    mutate('/income/entries/' + id, { method: 'PUT', body: body }, 'Saved');
   }
 
   // ---- debts + fund ----------------------------------------------------
@@ -1057,7 +1207,7 @@
         else if (QA.digits.length + key.length <= 9) QA.digits = (QA.digits + key).replace(/^0+(?=\d)/, '');
         var display = $('.amount-display');
         if (display) {
-          display.textContent = money(qaAmount(), { cents: true });
+          display.textContent = (QA.mode === 'in' ? '+' : '') + money(qaAmount(), { cents: true });
           display.classList.toggle('dim', !QA.digits);
         }
         var next = $('[data-act="qa-next"]');
@@ -1065,12 +1215,19 @@
         break;
       }
       case 'qa-details':
+        captureQaDetails();
         QA.details = true;
+        renderQuickAdd();
+        break;
+      case 'qa-mode':
+        captureQaDetails();
+        QA.mode = node.dataset.mode === 'in' ? 'in' : 'out';
         renderQuickAdd();
         break;
       case 'qa-next':
         if (!QA.digits) break;
         captureQaDetails();
+        if (QA.mode === 'in' && QA.locked) { quickAddSaveIncome(QA.sourceId); break; }
         QA.step = 2;
         renderQuickAdd();
         break;
@@ -1079,6 +1236,24 @@
         renderQuickAdd();
         break;
       case 'qa-save': quickAddSave(id); break;
+      case 'qa-save-income': quickAddSaveIncome(node.dataset.id); break;
+      case 'log-income': {
+        var src = S.data.income.sources.filter(function (x) { return x.id === Number(id); })[0];
+        openQuickAdd('in', src || null);
+        break;
+      }
+      case 'edit-inc': openEditIncome(id); break;
+      case 'inc-entry-save': saveIncomeEntry(id); break;
+      case 'inc-entry-delete':
+        if (confirm('Delete this income entry?')) {
+          closeSheet();
+          mutate('/income/entries/' + id, { method: 'DELETE' }, 'Deleted');
+        }
+        break;
+      case 'filter-type':
+        S.filters.type = node.dataset.type;
+        render();
+        break;
 
       case 'retry':
         refresh().then(function () { if (S.data) startRealtime(); });

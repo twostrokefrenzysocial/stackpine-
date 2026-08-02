@@ -625,6 +625,107 @@ test('an archived category cannot take new transactions', async () => {
   assert.equal(res.status, 404);
 });
 
+// ---------------------------------------------------------------- income received
+
+test('logging a paycheck records the actual amount against its source', async () => {
+  const s = await state();
+  assert.equal(s.totals.received, 0);
+  const chris = s.income.sources.find((x) => x.person === 'Chris');
+
+  // his paycheck came in different from the plan
+  const res = await call('/api/income/entries', {
+    method: 'POST',
+    body: { source_id: chris.id, amount: 1502.75 },
+  });
+  assert.equal(res.status, 201);
+
+  const st = res.body.state;
+  assert.equal(st.totals.received, 1502.75);
+  assert.equal(st.totals.income, 7638, 'the plan number does not move');
+  const src = st.income.sources.find((x) => x.id === chris.id);
+  assert.equal(src.received, 1502.75);
+  assert.equal(src.checks, 1);
+  const entry = st.income.entries[0];
+  assert.equal(entry.label, 'Chris paycheck', 'label defaults to the source name');
+  assert.equal(entry.person, 'Chris');
+});
+
+test('one-off income needs no source', async () => {
+  const res = await call('/api/income/entries', {
+    method: 'POST',
+    body: { amount: 500, label: 'Software payment', note: 'first month' },
+  });
+  assert.equal(res.status, 201);
+  const entry = res.body.state.income.entries.find((e) => e.label === 'Software payment');
+  assert.ok(entry);
+  assert.equal(entry.source_id, null);
+  assert.equal(res.body.state.totals.received, 2002.75);
+});
+
+test('income entries can be edited and deleted', async () => {
+  const s = await state();
+  const entry = s.income.entries.find((e) => e.label === 'Software payment');
+
+  const edited = await call(`/api/income/entries/${entry.id}`, {
+    method: 'PUT',
+    body: { amount: 525, person: 'Miriam' },
+  });
+  assert.equal(edited.status, 200);
+  const after = edited.body.state.income.entries.find((e) => e.id === entry.id);
+  assert.equal(after.amount, 525);
+  assert.equal(after.person, 'Miriam');
+  assert.equal(edited.body.state.totals.received, 2027.75);
+
+  const gone = await call(`/api/income/entries/${entry.id}`, { method: 'DELETE' });
+  assert.equal(gone.status, 200);
+  assert.equal(gone.body.state.totals.received, 1502.75);
+});
+
+test('income entry validation mirrors spending', async () => {
+  for (const body of [
+    { amount: 0 },
+    { amount: -20 },
+    { amount: 'abc' },
+    { amount: 100, date: '2026-99-01' },
+    { amount: 100, source_id: 424242 },
+  ]) {
+    const res = await call('/api/income/entries', { method: 'POST', body });
+    assert.ok([400, 404].includes(res.status), `${JSON.stringify(body)} should be rejected, got ${res.status}`);
+  }
+});
+
+test('income in a closed month is refused, grace month accepted', async (t) => {
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  const closed = await call('/api/income/entries', {
+    method: 'POST',
+    body: { amount: 100, date: `${monthOf(-1)}-10` },
+  });
+  assert.equal(closed.status, 409);
+
+  process.env.BACKDATE_GRACE_DAYS = await openGrace();
+  const ok = await call('/api/income/entries', {
+    method: 'POST',
+    body: { amount: 100, label: 'late check', date: `${monthOf(-1)}-10` },
+  });
+  assert.equal(ok.status, 201);
+  assert.equal(ok.body.state.month, monthOf(-1));
+
+  // last month's entry does not bleed into this month
+  const now = await state();
+  assert.equal(now.totals.received, 1502.75);
+  await call(`/api/income/entries/${ok.body.id}`, { method: 'DELETE' });
+});
+
+test('cleanup: remove the logged paycheck', async () => {
+  const s = await state();
+  for (const e of s.income.entries) {
+    await call(`/api/income/entries/${e.id}`, { method: 'DELETE' });
+  }
+  assert.equal((await state()).totals.received, 0);
+});
+
 // ---------------------------------------------------------------- debt + fund
 
 test('the settlement fund tracks bills, deposits and settlements', async () => {
@@ -725,7 +826,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v1'],
+    ['/sw.js', 'lfb-v2'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

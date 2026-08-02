@@ -103,6 +103,22 @@ function migrate(db) {
       month        TEXT PRIMARY KEY,
       income_cents INTEGER NOT NULL
     );
+
+    -- Actual money received: paychecks as they land (amounts vary check to
+    -- check), plus one-off income with no source attached.
+    CREATE TABLE IF NOT EXISTS income_entries (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id    INTEGER REFERENCES income_sources(id) ON DELETE SET NULL,
+      label        TEXT NOT NULL DEFAULT '',
+      amount_cents INTEGER NOT NULL,
+      note         TEXT NOT NULL DEFAULT '',
+      person       TEXT NOT NULL,
+      date         TEXT NOT NULL,
+      month        TEXT NOT NULL,
+      created_at   TEXT NOT NULL,
+      updated_at   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_income_entries_month ON income_entries (month);
   `);
 
   // A bill that begins in a future month (YYYY-MM); NULL means "already active".

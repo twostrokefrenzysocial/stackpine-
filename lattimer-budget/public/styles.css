@@ -546,6 +546,16 @@ select.input {
 .due-alert { background: var(--over-bg); color: var(--over); font-weight: 700; }
 .bill-late { color: var(--over) !important; font-weight: 700; }
 
+/* Income: money coming in reads green throughout. */
+.btn-in { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tx-in .tx-amt { color: var(--ok); }
+.amount-display.amount-in { color: var(--ok); }
+.amount-display.amount-in.dim { color: var(--muted); }
+.chip-in[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
+.mode-toggle { justify-content: center; margin-bottom: 6px; }
+.card-foot-btn { padding: 10px 14px; }
+.summary-sub { display: block; font-size: 11px; opacity: .7; }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

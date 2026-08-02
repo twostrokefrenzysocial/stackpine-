@@ -6,6 +6,11 @@ the data; the phones install it straight from the browser, no app store.
 
 - **Quick Add** — one tap on the orange **+**, punch the amount on a big keypad, tap a
   category. Saved, tagged with who entered it and today's date, in about two seconds.
+  A Spending/Income switch on the keypad logs money in the same way.
+- **Paychecks as they actually land** — the Budget tab lists each income source with a
+  **Log** button: keypad opens pre-filled with the usual amount, adjust to what the
+  check really was, save. The dashboard tracks received vs. expected; one-off money
+  (a bonus, a sale) logs as "Other income" with no setup.
 - **Budget tab** — income vs. spent vs. remaining, fixed bills as a tap-to-pay
   checklist, spending categories as progress bars (green under 80%, yellow to 100%,
   red past it).
