@@ -422,6 +422,19 @@
         '</span></div></div></section>';
     }
 
+    var overdue = fixed.filter(function (c) { return c.dueStatus === 'overdue'; });
+    var dueSoon = fixed.filter(function (c) { return c.dueStatus === 'today' || c.dueStatus === 'soon'; });
+    if (overdue.length || dueSoon.length) {
+      html += '<section class="card due-alert">' +
+        '<div class="row"><span>' +
+        (overdue.length ? '<b>' + overdue.length + ' overdue</b>' : '') +
+        (overdue.length && dueSoon.length ? ' · ' : '') +
+        (dueSoon.length ? dueSoon.length + ' due within 3 days' : '') +
+        '</span><b>' +
+        money(overdue.concat(dueSoon).reduce(function (s, c) { return s + c.budget; }, 0), { cents: false }) +
+        '</b></div></section>';
+    }
+
     html += '<div class="section-title"><span>Fixed bills</span><span>' +
       fixed.filter(function (c) { return c.paid; }).length + ' of ' + fixed.length + ' paid</span></div>';
 
@@ -435,6 +448,9 @@
           extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
         } else if (!c.paid && c.spent > 0) {
           extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
+        } else if (c.dueDay) {
+          extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
+            esc(dueText(c)) + '</span>';
         }
         html += '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
           ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
@@ -466,6 +482,24 @@
     }
 
     return html;
+  }
+
+  /** Human wording for a bill's due date: "Overdue by 2 days", "Due Fri the 15th". */
+  function dueText(c) {
+    if (!c.dueDay) return '';
+    if (c.dueStatus === 'overdue') {
+      var late = Math.abs(c.dueIn);
+      return 'Overdue by ' + late + (late === 1 ? ' day' : ' days');
+    }
+    if (c.dueStatus === 'today') return 'Due today';
+    if (c.dueStatus === 'soon') return 'Due in ' + c.dueIn + (c.dueIn === 1 ? ' day' : ' days');
+    return 'Due the ' + ordinal(c.dueDay);
+  }
+
+  function ordinal(n) {
+    var rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return n + 'th';
+    return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
   }
 
   function summaryCell(label, value) {
@@ -629,9 +663,9 @@
     html += '</section>';
 
     html += '<div class="section-title"><span>Fixed bill budgets</span></div><section class="card">';
-    fixed.forEach(function (c) { html += categoryRow(c); });
+    fixed.forEach(function (c) { html += billRow(c); });
     (d.upcoming || []).filter(function (c) { return c.kind === 'fixed'; })
-      .forEach(function (c) { html += categoryRow(c); });
+      .forEach(function (c) { html += billRow(c); });
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="fixed">+ Add fixed bill</button></section>';
 
     html += '<div class="section-title"><span>Spending budgets</span></div><section class="card">';
@@ -651,6 +685,26 @@
       '</section>';
 
     return html;
+  }
+
+  /** Fixed bills get their own stacked row so the due-day field has room. */
+  function billRow(c) {
+    var note = c.startsMonth
+      ? '<span class="muted small"> · starts ' + esc(monthLabel(c.startsMonth)) + '</span>'
+      : '';
+    return '<div class="edit-card">' +
+      '<div class="edit-card-name">' + esc(c.name) + note + '</div>' +
+      '<div class="edit-card-controls">' +
+      '<label class="mini"><span>Amount</span>' +
+      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + c.budget +
+      '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '"></label>' +
+      '<label class="mini"><span>Due day</span>' +
+      '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="31" placeholder="—" value="' +
+      (c.dueDay == null ? '' : c.dueDay) +
+      '" data-act="due-day" data-id="' + c.id + '" aria-label="Day of month ' + esc(c.name) + ' is due"></label>' +
+      '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id +
+      '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
+      '</div></div>';
   }
 
   function categoryRow(c) {
@@ -1062,6 +1116,15 @@
       var budget = Number(node.value);
       if (!isFinite(budget) || budget < 0) { toast('Enter a positive number', 'error'); render(); return; }
       mutate('/categories/' + id, { method: 'PUT', body: { budget: budget } }, 'Budget updated');
+    } else if (act === 'due-day') {
+      var raw = node.value.trim();
+      if (raw !== '' && !(Number(raw) >= 1 && Number(raw) <= 31)) {
+        toast('Due day must be 1-31', 'error');
+        render();
+        return;
+      }
+      mutate('/categories/' + id, { method: 'PUT', body: { due_day: raw === '' ? null : Number(raw) } },
+        raw === '' ? 'Due date cleared' : 'Due date set');
     } else if (act === 'income-amount') {
       var amount = Number(node.value);
       if (!isFinite(amount) || amount < 0) { toast('Enter a positive number', 'error'); render(); return; }

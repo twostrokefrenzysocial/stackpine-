@@ -107,6 +107,8 @@ function migrate(db) {
 
   // A bill that begins in a future month (YYYY-MM); NULL means "already active".
   addColumnIfMissing(db, 'categories', 'starts_month', 'TEXT');
+  // Day of the month a fixed bill is due (1-31); NULL means no due date.
+  addColumnIfMissing(db, 'categories', 'due_day', 'INTEGER');
 }
 
 function seedOnce(db) {

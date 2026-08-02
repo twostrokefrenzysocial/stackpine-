@@ -484,6 +484,94 @@ test('the student-loan migration also lands on a database that already exists', 
   assert.ok(Database);
 });
 
+// ---------------------------------------------------------------- due dates
+
+test('a due day that overflows a short month lands on its last day', () => {
+  const { dueDateIn } = require('../src/util');
+  assert.equal(dueDateIn('2026-09', 31), '2026-09-30'); // September has 30
+  assert.equal(dueDateIn('2027-02', 31), '2027-02-28');
+  assert.equal(dueDateIn('2028-02', 30), '2028-02-29'); // leap year
+  assert.equal(dueDateIn('2026-08', 15), '2026-08-15');
+  assert.equal(dueDateIn('2026-08', 0), '2026-08-01');  // clamped up
+});
+
+test('setting a due day shows up on the bill', async () => {
+  const s = await state();
+  const bill = byName(s.categories, 'Water/sewer');
+  assert.equal(bill.dueDay, null);
+  assert.equal(bill.dueStatus, null);
+
+  const dayToday = Number(s.today.slice(8, 10));
+  const res = await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: dayToday } });
+  assert.equal(res.status, 200);
+
+  const due = byName(res.body.state.categories, 'Water/sewer');
+  assert.equal(due.dueDay, dayToday);
+  assert.equal(due.dueDate, s.today);
+  assert.equal(due.dueIn, 0);
+  assert.equal(due.dueStatus, 'today');
+});
+
+test('paying a bill clears its due warning', async () => {
+  const s = await state();
+  const bill = byName(s.categories, 'Water/sewer');
+  assert.equal(bill.dueStatus, 'today');
+
+  const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
+  const after = byName(paid.body.state.categories, 'Water/sewer');
+  assert.equal(after.paid, true);
+  assert.equal(after.dueStatus, null, 'a paid bill is not still nagging');
+
+  await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
+});
+
+test('bills with due dates sort to the top, earliest first', async () => {
+  const s = await state();
+  const water = byName(s.categories, 'Water/sewer');
+  const electric = byName(s.categories, 'Electric');
+  const gas = byName(s.categories, 'Natural gas');
+
+  await call(`/api/categories/${water.id}`, { method: 'PUT', body: { due_day: 20 } });
+  await call(`/api/categories/${electric.id}`, { method: 'PUT', body: { due_day: 5 } });
+  const res = await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: 12 } });
+
+  const fixed = res.body.state.categories.filter((c) => c.kind === 'fixed');
+  assert.deepEqual(
+    fixed.slice(0, 3).map((c) => c.name),
+    ['Electric', 'Natural gas', 'Water/sewer']
+  );
+  assert.equal(fixed[3].dueDay, null, 'undated bills follow the dated ones');
+
+  // clear them again
+  for (const c of [water, electric, gas]) {
+    await call(`/api/categories/${c.id}`, { method: 'PUT', body: { due_day: null } });
+  }
+  const cleared = await state();
+  assert.equal(byName(cleared.categories, 'Electric').dueDay, null);
+});
+
+test('a nonsense due day is rejected', async () => {
+  const s = await state();
+  const bill = byName(s.categories, 'Electric');
+  for (const day of [0, 32, -3, 'friday']) {
+    const res = await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: day } });
+    assert.equal(res.status, 400, `due_day ${JSON.stringify(day)} should be rejected`);
+  }
+});
+
+test('past months do not raise due warnings', async () => {
+  const s = await state();
+  const bill = byName(s.categories, 'Electric');
+  await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: 1 } });
+
+  const past = await call(`/api/state?month=${monthOf(-1)}`);
+  const old = byName(past.body.categories, 'Electric');
+  assert.equal(old.dueDay, 1);
+  assert.equal(old.dueStatus, null, 'a closed month should not nag about due dates');
+
+  await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: null } });
+});
+
 // ---------------------------------------------------------------- settings
 
 test('editing a budget changes the current month only', async () => {

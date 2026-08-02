@@ -533,6 +533,19 @@ select.input {
 .edit-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
 .icon-del { width: 44px; height: 42px; border-radius: 10px; color: var(--over); background: var(--over-bg); font-size: 17px; }
 
+/* Fixed-bill editor: name on its own line so amount + due day both fit. */
+.edit-card { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.edit-card:last-of-type { border-bottom: 0; }
+.edit-card-name { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+.edit-card-controls { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 8px; align-items: end; }
+.edit-card-controls .input { min-height: 42px; }
+.mini { display: block; }
+.mini > span { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+
+/* Due-date states on the bill checklist. */
+.due-alert { background: var(--over-bg); color: var(--over); font-weight: 700; }
+.bill-late { color: var(--over) !important; font-weight: 700; }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

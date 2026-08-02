@@ -81,6 +81,24 @@ function earliestWritableDate() {
   return inGraceWindow() ? `${previousMonth()}-01` : `${currentMonth()}-01`;
 }
 
+/**
+ * The date a bill falls due in a given month. A bill due on the 31st lands on
+ * the 30th in September and the 28th in February.
+ */
+function dueDateIn(month, dueDay) {
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const day = Math.min(Math.max(1, dueDay), lastDay);
+  return `${month}-${String(day).padStart(2, '0')}`;
+}
+
+/** Whole days from today to a date, negative when the date has passed. */
+function daysUntil(dateStr) {
+  const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+  return Math.round((toUtc(dateStr) - toUtc(today())) / 86400000);
+}
+
 /** Last calendar day of a YYYY-MM month. */
 function lastDayOfMonth(month) {
   const y = Number(month.slice(0, 4));
@@ -155,6 +173,8 @@ module.exports = {
   isWritableMonth,
   earliestWritableDate,
   lastDayOfMonth,
+  dueDateIn,
+  daysUntil,
   isValidDate,
   isValidMonth,
   toCents,

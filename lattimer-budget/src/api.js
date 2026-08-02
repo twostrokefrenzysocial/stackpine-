@@ -11,6 +11,8 @@ const {
   isWritableMonth,
   earliestWritableDate,
   lastDayOfMonth,
+  dueDateIn,
+  daysUntil,
   isValidDate,
   isValidMonth,
   toCents,
@@ -186,17 +188,36 @@ function createApi(db) {
         kind: c.kind,
         budget: toDollars(c.budget_cents),
         startsMonth: c.starts_month,
+        dueDay: c.due_day ?? null,
       }));
+
+    const dueDays = new Map(live.filter((c) => c.due_day).map((c) => [c.id, c.due_day]));
+    const isCurrent = month === currentMonth();
 
     const categories = q.monthRows.all(month).map((row) => {
       const spent = spentMap.get(row.category_id) ?? 0;
       const budget = row.budget_cents;
       const pct = budget > 0 ? (spent / budget) * 100 : spent > 0 ? 101 : 0;
       const paidRow = paidMap.get(row.category_id);
+
+      // Due-date state, only meaningful for an unpaid bill in the live month.
+      const dueDay = dueDays.get(row.category_id) ?? null;
+      const dueDate = dueDay ? dueDateIn(month, dueDay) : null;
+      let dueIn = null;
+      let dueStatus = null;
+      if (dueDate && isCurrent && !paidRow) {
+        dueIn = daysUntil(dueDate);
+        dueStatus = dueIn < 0 ? 'overdue' : dueIn === 0 ? 'today' : dueIn <= 3 ? 'soon' : 'later';
+      }
+
       return {
         id: row.category_id,
         name: row.name,
         kind: row.kind,
+        dueDay,
+        dueDate,
+        dueIn,
+        dueStatus,
         budget: toDollars(budget),
         spent: toDollars(spent),
         remaining: toDollars(budget - spent),
@@ -208,6 +229,17 @@ function createApi(db) {
         paid: row.kind === 'fixed' ? Boolean(paidRow) : undefined,
         paidAmount: paidRow ? toDollars(paidRow.paid_cents) : undefined,
       };
+    });
+
+    // Bills with a due date come first, earliest first, so the next thing to pay
+    // is at the top of the checklist. Everything else keeps its configured order.
+    categories.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === 'fixed' ? -1 : 1;
+      if (a.kind !== 'fixed') return 0;
+      if (a.dueDay && b.dueDay) return a.dueDay - b.dueDay;
+      if (a.dueDay) return -1;
+      if (b.dueDay) return 1;
+      return 0;
     });
 
     const incomeCents = q.monthIncome.get(month)?.income_cents ?? liveIncomeCents();
@@ -421,6 +453,14 @@ function createApi(db) {
     }
   }
 
+  function readDueDay(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    const day = Math.floor(Number(value));
+    if (!Number.isFinite(day) || day < 1 || day > 31) throw bad('Due day must be between 1 and 31.');
+    return day;
+  }
+
   function readStartsMonth(value) {
     if (value === undefined) return undefined;
     if (value === null || value === '') return null;
@@ -544,22 +584,28 @@ function createApi(db) {
     if (budget < 0) throw bad('Budget cannot be negative.');
 
     const startsMonth = readStartsMonth(body.starts_month) ?? null;
+    const dueDay = readDueDay(body.due_day) ?? null;
 
     const clash = db.prepare(`SELECT id, archived FROM categories WHERE name = ?`).get(name);
     if (clash && !clash.archived) throw bad('A category with that name already exists.');
 
     let id;
     if (clash) {
-      db.prepare(`UPDATE categories SET archived = 0, kind = ?, budget_cents = ?, starts_month = ? WHERE id = ?`)
-        .run(kind, budget, startsMonth, clash.id);
+      db.prepare(`
+        UPDATE categories SET archived = 0, kind = ?, budget_cents = ?, starts_month = ?, due_day = ?
+        WHERE id = ?
+      `).run(kind, budget, startsMonth, dueDay, clash.id);
       id = clash.id;
     } else {
       const next = db
         .prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = ?`)
         .get(kind).n;
       id = db
-        .prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month) VALUES (?, ?, ?, ?, ?)`)
-        .run(name, kind, budget, next, startsMonth).lastInsertRowid;
+        .prepare(`
+          INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month, due_day)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `)
+        .run(name, kind, budget, next, startsMonth, dueDay).lastInsertRowid;
     }
 
     broadcast('category:add', req.person);
@@ -579,12 +625,16 @@ function createApi(db) {
 
     const startsRaw = readStartsMonth(body.starts_month);
     const startsMonth = startsRaw === undefined ? category.starts_month : startsRaw;
+    const dueRaw = readDueDay(body.due_day);
+    const dueDay = dueRaw === undefined ? category.due_day : dueRaw;
 
     const clash = db.prepare(`SELECT id FROM categories WHERE name = ? AND id != ?`).get(name, category.id);
     if (clash) throw bad('A category with that name already exists.');
 
-    db.prepare(`UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ? WHERE id = ?`)
-      .run(name, budget, kind, startsMonth, category.id);
+    db.prepare(`
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?
+      WHERE id = ?
+    `).run(name, budget, kind, startsMonth, dueDay, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });

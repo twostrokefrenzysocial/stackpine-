@@ -9,6 +9,13 @@ the data; the phones install it straight from the browser, no app store.
 - **Budget tab** — income vs. spent vs. remaining, fixed bills as a tap-to-pay
   checklist, spending categories as progress bars (green under 80%, yellow to 100%,
   red past it).
+- **Due dates** — give a bill a day of the month and the checklist sorts by it and
+  labels each one *Due today* / *Due in 2 days* / *Overdue by 3 days*, with a red bar
+  at the top counting what is late or due this week. Marking it paid clears it. A bill
+  due on the 31st lands on the 30th in September and the 28th in February.
+- **Scheduled bills** — a bill can be set to begin in a future month. It stays out of
+  the budget until then, listed under *Coming up* along with what the budget will look
+  like once it starts.
 - **Real-time** — one phone adds something, the other updates in well under a second
   over Server-Sent Events, with 15-second polling as a fallback.
 - **History tab** — this month's transactions newest first, filter by category and
