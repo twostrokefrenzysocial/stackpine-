@@ -1451,7 +1451,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v9'],
+    ['/sw.js', 'lfb-v10'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {
