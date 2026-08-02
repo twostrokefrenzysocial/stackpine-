@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 7;
+  var APP_VERSION = 8;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -15,6 +15,7 @@
     data: null,
     tab: 'dashboard',
     filters: { category: '', person: '', type: '', search: '' },
+    ui: { paidOpen: false },
     pinned: false,
     sse: null,
     pollTimer: null,
@@ -425,11 +426,20 @@
       '<div class="summary-cap">Left to spend</div>' +
       '<div class="summary-big' + (d.totals.remaining < 0 ? ' summary-neg' : '') + '">' + money(d.totals.remaining, { cents: false }) + '</div>' +
       '<div class="summary-grid">' +
-      summaryCell('Money in', d.totals.received, 'of ' + money(d.totals.income, { cents: false }) + ' expected') +
+      '<button type="button" class="summary-cell summary-tap" data-act="income-sheet">' +
+      '<span class="summary-cap">Money in ›</span><b>' + money(d.totals.received, { cents: false }) + '</b>' +
+      '<span class="summary-sub">of ' + money(d.totals.income, { cents: false }) + ' — tap to log</span></button>' +
       summaryCell('Spent', d.totals.spent) +
       summaryCell('Budgeted', d.totals.budgeted) +
       summaryCell('Bills left', billsLeft) +
-      '</div></section>';
+      '</div>' +
+      (d.week
+        ? '<div class="summary-week">' +
+          '<div class="row small"><span>This week, everyday spending</span><span>' +
+          money(d.week.everyday) + ' / ~' + money(d.week.allowance, { cents: false }) + '</span></div>' +
+          barHtml(d.week.status, d.week.pct) + '</div>'
+        : '') +
+      '</section>';
 
     // Last month's report card: overspending alert + leftover nudge, once per month.
     if (d.review && localStorage.getItem('lfb.review.' + d.review.month) !== 'seen') {
@@ -465,65 +475,16 @@
       html += '</section>';
     }
 
-    // Weekly pace: everyday spending only — the mortgage landing in week one
-    // is not "overspending", so bills stay out of this number.
-    if (d.week || (d.weeks && d.weeks.length)) {
-      html += '<div class="section-title"><span>Week by week</span>' +
-        (d.week ? '<span>' + monthDay(d.week.from) + ' – ' + monthDay(d.week.to) + '</span>' : '') +
-        '</div><section class="card">';
-      if (d.week) {
-        html += '<div class="cat-head"><span class="cat-name">This week, everyday spending</span>' +
-          '<span class="cat-nums">' + money(d.week.everyday) + ' / ~' + money(d.week.allowance, { cents: false }) + '</span></div>' +
-          barHtml(d.week.status, d.week.pct) +
-          '<div class="cat-foot"><span>' +
-          (d.week.remaining < 0
-            ? money(-d.week.remaining) + ' over an even pace'
-            : money(d.week.remaining) + ' left at an even pace') + '</span>' +
-          (d.week.income > 0 ? '<span class="week-in">+' + money(d.week.income) + ' came in</span>' : '') +
-          '</div>';
-      }
-      html += weekBarsHtml(d);
-      html += '</section>';
-    }
-
-    // Money in: tap Log when a paycheck lands and record what it actually was.
-    html += '<div class="section-title"><span>Income</span><span>' +
-      money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
-    html += '<section class="card card-tight">';
-    d.income.sources.forEach(function (s) {
-      var sub = s.received > 0
-        ? 'got ' + money(s.received) + ' (' + s.checks + ' of ' + s.per_month + ' checks)'
-        : money(s.amount, { cents: false }) + ' × ' + s.per_month + ' per month';
-      html += '<div class="bill">' +
-        '<span class="tx-avatar" data-person="' + esc(s.person) + '">' + esc((s.person || s.name).charAt(0)) + '</span>' +
-        '<span class="bill-name">' + esc(s.name) + '<span class="bill-sub">' + esc(sub) + '</span></span>' +
-        (d.readOnly ? '' : '<button type="button" class="btn btn-sm btn-in" data-act="log-income" data-id="' + s.id + '">Log</button>') +
-        '</div>';
-    });
-    if (!d.readOnly) {
-      html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="log-income" data-id="">+ Other income (bonus, sale, refund…)</button></div>';
-    }
-    html += '</section>';
-
-    // Scheduled bills sit directly under the summary: if one of them puts the
-    // budget underwater, that needs seeing before the checklist.
+    // A scheduled bill that puts the plan underwater gets one line here;
+    // the detail lives on the Plan tab.
     var upcoming = d.upcoming || [];
     if (upcoming.length) {
       var projected = d.totals.budgeted + upcoming.reduce(function (s, c) { return s + c.budget; }, 0);
       var over = projected - d.totals.income;
-      html += '<div class="section-title"><span>Coming up</span></div><section class="card card-tight">';
-      upcoming.forEach(function (c) {
-        html += '<div class="bill bill-pending">' +
-          '<span class="bill-box" aria-hidden="true">◷</span>' +
-          '<span class="bill-name">' + esc(c.name) +
-          '<span class="bill-sub">starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
-          '<span class="bill-amt">' + money(c.budget, { cents: false }) + '</span></div>';
-      });
-      html += '<div class="cat"><div class="cat-foot"><span>Budget once these start</span>' +
-        '<span class="' + (over > 0 ? 'cat-over' : '') + '">' + money(projected, { cents: false }) +
-        ' of ' + money(d.totals.income, { cents: false }) +
-        (over > 0 ? ' — ' + money(over, { cents: false }) + ' short' : '') +
-        '</span></div></div></section>';
+      if (over > 0) {
+        html += '<div class="card due-alert">Starting ' + esc(monthLabel(upcoming[0].startsMonth)) +
+          ', the plan is ' + money(over, { cents: false }) + ' short — see the Plan tab.</div>';
+      }
     }
 
     var overdue = fixed.filter(function (c) { return c.dueStatus === 'overdue'; });
@@ -539,30 +500,26 @@
         '</b></div></section>';
     }
 
-    html += '<div class="section-title"><span>Fixed bills</span><span>' +
-      fixed.filter(function (c) { return c.paid; }).length + ' of ' + fixed.length + ' paid</span></div>';
+    var unpaidBills = fixed.filter(function (c) { return !c.paid; });
+    var paidBills = fixed.filter(function (c) { return c.paid; });
+
+    html += '<div class="section-title"><span>Bills to pay</span><span>' +
+      (unpaidBills.length ? money(billsLeft, { cents: false }) + ' left' : 'all paid 🎉') + '</span></div>';
 
     if (!fixed.length) {
       html += '<div class="card empty">No fixed bills yet. Add them in Settings.</div>';
     } else {
       html += '<section class="card card-tight">';
-      fixed.forEach(function (c) {
-        var extra = '';
-        if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
-          extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
-        } else if (!c.paid && c.spent > 0) {
-          extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
-        } else if (c.dueDay) {
-          extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
-            esc(dueText(c)) + '</span>';
-        }
-        html += '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
-          ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
-          '<span class="bill-box" aria-hidden="true">✓</span>' +
-          '<span class="bill-name">' + esc(c.name) + (c.archived ? ' <span class="badge">closed</span>' : '') + extra + '</span>' +
-          '<span class="bill-amt">' + money(c.budget, { cents: false }) + '</span>' +
-          '</button>';
-      });
+      unpaidBills.forEach(function (c) { html += billChecklistRow(c, d); });
+      if (!unpaidBills.length) {
+        html += '<div class="empty" style="padding:16px">Every bill is paid this month.</div>';
+      }
+      // Paid bills fold away so the list shrinks as the month gets done.
+      if (paidBills.length) {
+        html += '<button type="button" class="bill-expander" data-act="toggle-paid">' +
+          (S.ui.paidOpen ? '▾' : '▸') + ' ' + paidBills.length + ' paid ✓</button>';
+        if (S.ui.paidOpen) paidBills.forEach(function (c) { html += billChecklistRow(c, d); });
+      }
       html += '</section>';
     }
 
@@ -625,6 +582,50 @@
     return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
   }
 
+  function billChecklistRow(c, d) {
+    var extra = '';
+    if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
+      extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
+    } else if (!c.paid && c.spent > 0) {
+      extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
+    } else if (c.dueDay) {
+      extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
+        esc(dueText(c)) + '</span>';
+    }
+    return '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
+      ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
+      '<span class="bill-box" aria-hidden="true">✓</span>' +
+      '<span class="bill-name">' + esc(c.name) + (c.archived ? ' <span class="badge">closed</span>' : '') + extra + '</span>' +
+      '<span class="bill-amt">' + money(c.budget, { cents: false }) + '</span>' +
+      '</button>';
+  }
+
+  /** The income sources with their Log buttons — used by the sheet and Plan. */
+  function incomeRowsHtml(d) {
+    var html = '';
+    d.income.sources.forEach(function (s) {
+      var sub = s.received > 0
+        ? 'got ' + money(s.received) + ' (' + s.checks + ' of ' + s.per_month + ' checks)'
+        : money(s.amount, { cents: false }) + ' × ' + s.per_month + ' per month';
+      html += '<div class="bill">' +
+        '<span class="tx-avatar" data-person="' + esc(s.person) + '">' + esc((s.person || s.name).charAt(0)) + '</span>' +
+        '<span class="bill-name">' + esc(s.name) + '<span class="bill-sub">' + esc(sub) + '</span></span>' +
+        (d.readOnly ? '' : '<button type="button" class="btn btn-sm btn-in" data-act="log-income" data-id="' + s.id + '">Log</button>') +
+        '</div>';
+    });
+    if (!d.readOnly) {
+      html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="log-income" data-id="">+ Other income (bonus, sale, refund…)</button></div>';
+    }
+    return html;
+  }
+
+  function openIncomeSheet() {
+    openSheet(sheetHead('Money in — ' + monthLabel(S.data.month)) +
+      '<p class="muted small" style="margin-top:0">' + money(S.data.totals.received) + ' of ' +
+      money(S.data.totals.income, { cents: false }) + ' expected has come in. Tap Log when a check lands.</p>' +
+      incomeRowsHtml(S.data));
+  }
+
   function summaryCell(label, value, sub) {
     return '<div class="summary-cell"><span class="summary-cap">' + esc(label) + '</span>' +
       '<b>' + money(value, { cents: false }) + '</b>' +
@@ -684,7 +685,21 @@
     var outTotal = rows.reduce(function (s, r) { return r.kind === 'out' ? s + r.amount : s; }, 0);
     var inTotal = rows.reduce(function (s, r) { return r.kind === 'in' ? s + r.amount : s; }, 0);
 
-    var html = '<section class="card">' +
+    var html = '';
+
+    // Weekly progress lives here with the rest of the record.
+    if (d.weeks && d.weeks.length) {
+      html += '<section class="card">' +
+        '<div class="row small"><b>Week by week</b>' +
+        (d.week
+          ? '<span class="muted">' + (d.week.remaining < 0
+            ? money(-d.week.remaining) + ' over pace this week'
+            : money(d.week.remaining) + ' left at pace this week') + '</span>'
+          : '') + '</div>' +
+        weekBarsHtml(d) + '</section>';
+    }
+
+    html += '<section class="card">' +
       '<div class="row" style="margin-bottom:10px"><div class="chips">' +
       typeChip('', 'Everything') + typeChip('out', 'Spending') + typeChip('in', 'Income') +
       '</div>' +
@@ -809,6 +824,11 @@
       html += '<div class="card due-alert">This plan spends ' + money(-leftover, { cents: false }) +
         ' more than comes in. Trim budgets below or in Settings.</div>';
     }
+
+    // Paychecks: log actual amounts as they land.
+    html += '<div class="section-title"><span>Income</span><span>' +
+      money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
+    html += '<section class="card card-tight">' + incomeRowsHtml(d) + '</section>';
 
     // Savings
     html += '<div class="section-title"><span>Savings</span>' +
@@ -1213,9 +1233,17 @@
         html += '<button type="button" class="detail-toggle" data-act="qa-details">+ Note, date or person</button>';
       }
 
+      // The fast path: their most-used categories, one tap to save.
+      if (QA.mode === 'out') {
+        html += '<div class="chips qa-chips">' +
+          topCategories(6).map(function (c) {
+            return '<button type="button" class="chip" data-act="qa-quick" data-id="' + c.id + '">' + esc(c.name) + '</button>';
+          }).join('') + '</div>';
+      }
+
       var nextLabel = QA.mode === 'in'
         ? (QA.locked ? 'Save paycheck' : 'Choose source →')
-        : 'Choose category →';
+        : 'All categories →';
       html += '<button type="button" class="btn btn-accent btn-block" data-act="qa-next"' +
         (QA.digits ? '' : ' disabled') + '>' + nextLabel + '</button>';
       openSheet(html);
@@ -1247,6 +1275,18 @@
     }
     body += '<button type="button" class="btn btn-block" style="margin-top:14px" data-act="qa-back">← Change amount</button>';
     openSheet(body);
+  }
+
+  /** Most-used everyday categories this month, topped up in budget order. */
+  function topCategories(n) {
+    var counts = {};
+    S.data.transactions.forEach(function (t) {
+      if (t.category_kind === 'variable') counts[t.category_id] = (counts[t.category_id] || 0) + 1;
+    });
+    return activeCats(S.data, 'variable')
+      .slice()
+      .sort(function (a, b) { return (counts[b.id] || 0) - (counts[a.id] || 0); })
+      .slice(0, n);
   }
 
   function catPickHtml(c) {
@@ -1873,6 +1913,11 @@
         renderQuickAdd();
         break;
       case 'qa-save': quickAddSave(id); break;
+      case 'qa-quick':
+        if (!QA.digits) { toast('Type the amount first', 'error'); break; }
+        captureQaDetails();
+        quickAddSave(id);
+        break;
       case 'qa-save-income': quickAddSaveIncome(node.dataset.id); break;
       case 'log-income': {
         var src = S.data.income.sources.filter(function (x) { return x.id === Number(id); })[0];
@@ -1913,6 +1958,11 @@
         break;
       case 'review-dismiss':
         localStorage.setItem('lfb.review.' + node.dataset.month, 'seen');
+        render();
+        break;
+      case 'income-sheet': openIncomeSheet(); break;
+      case 'toggle-paid':
+        S.ui.paidOpen = !S.ui.paidOpen;
         render();
         break;
       case 'save-add': openSavings('in', node.dataset.amount || ''); break;

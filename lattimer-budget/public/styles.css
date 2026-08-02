@@ -646,6 +646,23 @@ select.input {
 .goal { padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 10px; cursor: pointer; }
 .goal:focus { outline: 2px solid var(--navy-soft); border-radius: 8px; }
 
+/* Slimmer home screen */
+.summary-tap { text-align: left; border: 0; }
+.summary-tap:active { opacity: .8; }
+.summary-week { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .18); }
+.summary-week .bar { background: rgba(255, 255, 255, .18); }
+.bill-expander {
+  width: 100%;
+  min-height: 46px;
+  text-align: left;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.qa-chips { margin: 2px 0 12px; justify-content: center; }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

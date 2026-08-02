@@ -1373,7 +1373,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v7'],
+    ['/sw.js', 'lfb-v8'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {
