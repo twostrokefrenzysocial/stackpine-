@@ -139,6 +139,16 @@ function migrate(db) {
       category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
       updated_at  TEXT NOT NULL
     );
+
+    -- The savings ledger: positive = money put away, negative = taken out.
+    CREATE TABLE IF NOT EXISTS savings_entries (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      amount_cents INTEGER NOT NULL,
+      note         TEXT NOT NULL DEFAULT '',
+      person       TEXT NOT NULL,
+      date         TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    );
   `);
 }
 

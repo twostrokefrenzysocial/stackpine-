@@ -21,12 +21,23 @@ the data; the phones install it straight from the browser, no app store.
 - **Scheduled bills** — a bill can be set to begin in a future month. It stays out of
   the budget until then, listed under *Coming up* along with what the budget will look
   like once it starts.
-- **Bank statement import** — History → Import. Export CSV from your bank (PNC:
-  Account Activity → Download), pick the file or paste it. Merchants are matched to
-  categories — first from what you picked on previous imports, then by keyword — you
-  review and fix anything wrong, and re-importing the same file never duplicates.
+- **Bank statement import (PDF or CSV)** — History → Import. Upload the monthly
+  statement PDF or a CSV export (PNC: Account Activity → Download), or paste the
+  text. Merchants are matched to categories — first from what you picked on previous
+  imports, then by keyword — you review and fix anything wrong, and re-importing the
+  same file never duplicates. Statements may target any past month (they're the
+  bank's record of what already happened); manual entry keeps the closed-month rule.
   Deposits can be imported as income (off by default so logged paychecks don't
-  double-count).
+  double-count). Scanned-image PDFs can't be read — use the CSV export for those.
+- **Month report** — when a new month starts, the dashboard shows last month's report
+  card: which categories went over budget and by how much, with a one-tap jump into
+  the tune-up. If tracked income beat spending, it offers to move the leftover into
+  savings.
+- **Plan tab** — the budget as a plan you can read: income minus bills minus everyday
+  spending minus the savings goal, with the breathing room (or shortfall) at the
+  bottom, every budget listed, and due dates alongside bills.
+- **Savings** — a running savings balance with add/withdraw, a monthly goal set in
+  Settings, and a progress bar on the Plan tab.
 - **Smart budget tune-up** — Settings → Review budget suggestions. Compares each
   spending budget to your actual spending over the last few closed months and
   proposes new numbers (nearest $5), with a running check against income. You pick

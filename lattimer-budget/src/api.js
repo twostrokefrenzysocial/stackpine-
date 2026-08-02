@@ -6,6 +6,7 @@ const {
   TZ,
   today,
   currentMonth,
+  previousMonth,
   graceDays,
   inGraceWindow,
   isWritableMonth,
@@ -25,6 +26,7 @@ const {
 } = require('./util');
 const { SETTLEMENT_FUND_CATEGORY } = require('./seed');
 const { parseStatement, merchantKey, keywordGuess, importHash } = require('./import');
+const { extractLines, parsePdfLines } = require('./pdf');
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -337,6 +339,49 @@ function createApi(db) {
       wkStart = addDays(wkStart, 7);
     }
 
+    // ---- savings ----
+    const savingsRows = db.prepare(`SELECT * FROM savings_entries ORDER BY date DESC, id DESC`).all();
+    const savingsBalance = savingsRows.reduce((s, e) => s + e.amount_cents, 0);
+    const savedThisMonth = savingsRows
+      .filter((e) => e.date.slice(0, 7) === cur)
+      .reduce((s, e) => s + e.amount_cents, 0);
+    const savingsTargetRow = db.prepare(`SELECT value FROM meta WHERE key = 'savings_target'`).get();
+    const savingsTarget = savingsTargetRow ? Number(savingsTargetRow.value) : 0;
+
+    // ---- last-month review: overspending alerts + leftover nudge ----
+    let review = null;
+    if (month === cur) {
+      const prev = previousMonth();
+      const prevTx = db.prepare(`SELECT COUNT(*) AS n FROM transactions WHERE month = ?`).get(prev).n;
+      if (prevTx > 0) {
+        // The month may never have been opened (e.g. its data arrived via a
+        // statement import), so make sure its budget snapshot exists first.
+        ensureMonth(prev);
+        const prevSpent = new Map(q.spentByCategory.all(prev).map((r) => [r.category_id, r.spent]));
+        const overs = q.monthRows.all(prev)
+          .map((row) => ({
+            name: row.name,
+            budget: toDollars(row.budget_cents),
+            spent: toDollars(prevSpent.get(row.category_id) ?? 0),
+            over: toDollars((prevSpent.get(row.category_id) ?? 0) - row.budget_cents),
+          }))
+          .filter((x) => x.over > 0)
+          .sort((a, b) => b.over - a.over);
+
+        const prevSpentTotal = [...prevSpent.values()].reduce((s, n) => s + n, 0);
+        const prevReceived = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS n FROM income_entries WHERE month = ?`).get(prev).n;
+        const prevIncome = q.monthIncome.get(prev)?.income_cents ?? 0;
+        const basis = prevReceived > 0 ? prevReceived : prevIncome;
+        review = {
+          month: prev,
+          overs: overs.slice(0, 6),
+          overTotal: toDollars(overs.reduce((s, x) => s + Math.round(x.over * 100), 0)),
+          leftover: toDollars(basis - prevSpentTotal),
+          leftoverBasis: prevReceived > 0 ? 'received' : 'planned',
+        };
+      }
+    }
+
     const currentWeek = weeks.find((w) => w.isCurrent) || null;
     const week = currentWeek
       ? {
@@ -386,6 +431,19 @@ function createApi(db) {
       upcoming,
       weeks,
       week,
+      review,
+      savings: {
+        balance: toDollars(savingsBalance),
+        thisMonth: toDollars(savedThisMonth),
+        target: toDollars(savingsTarget),
+        entries: savingsRows.slice(0, 12).map((e) => ({
+          id: e.id,
+          amount: toDollars(e.amount_cents),
+          note: e.note,
+          person: e.person,
+          date: e.date,
+        })),
+      },
       transactions,
       debts,
       fund: {
@@ -614,7 +672,9 @@ function createApi(db) {
   router.delete('/transactions/:id', auth, (req, res) => {
     const existing = q.txById.get(Number(req.params.id));
     if (!existing) throw notFound('Transaction not found.');
-    requireMonthWritable(existing.date);
+    // Imported rows may be removed from any month — a bad import must always
+    // be reversible. Hand-entered history keeps the closed-month rule.
+    if (existing.source !== 'import') requireMonthWritable(existing.date);
     db.prepare(`DELETE FROM transactions WHERE id = ?`).run(existing.id);
     broadcast('transaction:delete', req.person);
     res.json({ ok: true, state: buildState(existing.month, req.person) });
@@ -909,6 +969,39 @@ function createApi(db) {
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
   });
 
+  // ---------------------------------------------------------------- savings
+
+  router.post('/savings/entries', auth, (req, res) => {
+    const body = req.body || {};
+    const amount = readAmount(body.amount);
+    const signed = body.direction === 'out' ? -amount : amount;
+    const date = readDate(body.date);
+    if (date > today()) throw bad('Savings entries cannot be in the future.');
+    const person = readPerson(body.person, req.person);
+    const note = readNote(body.note);
+    const id = db.prepare(`
+      INSERT INTO savings_entries (amount_cents, note, person, date, created_at) VALUES (?, ?, ?, ?, ?)
+    `).run(signed, note, person, date, new Date().toISOString()).lastInsertRowid;
+    broadcast(signed >= 0 ? 'savings:added' : 'savings:withdrawn', req.person);
+    res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
+  });
+
+  router.delete('/savings/entries/:id', auth, (req, res) => {
+    const existing = db.prepare(`SELECT * FROM savings_entries WHERE id = ?`).get(Number(req.params.id));
+    if (!existing) throw notFound('Savings entry not found.');
+    db.prepare(`DELETE FROM savings_entries WHERE id = ?`).run(existing.id);
+    broadcast('savings:removed', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  router.put('/savings/target', auth, (req, res) => {
+    const cents = readAmount(req.body?.amount ?? 0, { allowNegative: true });
+    if (cents < 0) throw bad('The target cannot be negative.');
+    db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('savings_target', ?)`).run(String(cents));
+    broadcast('savings:target', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
   // ---------------------------------------------------------------- statement import
 
   const hashExists = db.prepare(`
@@ -925,19 +1018,37 @@ function createApi(db) {
     ON CONFLICT (merchant) DO UPDATE SET category_id = excluded.category_id, updated_at = excluded.updated_at
   `);
 
-  router.post('/import/preview', auth, (req, res) => {
-    const text = String(req.body?.text ?? '');
-    if (!text.trim()) throw bad('Paste or upload a statement first.');
-    if (text.length > 2_000_000) throw bad('That file is too large.');
-
-    const { rows, format } = parseStatement(text);
+  router.post('/import/preview', auth, async (req, res) => {
+    let parsed;
+    if (req.body?.pdf) {
+      const b64 = String(req.body.pdf);
+      if (b64.length > 12_000_000) throw bad('That PDF is too large.');
+      let lines;
+      try {
+        lines = await extractLines(Buffer.from(b64, 'base64'));
+      } catch (err) {
+        throw bad('Could not read that PDF. If it is a scanned image, use the CSV export instead.');
+      }
+      parsed = parsePdfLines(lines, today());
+      if (!parsed.rows.length && lines.length < 3) {
+        throw bad('That PDF has no readable text — it may be a scan. Use the CSV export instead.');
+      }
+    } else {
+      const text = String(req.body?.text ?? '');
+      if (!text.trim()) throw bad('Paste or upload a statement first.');
+      if (text.length > 2_000_000) throw bad('That file is too large.');
+      parsed = parseStatement(text);
+    }
+    const { rows, format } = parsed;
     const active = q.categories.all().filter((c) => !c.starts_month || c.starts_month <= currentMonth());
     const byName = new Map(active.map((c) => [c.name, c.id]));
 
     const preview = rows.slice(0, 400).map((r, i) => {
       const hash = importHash(r.date, r.cents, r.description);
       const alreadyImported = hashExists.get({ h: hash }).n > 0;
-      const writable = isWritableMonth(r.date.slice(0, 7)) && r.date <= today();
+      // Statements are the bank's record of what already happened, so unlike
+      // manual entry they may land in any past month — just never the future.
+      const writable = r.date <= today();
       const key = merchantKey(r.description);
 
       let categoryId = null;
@@ -994,7 +1105,6 @@ function createApi(db) {
       for (const raw of rows) {
         const amount = readAmount(raw.amount);
         const date = readDate(raw.date);
-        requireMonthWritable(date);
         if (date > today()) throw bad('Statement rows cannot be in the future.');
         const description = String(raw.description ?? '').trim().slice(0, 120);
         const hash = importHash(date, amount, description);

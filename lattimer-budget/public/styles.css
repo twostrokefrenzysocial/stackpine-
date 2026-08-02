@@ -197,7 +197,7 @@ button { cursor: pointer; border: 0; background: none; }
   left: 0; right: 0; bottom: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--card);
   border-top: 1px solid var(--line);
   padding-bottom: var(--safe-b);
@@ -614,6 +614,16 @@ select.input {
 .tune-move { margin-top: 4px; font-weight: 700; font-size: 14px; }
 .tune-up { color: var(--over); }
 .tune-down { color: var(--ok); }
+
+/* Plan tab */
+.plan-math { margin-top: 12px; }
+.plan-line { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+.plan-line b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.plan-total { border-top: 1px solid rgba(255, 255, 255, .25); margin-top: 4px; padding-top: 10px; font-weight: 800; }
+.plan-total b { font-size: 20px; }
+
+/* Month report card */
+.review-card { border-left: 4px solid var(--orange); }
 
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }

@@ -954,6 +954,160 @@ test('cleanup imported transactions', async () => {
   assert.equal((await state()).transactions.filter((t) => t.source === 'import').length, 0);
 });
 
+// ---------------------------------------------------------------- pdf statements
+
+function buildPdf(lines) {
+  const content = ['BT /F1 10 Tf'];
+  let y = 720;
+  for (const line of lines) {
+    content.push(`1 0 0 1 40 ${y} Tm (${line.replace(/[\\()]/g, '')}) Tj`);
+    y -= 14;
+  }
+  content.push('ET');
+  const stream = content.join('\n');
+  const objs = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+    `4 0 obj << /Length ${stream.length} >> stream\n${stream}\nendstream endobj`,
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+  ];
+  let out = '%PDF-1.4\n';
+  const offsets = [];
+  for (const o of objs) { offsets.push(out.length); out += o + '\n'; }
+  const xref = out.length;
+  out += 'xref\n0 6\n0000000000 65535 f \n' +
+    offsets.map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join('') +
+    `trailer << /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(out, 'latin1');
+}
+
+test('a PDF statement previews with sections, years and directions right', async () => {
+  const last = monthOf(-1);
+  const mm = last.slice(5, 7);
+  const yyyy = last.slice(0, 4);
+  const pdf = buildPdf([
+    `PNC Bank Statement   Period ${mm}/01/${yyyy} to ${mm}/28/${yyyy}`,
+    'Banking/Debit Card Withdrawals and Purchases',
+    `${mm}/03 KROGER #945 CINCINNATI OH 82.13`,
+    `${mm}/05 SPEEDWAY 08123 HILLSBORO OH 45.00`,
+    'Deposits and Other Additions',
+    `${mm}/02 DIRECT DEP PAYROLL COMPANY 1,502.75`,
+  ]);
+
+  const res = await call('/api/import/preview', { method: 'POST', body: { pdf: pdf.toString('base64') } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.format, 'pdf');
+  assert.equal(res.body.rows.length, 3);
+
+  const s = await state();
+  const kroger = res.body.rows.find((r) => /KROGER/.test(r.description));
+  assert.equal(kroger.date, `${last}-03`, 'year inferred from the statement period');
+  assert.equal(kroger.direction, 'out');
+  assert.equal(kroger.amount, 82.13);
+  assert.ok(kroger.category_id, 'kroger gets a category guess');
+
+  const payroll = res.body.rows.find((r) => /PAYROLL/.test(r.description));
+  assert.equal(payroll.direction, 'in', 'the deposits section flips direction');
+  assert.equal(payroll.amount, 1502.75);
+  assert.equal(byName(s.categories, 'Groceries').id, kroger.category_id);
+});
+
+test('a last-month statement imports even though the month is closed to manual edits', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0'; // month fully closed
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  const last = monthOf(-1);
+  const s = await state();
+  const rows = [
+    { date: `${last}-03`, description: 'KROGER #945 CLOSED MONTH', amount: 82.13, direction: 'out', category_id: groceriesId },
+    { date: `${last}-05`, description: 'SPEEDWAY CLOSED MONTH', amount: 45, direction: 'out', category_id: byName(s.categories, 'Fuel').id },
+  ];
+  const commit = await call('/api/import/commit', { method: 'POST', body: { rows } });
+  assert.equal(commit.status, 201);
+  assert.equal(commit.body.added, 2);
+
+  const past = await call(`/api/state?month=${last}`);
+  assert.equal(past.body.readOnly, true, 'the month stays read-only for manual entry');
+  assert.equal(byName(past.body.categories, 'Groceries').spent, 82.13);
+
+  // manual entry into the same closed month is still refused
+  const manual = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 10, date: `${last}-10` },
+  });
+  assert.equal(manual.status, 409);
+});
+
+test('the month report flags last-month overspending', async () => {
+  const last = monthOf(-1);
+  const s = await state();
+  // groceries: 82.13 spent vs 700 budget (under); force an over by importing more fuel
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: `${last}-08`, description: 'SPEEDWAY BIG FILL', amount: 400, direction: 'out', category_id: byName(s.categories, 'Fuel').id }] },
+  });
+  assert.equal(commit.status, 201);
+
+  const now = await state();
+  assert.ok(now.review, 'a review appears once last month has data');
+  assert.equal(now.review.month, last);
+  const fuelOver = now.review.overs.find((o) => o.name === 'Fuel');
+  assert.ok(fuelOver, 'fuel is flagged as over');
+  assert.equal(fuelOver.spent, 445);
+  assert.equal(fuelOver.over, 95); // 445 spent vs 350 budget
+});
+
+test('imported rows in a closed month can be deleted (mistakes stay fixable)', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+
+  const last = monthOf(-1);
+  const past = await call(`/api/state?month=${last}`);
+  const imported = past.body.transactions.filter((x) => x.source === 'import');
+  assert.ok(imported.length >= 3);
+  for (const tx of imported) {
+    const del = await call(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+    assert.equal(del.status, 200);
+  }
+  const after = await call(`/api/state?month=${last}`);
+  assert.equal(after.body.transactions.length, 0);
+  assert.equal((await state()).review, null, 'review goes away with the data');
+});
+
+// ---------------------------------------------------------------- savings
+
+test('savings: add, withdraw, balance and month tally', async () => {
+  const added = await call('/api/savings/entries', { method: 'POST', body: { amount: 250, note: 'leftover from July' } });
+  assert.equal(added.status, 201);
+  assert.equal(added.body.state.savings.balance, 250);
+  assert.equal(added.body.state.savings.thisMonth, 250);
+
+  const out = await call('/api/savings/entries', { method: 'POST', body: { amount: 60, direction: 'out', note: 'brake pads' } });
+  assert.equal(out.body.state.savings.balance, 190);
+  assert.equal(out.body.state.savings.thisMonth, 190);
+  assert.equal(out.body.state.savings.entries[0].amount, -60);
+
+  const bad = await call('/api/savings/entries', { method: 'POST', body: { amount: -5 } });
+  assert.equal(bad.status, 400);
+
+  const gone1 = await call(`/api/savings/entries/${added.body.id}`, { method: 'DELETE' });
+  const outId = out.body.state.savings.entries[0].id;
+  const gone2 = await call(`/api/savings/entries/${outId}`, { method: 'DELETE' });
+  assert.equal(gone1.status, 200);
+  assert.equal(gone2.body.state.savings.balance, 0);
+});
+
+test('the savings goal is settable and survives in state', async () => {
+  const set = await call('/api/savings/target', { method: 'PUT', body: { amount: 150 } });
+  assert.equal(set.status, 200);
+  assert.equal(set.body.state.savings.target, 150);
+  const neg = await call('/api/savings/target', { method: 'PUT', body: { amount: -10 } });
+  assert.equal(neg.status, 400);
+  const clear = await call('/api/savings/target', { method: 'PUT', body: { amount: 0 } });
+  assert.equal(clear.body.state.savings.target, 0);
+});
+
 // ---------------------------------------------------------------- budget tune-up
 
 test('budget suggestions come from past-month actuals', async (t) => {
@@ -1057,7 +1211,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v4'],
+    ['/sw.js', 'lfb-v5'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

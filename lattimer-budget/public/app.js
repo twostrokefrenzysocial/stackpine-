@@ -378,6 +378,7 @@
     var view = el('view');
     if (S.tab === 'dashboard') view.innerHTML = viewDashboard(d);
     else if (S.tab === 'history') view.innerHTML = viewHistory(d);
+    else if (S.tab === 'plan') view.innerHTML = viewPlan(d);
     else if (S.tab === 'debt') view.innerHTML = viewDebt(d);
     else view.innerHTML = viewSettings(d);
   }
@@ -411,6 +412,37 @@
       summaryCell('Budgeted', d.totals.budgeted) +
       summaryCell('Bills left', billsLeft) +
       '</div></section>';
+
+    // Last month's report card: overspending alert + leftover nudge, once per month.
+    if (d.review && localStorage.getItem('lfb.review.' + d.review.month) !== 'seen') {
+      var rv = d.review;
+      html += '<section class="card review-card">' +
+        '<div class="row"><b>' + esc(monthLabel(rv.month)) + ' report</b>' +
+        '<button type="button" class="btn btn-sm" data-act="review-dismiss" data-month="' + esc(rv.month) + '">Dismiss</button></div>';
+      if (rv.overs.length) {
+        html += '<p class="small" style="margin:8px 0 4px"><b class="cat-over">' + money(rv.overTotal) + ' over budget</b> in ' +
+          rv.overs.length + (rv.overs.length === 1 ? ' area:' : ' areas:') + '</p>';
+        rv.overs.forEach(function (o) {
+          html += '<div class="row small" style="padding:3px 0"><span>' + esc(o.name) + '</span>' +
+            '<span class="cat-over">' + money(o.spent) + ' of ' + money(o.budget, { cents: false }) +
+            ' (+' + money(o.over) + ')</span></div>';
+        });
+        html += '<button type="button" class="btn btn-sm btn-primary btn-block" style="margin-top:8px" data-act="tuneup-open">Fix the budgets</button>';
+      } else {
+        html += '<p class="small" style="margin:8px 0 4px">Every category stayed under budget. 👏</p>';
+      }
+      // The save-it nudge only fires on real tracked income; a "leftover"
+      // computed from the plan alone is hypothetical money.
+      if (rv.leftover > 0 && rv.leftoverBasis === 'received') {
+        html += '<div class="row small" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">' +
+          '<span><b class="week-in">' + money(rv.leftover, { cents: false }) + '</b> came in and never got spent</span>' +
+          '<button type="button" class="btn btn-sm btn-in" data-act="save-add" data-amount="' + rv.leftover + '">Save it</button></div>';
+      } else if (rv.leftover < 0 && rv.leftoverBasis === 'received') {
+        html += '<p class="small cat-over" style="margin:8px 0 0">Spending outran income by ' +
+          money(-rv.leftover, { cents: false }) + '.</p>';
+      }
+      html += '</section>';
+    }
 
     // Weekly pace: everyday spending only — the mortgage landing in week one
     // is not "overspending", so bills stay out of this number.
@@ -689,6 +721,97 @@
       ' aria-pressed="' + (S.filters.person === value ? 'true' : 'false') + '">' + esc(label) + '</button>';
   }
 
+  // ------------------------------------------------------------ render: plan
+
+  function viewPlan(d) {
+    var fixed = activeCats(d, 'fixed');
+    var variable = activeCats(d, 'variable');
+    var billsTotal = fixed.reduce(function (s, c) { return s + c.budget; }, 0);
+    var everydayTotal = variable.reduce(function (s, c) { return s + c.budget; }, 0);
+    var target = d.savings.target || 0;
+    var leftover = d.totals.income - billsTotal - everydayTotal - target;
+
+    var html = '';
+
+    // The plan, top to bottom: money in, money out, what should be left.
+    html += '<section class="card summary">' +
+      '<div class="summary-cap">The plan for ' + esc(monthLabel(d.month)) + '</div>' +
+      '<div class="plan-math">' +
+      planLine('Income', d.totals.income, '+') +
+      planLine('Fixed bills', billsTotal, '−') +
+      planLine('Everyday spending', everydayTotal, '−') +
+      (target > 0 ? planLine('Savings', target, '−') : '') +
+      '<div class="plan-line plan-total"><span>' + (leftover < 0 ? 'Short each month' : 'Breathing room') + '</span>' +
+      '<b class="' + (leftover < 0 ? 'summary-neg' : '') + '">' + money(Math.abs(leftover), { cents: false }) + '</b></div>' +
+      '</div></section>';
+
+    if (leftover < 0) {
+      html += '<div class="card due-alert">This plan spends ' + money(-leftover, { cents: false }) +
+        ' more than comes in. Trim budgets below or in Settings.</div>';
+    }
+
+    // Savings
+    html += '<div class="section-title"><span>Savings</span>' +
+      (d.savings.thisMonth ? '<span class="week-in">+' + money(d.savings.thisMonth) + ' this month</span>' : '') + '</div>';
+    html += '<section class="card">' +
+      '<div class="row"><div><div class="summary-cap muted">Put away so far</div>' +
+      '<div class="fund-balance">' + money(d.savings.balance) + '</div></div>' +
+      '<div class="stack" style="gap:6px">' +
+      '<button type="button" class="btn btn-sm btn-in" data-act="save-add">+ Add</button>' +
+      '<button type="button" class="btn btn-sm" data-act="save-out">Take out</button>' +
+      '</div></div>';
+    if (target > 0) {
+      var pctSaved = Math.min(100, (d.savings.thisMonth / target) * 100);
+      html += '<div class="cat-head" style="margin-top:10px"><span class="cat-name small">This month\'s goal</span>' +
+        '<span class="cat-nums">' + money(d.savings.thisMonth) + ' / ' + money(target, { cents: false }) + '</span></div>' +
+        barHtml(pctSaved >= 100 ? 'ok' : 'warn', pctSaved);
+    } else {
+      html += '<p class="muted small" style="margin:10px 0 0">No monthly goal set — add one in Settings and this turns into a progress bar.</p>';
+    }
+    if (d.savings.entries.length) {
+      html += '<div style="margin-top:10px">';
+      d.savings.entries.slice(0, 5).forEach(function (e) {
+        html += '<div class="row small" style="padding:5px 0;border-top:1px solid var(--line)">' +
+          '<span class="muted">' + esc(shortDate(e.date)) + ' · ' + esc(e.note || e.person) + '</span>' +
+          '<span><b class="' + (e.amount < 0 ? '' : 'week-in') + '">' + (e.amount < 0 ? '−' : '+') + money(Math.abs(e.amount)) + '</b>' +
+          ' <button type="button" class="icon-del" style="width:30px;height:28px;font-size:13px" data-act="save-del" data-id="' + e.id + '" aria-label="Delete">✕</button></span>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</section>';
+
+    // What each budget is, next to what history says it should be.
+    html += '<div class="section-title"><span>Everyday budgets</span><span>' + money(everydayTotal, { cents: false }) + '</span></div>';
+    html += '<section class="card card-tight">';
+    variable.forEach(function (c) {
+      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) + '</span>' +
+        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
+    });
+    html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm btn-primary" data-act="tuneup-open">What should these be? Review suggestions</button></div>';
+    html += '</section>';
+
+    html += '<div class="section-title"><span>Fixed bills</span><span>' + money(billsTotal, { cents: false }) + '</span></div>';
+    html += '<section class="card card-tight">';
+    fixed.forEach(function (c) {
+      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) +
+        (c.dueDay ? ' <span class="muted small">· due the ' + ordinal(c.dueDay) + '</span>' : '') + '</span>' +
+        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
+    });
+    (d.upcoming || []).forEach(function (c) {
+      html += '<div class="cat" style="opacity:.6"><div class="cat-head"><span class="cat-name">' + esc(c.name) +
+        ' <span class="muted small">· starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
+        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
+    });
+    html += '</section>';
+
+    return html;
+  }
+
+  function planLine(label, value, sign) {
+    return '<div class="plan-line"><span>' + esc(label) + '</span><b>' + sign + ' ' + money(value, { cents: false }) + '</b></div>';
+  }
+
   // ------------------------------------------------------------ render: debt
 
   function viewDebt(d) {
@@ -787,6 +910,13 @@
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
     html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
     html += '</section>';
+
+    html += '<div class="section-title"><span>Savings goal</span></div><section class="card">' +
+      '<div class="edit-row" style="grid-template-columns:1fr 118px">' +
+      '<span class="edit-name">Put away each month<br><span class="muted small">Progress shows on the Plan tab</span></span>' +
+      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (d.savings.target || 0) +
+      '" data-act="savings-target" aria-label="Monthly savings goal">' +
+      '</div></section>';
 
     html += '<div class="section-title"><span>Smart tune-up</span></div><section class="card">' +
       '<p class="muted small" style="margin:0 0 10px">Compares every spending budget to what you actually spent in past months and suggests new numbers. You pick which to apply.</p>' +
@@ -1123,6 +1253,32 @@
       '<button type="button" class="btn btn-accent btn-block" data-act="dep-save">Add deposit</button>');
   }
 
+  // ---- savings -----------------------------------------------------------
+
+  function openSavings(direction, prefill) {
+    QA.person = S.person;
+    openSheet(sheetHead(direction === 'out' ? 'Take out of savings' : 'Add to savings') +
+      '<label class="field"><span>Amount</span>' +
+      '<input class="input" id="sav-amount" type="number" inputmode="decimal" step="0.01" min="0.01"' +
+      (prefill ? ' value="' + prefill + '"' : ' placeholder="0.00"') + '></label>' +
+      '<label class="field"><span>Note</span>' +
+      '<input class="input" id="sav-note" maxlength="200" placeholder="' +
+      (direction === 'out' ? 'What it went to' : 'Leftover from July, extra check…') + '"></label>' +
+      '<div class="field"><span>Who</span>' + personPicker(S.person) + '</div>' +
+      '<button type="button" class="btn ' + (direction === 'out' ? 'btn-primary' : 'btn-in') + ' btn-block"' +
+      ' data-act="sav-save" data-direction="' + (direction === 'out' ? 'out' : 'in') + '">' +
+      (direction === 'out' ? 'Take out' : 'Put it away') + '</button>');
+  }
+
+  function saveSavings(direction) {
+    var amount = Number($('#sav-amount').value);
+    if (!(amount > 0)) { toast('Enter an amount', 'error'); return; }
+    var body = { amount: amount, direction: direction, note: $('#sav-note').value, person: QA.person };
+    closeSheet();
+    mutate('/savings/entries', { method: 'POST', body: body },
+      direction === 'out' ? money(amount) + ' taken out' : '+' + money(amount) + ' saved 🎉');
+  }
+
   // ---- bank statement import -------------------------------------------
 
   var IMP = { rows: [], busy: false };
@@ -1130,21 +1286,25 @@
   function openImport() {
     IMP = { rows: [], busy: false };
     openSheet(sheetHead('Import bank statement') +
-      '<p class="muted small" style="margin-top:0">Export transactions from your bank as CSV ' +
-      '(PNC: Account Activity → Download), then pick the file — or paste the text.</p>' +
-      '<label class="btn btn-block" style="margin-bottom:10px">Choose CSV file' +
-      '<input type="file" id="imp-file" accept=".csv,text/csv,text/plain" data-act="imp-file" hidden></label>' +
+      '<p class="muted small" style="margin-top:0">Upload last month\'s statement PDF, a CSV export ' +
+      '(PNC: Account Activity → Download), or paste the text. You review everything before it saves.</p>' +
+      '<label class="btn btn-block" style="margin-bottom:10px">Choose PDF or CSV file' +
+      '<input type="file" id="imp-file" accept=".csv,.pdf,text/csv,text/plain,application/pdf" data-act="imp-file" hidden></label>' +
       '<label class="field"><span>Or paste it</span>' +
       '<textarea class="input imp-paste" id="imp-text" rows="4" placeholder="Date,Description,Withdrawals,Deposits…"></textarea></label>' +
       '<button type="button" class="btn btn-primary btn-block" data-act="imp-preview">Preview</button>' +
       '<div id="imp-results"></div>');
   }
 
-  function importPreview(text) {
-    if (!text || !text.trim()) { toast('Pick a file or paste the statement first', 'error'); return; }
+  function importPreview(payload) {
+    if (typeof payload === 'string') payload = { text: payload };
+    if (!payload || (!payload.pdf && (!payload.text || !payload.text.trim()))) {
+      toast('Pick a file or paste the statement first', 'error');
+      return;
+    }
     var box = el('imp-results');
-    if (box) box.innerHTML = '<p class="muted small" style="text-align:center">Reading…</p>';
-    api('/import/preview', { method: 'POST', body: { text: text } })
+    if (box) box.innerHTML = '<p class="muted small" style="text-align:center">Reading' + (payload.pdf ? ' PDF' : '') + '…</p>';
+    api('/import/preview', { method: 'POST', body: payload })
       .then(function (out) {
         IMP.rows = out.rows.map(function (r) {
           r.include = !r.alreadyImported && r.writable && r.direction === 'out' && !r.maybeManual;
@@ -1507,6 +1667,16 @@
         break;
 
       case 'import-open': openImport(); break;
+      case 'review-dismiss':
+        localStorage.setItem('lfb.review.' + node.dataset.month, 'seen');
+        render();
+        break;
+      case 'save-add': openSavings('in', node.dataset.amount || ''); break;
+      case 'save-out': openSavings('out', ''); break;
+      case 'sav-save': saveSavings(node.dataset.direction); break;
+      case 'save-del':
+        if (confirm('Delete this savings entry?')) mutate('/savings/entries/' + id, { method: 'DELETE' }, 'Removed');
+        break;
       case 'imp-preview': importPreview(el('imp-text') ? el('imp-text').value : ''); break;
       case 'imp-commit': importCommit(); break;
       case 'tuneup-open': openTuneup(); break;
@@ -1547,16 +1717,33 @@
     } else if (act === 'imp-file') {
       var file = node.files && node.files[0];
       if (!file) return;
+      var isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
       var reader = new FileReader();
-      reader.onload = function () { importPreview(String(reader.result || '')); };
       reader.onerror = function () { toast('Could not read that file', 'error'); };
-      reader.readAsText(file);
+      if (isPdf) {
+        reader.onload = function () {
+          var bytes = new Uint8Array(reader.result);
+          var chunks = [];
+          for (var i = 0; i < bytes.length; i += 0x8000) {
+            chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)));
+          }
+          importPreview({ pdf: btoa(chunks.join('')) });
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.onload = function () { importPreview(String(reader.result || '')); };
+        reader.readAsText(file);
+      }
     } else if (act === 'imp-check') {
       var impRow = IMP.rows[Number(node.dataset.idx)];
       if (impRow) { impRow.include = node.checked; refreshImportButton(); }
     } else if (act === 'imp-cat') {
       var catRow = IMP.rows[Number(node.dataset.idx)];
       if (catRow) catRow.category_id = Number(node.value);
+    } else if (act === 'savings-target') {
+      var goal = Number(node.value);
+      if (!isFinite(goal) || goal < 0) { toast('Enter a positive number', 'error'); render(); return; }
+      mutate('/savings/target', { method: 'PUT', body: { amount: goal } }, 'Savings goal updated');
     } else if (act === 'tune-check') {
       var tuneRow = TUNE.list[Number(node.dataset.idx)];
       if (tuneRow) { tuneRow.include = node.checked; renderTuneTotals(); }
