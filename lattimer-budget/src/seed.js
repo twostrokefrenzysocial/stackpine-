@@ -8,7 +8,9 @@ const INCOME = [
   { name: 'Chris paycheck', person: 'Chris', amount: 1450, per_month: 2 },
 ];
 
-// Fixed bills -> tap-to-pay checklist on the dashboard
+// Fixed bills -> tap-to-pay checklist on the dashboard.
+// A third element can schedule a bill to begin in a future month; it stays off
+// the dashboard until then.
 const FIXED = [
   ['Mortgage (Rocket)', 1004],
   ['Natural gas', 150],
@@ -19,6 +21,7 @@ const FIXED = [
   ["Liza's cheerleading", 72],
   ['Church giving', 400],
   ["Miriam's lease", 899],
+  ["Miriam's student loans", 411, { startsMonth: '2026-09' }],
   ['Truck (Credit Acceptance)', 351],
   ['Dirt bike (Lendmark)', 270],
   ['GEICO', 215],
@@ -50,4 +53,22 @@ const DEBTS = [
 // The settlement fund bill feeds the Debt Payoff tab's fund balance.
 const SETTLEMENT_FUND_CATEGORY = 'Settlement fund';
 
-module.exports = { INCOME, FIXED, VARIABLE, DEBTS, SETTLEMENT_FUND_CATEGORY };
+/**
+ * One-time data changes applied to a database that already exists, so a budget
+ * that is already live picks them up too. Each runs at most once, tracked by key
+ * in the meta table. Seeding is for new databases; this is for existing ones.
+ */
+const DATA_MIGRATIONS = [
+  {
+    key: '2026-08-miriam-student-loans',
+    category: {
+      name: "Miriam's student loans",
+      kind: 'fixed',
+      budget: 411,
+      startsMonth: '2026-09',
+      after: "Miriam's lease",
+    },
+  },
+];
+
+module.exports = { INCOME, FIXED, VARIABLE, DEBTS, SETTLEMENT_FUND_CATEGORY, DATA_MIGRATIONS };

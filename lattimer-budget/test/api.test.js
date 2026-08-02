@@ -100,7 +100,7 @@ test('re-opening the database does not re-seed', () => {
   const again = open(dbPath);
   const count = again.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
   again.close();
-  assert.equal(count, 23);
+  assert.equal(count, 24); // 16 fixed + the scheduled student loan + 7 variable
 });
 
 // ---------------------------------------------------------------- transactions
@@ -379,6 +379,109 @@ test('a closed month rejects bill payment too', async (t) => {
 test('a malformed month is rejected', async () => {
   const res = await call('/api/state?month=not-a-month');
   assert.equal(res.status, 400);
+});
+
+// ---------------------------------------------------------------- scheduled bills
+
+test("Miriam's student loans are seeded but held back until they start", async () => {
+  const s = await state();
+  // Not on this month's dashboard, and not in this month's budget total.
+  assert.equal(byName(s.categories, "Miriam's student loans"), undefined);
+
+  const pending = byName(s.upcoming, "Miriam's student loans");
+  assert.ok(pending, 'the loan should be listed as upcoming');
+  assert.equal(pending.budget, 411);
+  assert.equal(pending.kind, 'fixed');
+  assert.equal(pending.startsMonth, '2026-09');
+});
+
+test('a not-yet-started bill takes no money', async () => {
+  const s = await state();
+  const loanId = byName(s.upcoming, "Miriam's student loans").id;
+
+  const spend = await call('/api/transactions', { method: 'POST', body: { category_id: loanId, amount: 411 } });
+  assert.equal(spend.status, 400);
+  assert.match(spend.body.error, /does not start until 2026-09/);
+
+  const tick = await call(`/api/bills/${loanId}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(tick.status, 400);
+});
+
+test('a scheduled bill joins the budget in its start month', async () => {
+  const s = await state();
+  const loanId = byName(s.upcoming, "Miriam's student loans").id;
+
+  // Pull the start date back to this month, the way Settings would.
+  const moved = await call(`/api/categories/${loanId}`, {
+    method: 'PUT',
+    body: { starts_month: monthOf(0) },
+  });
+  assert.equal(moved.status, 200);
+  const live = byName(moved.body.state.categories, "Miriam's student loans");
+  assert.ok(live, 'the loan should now be on the dashboard');
+  assert.equal(live.budget, 411);
+  assert.equal(live.paid, false);
+  assert.equal(byName(moved.body.state.upcoming, "Miriam's student loans"), undefined);
+
+  // ...and it can be ticked off like any other bill
+  const paid = await call(`/api/bills/${loanId}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(byName(paid.body.state.categories, "Miriam's student loans").spent, 411);
+  await call(`/api/bills/${loanId}/pay`, { method: 'POST', body: { paid: false } });
+
+  // put it back where it belongs
+  await call(`/api/categories/${loanId}`, { method: 'PUT', body: { starts_month: '2026-09' } });
+  const restored = await state();
+  assert.equal(byName(restored.categories, "Miriam's student loans"), undefined);
+  assert.equal(byName(restored.upcoming, "Miriam's student loans").startsMonth, '2026-09');
+});
+
+test('a start month in the past just means "active now"', async () => {
+  const added = await call('/api/categories', {
+    method: 'POST',
+    body: { name: 'Backdated bill', kind: 'fixed', budget: 10, starts_month: '2020-01' },
+  });
+  assert.equal(added.status, 201);
+  assert.ok(byName(added.body.state.categories, 'Backdated bill'));
+  await call(`/api/categories/${added.body.id}`, { method: 'DELETE' });
+});
+
+test('a malformed start month is rejected', async () => {
+  const res = await call('/api/categories', {
+    method: 'POST',
+    body: { name: 'Bad start', kind: 'fixed', budget: 10, starts_month: 'soon' },
+  });
+  assert.equal(res.status, 400);
+});
+
+test('the student-loan migration also lands on a database that already exists', () => {
+  const legacyPath = path.join(tmpDir, 'legacy.db');
+  const Database = require('better-sqlite3');
+
+  // A database seeded before the loan existed, with the migration not yet run.
+  const first = open(legacyPath);
+  first.prepare(`DELETE FROM categories WHERE name = ?`).run("Miriam's student loans");
+  first.prepare(`DELETE FROM meta WHERE key = ?`).run('2026-08-miriam-student-loans');
+  first.close();
+
+  const reopened = open(legacyPath);
+  const row = reopened
+    .prepare(`SELECT budget_cents, starts_month, sort_order FROM categories WHERE name = ?`)
+    .get("Miriam's student loans");
+  const lease = reopened
+    .prepare(`SELECT sort_order FROM categories WHERE name = ?`)
+    .get("Miriam's lease");
+  assert.ok(row, 'the migration should add the loan to an existing budget');
+  assert.equal(row.budget_cents, 41100);
+  assert.equal(row.starts_month, '2026-09');
+  assert.equal(row.sort_order, lease.sort_order + 1, 'it should sit right after her lease');
+
+  // Running again must not duplicate it.
+  reopened.close();
+  const third = open(legacyPath);
+  const count = third.prepare(`SELECT COUNT(*) AS n FROM categories WHERE name = ?`).get("Miriam's student loans").n;
+  third.close();
+  assert.equal(count, 1);
+  assert.ok(Database);
 });
 
 // ---------------------------------------------------------------- settings

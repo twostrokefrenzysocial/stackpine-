@@ -72,11 +72,16 @@ function createApi(db) {
         budget_cents = excluded.budget_cents,
         sort_order = excluded.sort_order
     `),
+    // Drops rows for categories that are archived, or not yet started, unless the
+    // month already has spending against them.
     deleteStaleMonthRows: db.prepare(`
       DELETE FROM month_budgets
-      WHERE month = ?
-        AND category_id NOT IN (SELECT id FROM categories WHERE archived = 0)
-        AND category_id NOT IN (SELECT DISTINCT category_id FROM transactions WHERE month = ?)
+      WHERE month = @month
+        AND category_id NOT IN (
+          SELECT id FROM categories
+          WHERE archived = 0 AND (starts_month IS NULL OR starts_month <= @month)
+        )
+        AND category_id NOT IN (SELECT DISTINCT category_id FROM transactions WHERE month = @month)
     `),
     upsertMonthIncome: db.prepare(`
       INSERT INTO month_income (month, income_cents) VALUES (?, ?)
@@ -127,6 +132,8 @@ function createApi(db) {
   /** Keep the current month's snapshot in step with live settings. */
   const syncCurrentMonth = db.transaction((month) => {
     for (const c of q.categories.all()) {
+      // A bill scheduled to begin later stays off the budget until its month.
+      if (c.starts_month && c.starts_month > month) continue;
       q.upsertMonthRow.run({
         month,
         category_id: c.id,
@@ -136,7 +143,7 @@ function createApi(db) {
         sort_order: c.sort_order,
       });
     }
-    q.deleteStaleMonthRows.run(month, month);
+    q.deleteStaleMonthRows.run({ month });
     q.upsertMonthIncome.run(month, liveIncomeCents());
   });
 
@@ -167,7 +174,19 @@ function createApi(db) {
 
     const spentMap = new Map(q.spentByCategory.all(month).map((r) => [r.category_id, r.spent]));
     const paidMap = new Map(q.billPaidRows.all(month).map((r) => [r.category_id, r]));
-    const liveIds = new Set(q.categories.all().map((c) => c.id));
+    const live = q.categories.all();
+    const liveIds = new Set(live.map((c) => c.id));
+    // Bills that have not started yet: shown in Settings so they can be planned
+    // for, kept off this month's dashboard and totals.
+    const upcoming = live
+      .filter((c) => c.starts_month && c.starts_month > month)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        kind: c.kind,
+        budget: toDollars(c.budget_cents),
+        startsMonth: c.starts_month,
+      }));
 
     const categories = q.monthRows.all(month).map((row) => {
       const spent = spentMap.get(row.category_id) ?? 0;
@@ -255,6 +274,7 @@ function createApi(db) {
         budgeted: toDollars(categories.reduce((s, c) => s + Math.round(c.budget * 100), 0)),
       },
       categories,
+      upcoming,
       transactions,
       debts,
       fund: {
@@ -394,12 +414,27 @@ function createApi(db) {
     return category;
   }
 
+  /** A scheduled bill takes no money before the month it begins. */
+  function requireStarted(category, month) {
+    if (category.starts_month && category.starts_month > month) {
+      throw bad(`${category.name} does not start until ${category.starts_month}.`);
+    }
+  }
+
+  function readStartsMonth(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!isValidMonth(value)) throw bad('Start month must be YYYY-MM.');
+    return value <= currentMonth() ? null : value;
+  }
+
   router.post('/transactions', auth, (req, res) => {
     const body = req.body || {};
     const category = activeCategory(body.category_id);
     const amount = readAmount(body.amount);
     const date = readDate(body.date);
     requireMonthWritable(date);
+    requireStarted(category, date.slice(0, 7));
     const person = readPerson(body.person, req.person);
     const note = readNote(body.note);
     const now = new Date().toISOString();
@@ -428,6 +463,7 @@ function createApi(db) {
     const amount = body.amount === undefined ? existing.amount_cents : readAmount(body.amount);
     const date = body.date === undefined ? existing.date : readDate(body.date);
     requireMonthWritable(date);
+    requireStarted(category, date.slice(0, 7));
     const person = readPerson(body.person, existing.person);
     const note = body.note === undefined ? existing.note : readNote(body.note);
 
@@ -461,6 +497,7 @@ function createApi(db) {
     const month = req.body?.month === undefined ? currentMonth() : String(req.body.month);
     if (!isValidMonth(month)) throw bad('Month must be YYYY-MM.');
     requireMonthWritable(`${month}-01`);
+    requireStarted(category, month);
     ensureMonth(month);
 
     const paid = req.body?.paid !== false;
@@ -506,21 +543,23 @@ function createApi(db) {
     const budget = readAmount(body.budget ?? 0, { allowNegative: true });
     if (budget < 0) throw bad('Budget cannot be negative.');
 
+    const startsMonth = readStartsMonth(body.starts_month) ?? null;
+
     const clash = db.prepare(`SELECT id, archived FROM categories WHERE name = ?`).get(name);
     if (clash && !clash.archived) throw bad('A category with that name already exists.');
 
     let id;
     if (clash) {
-      db.prepare(`UPDATE categories SET archived = 0, kind = ?, budget_cents = ? WHERE id = ?`)
-        .run(kind, budget, clash.id);
+      db.prepare(`UPDATE categories SET archived = 0, kind = ?, budget_cents = ?, starts_month = ? WHERE id = ?`)
+        .run(kind, budget, startsMonth, clash.id);
       id = clash.id;
     } else {
       const next = db
         .prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = ?`)
         .get(kind).n;
       id = db
-        .prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order) VALUES (?, ?, ?, ?)`)
-        .run(name, kind, budget, next).lastInsertRowid;
+        .prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month) VALUES (?, ?, ?, ?, ?)`)
+        .run(name, kind, budget, next, startsMonth).lastInsertRowid;
     }
 
     broadcast('category:add', req.person);
@@ -538,11 +577,14 @@ function createApi(db) {
     if (budget < 0) throw bad('Budget cannot be negative.');
     const kind = body.kind === undefined ? category.kind : body.kind === 'fixed' ? 'fixed' : 'variable';
 
+    const startsRaw = readStartsMonth(body.starts_month);
+    const startsMonth = startsRaw === undefined ? category.starts_month : startsRaw;
+
     const clash = db.prepare(`SELECT id FROM categories WHERE name = ? AND id != ?`).get(name, category.id);
     if (clash) throw bad('A category with that name already exists.');
 
-    db.prepare(`UPDATE categories SET name = ?, budget_cents = ?, kind = ? WHERE id = ?`)
-      .run(name, budget, kind, category.id);
+    db.prepare(`UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ? WHERE id = ?`)
+      .run(name, budget, kind, startsMonth, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });

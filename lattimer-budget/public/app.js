@@ -401,6 +401,27 @@
       summaryCell('Bills left', billsLeft) +
       '</div></section>';
 
+    // Scheduled bills sit directly under the summary: if one of them puts the
+    // budget underwater, that needs seeing before the checklist.
+    var upcoming = d.upcoming || [];
+    if (upcoming.length) {
+      var projected = d.totals.budgeted + upcoming.reduce(function (s, c) { return s + c.budget; }, 0);
+      var over = projected - d.totals.income;
+      html += '<div class="section-title"><span>Coming up</span></div><section class="card card-tight">';
+      upcoming.forEach(function (c) {
+        html += '<div class="bill bill-pending">' +
+          '<span class="bill-box" aria-hidden="true">◷</span>' +
+          '<span class="bill-name">' + esc(c.name) +
+          '<span class="bill-sub">starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
+          '<span class="bill-amt">' + money(c.budget, { cents: false }) + '</span></div>';
+      });
+      html += '<div class="cat"><div class="cat-foot"><span>Budget once these start</span>' +
+        '<span class="' + (over > 0 ? 'cat-over' : '') + '">' + money(projected, { cents: false }) +
+        ' of ' + money(d.totals.income, { cents: false }) +
+        (over > 0 ? ' — ' + money(over, { cents: false }) + ' short' : '') +
+        '</span></div></div></section>';
+    }
+
     html += '<div class="section-title"><span>Fixed bills</span><span>' +
       fixed.filter(function (c) { return c.paid; }).length + ' of ' + fixed.length + ' paid</span></div>';
 
@@ -609,6 +630,8 @@
 
     html += '<div class="section-title"><span>Fixed bill budgets</span></div><section class="card">';
     fixed.forEach(function (c) { html += categoryRow(c); });
+    (d.upcoming || []).filter(function (c) { return c.kind === 'fixed'; })
+      .forEach(function (c) { html += categoryRow(c); });
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="fixed">+ Add fixed bill</button></section>';
 
     html += '<div class="section-title"><span>Spending budgets</span></div><section class="card">';
@@ -631,8 +654,11 @@
   }
 
   function categoryRow(c) {
+    var starts = c.startsMonth
+      ? '<br><span class="muted small">starts ' + esc(monthLabel(c.startsMonth)) + '</span>'
+      : '';
     return '<div class="edit-row">' +
-      '<span class="edit-name">' + esc(c.name) + '</span>' +
+      '<span class="edit-name">' + esc(c.name) + starts + '</span>' +
       '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + c.budget +
       '" data-act="budget" data-id="' + c.id + '" aria-label="Budget for ' + esc(c.name) + '">' +
       '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id + '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
@@ -824,6 +850,8 @@
       '<label class="field"><span>Name</span><input class="input" id="cat-name" maxlength="60" placeholder="Name"></label>' +
       '<label class="field"><span>Monthly budget</span>' +
       '<input class="input" id="cat-budget" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>' +
+      '<label class="field"><span>Starts (leave blank for now)</span>' +
+      '<input class="input" id="cat-starts" type="month" min="' + esc(S.data.currentMonth) + '"></label>' +
       '<button type="button" class="btn btn-primary btn-block" data-act="cat-save" data-kind="' + esc(kind) + '">Add</button>');
   }
 
@@ -924,7 +952,12 @@
       case 'cat-save': {
         var catName = $('#cat-name').value.trim();
         if (!catName) { toast('Give it a name', 'error'); break; }
-        var catBody = { name: catName, kind: node.dataset.kind, budget: Number($('#cat-budget').value) || 0 };
+        var catBody = {
+          name: catName,
+          kind: node.dataset.kind,
+          budget: Number($('#cat-budget').value) || 0,
+          starts_month: $('#cat-starts').value || null,
+        };
         closeSheet();
         mutate('/categories', { method: 'POST', body: catBody }, 'Added');
         break;

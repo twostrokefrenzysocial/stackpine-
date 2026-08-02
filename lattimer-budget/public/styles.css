@@ -388,6 +388,9 @@ select.input {
 .bill[aria-pressed="true"] .bill-name { color: var(--muted); text-decoration: line-through; }
 .bill-amt { font-weight: 700; white-space: nowrap; }
 .bill-sub { display: block; font-size: 12px; color: var(--muted); font-weight: 500; text-decoration: none; }
+/* A scheduled bill that has not started yet — shown, but not actionable. */
+.bill-pending { opacity: .72; }
+.bill-pending .bill-box { border-style: dashed; color: var(--muted); }
 
 /* ------------------------------------------------------------ transactions */
 

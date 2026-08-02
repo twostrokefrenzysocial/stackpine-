@@ -16,7 +16,14 @@ function open(dbPath = process.env.DB_PATH || DEFAULT_DB_PATH) {
   db.pragma('foreign_keys = ON');
   migrate(db);
   seedOnce(db);
+  applyDataMigrations(db);
   return db;
+}
+
+function addColumnIfMissing(db, table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 function migrate(db) {
@@ -97,6 +104,9 @@ function migrate(db) {
       income_cents INTEGER NOT NULL
     );
   `);
+
+  // A bill that begins in a future month (YYYY-MM); NULL means "already active".
+  addColumnIfMissing(db, 'categories', 'starts_month', 'TEXT');
 }
 
 function seedOnce(db) {
@@ -115,8 +125,11 @@ function seedOnce(db) {
 
   db.transaction(() => {
     let order = 0;
-    for (const [name, dollars] of seed.FIXED) {
+    for (const [name, dollars, opts] of seed.FIXED) {
       insertCategory.run(name, 'fixed', Math.round(dollars * 100), order++);
+      if (opts && opts.startsMonth) {
+        db.prepare(`UPDATE categories SET starts_month = ? WHERE name = ?`).run(opts.startsMonth, name);
+      }
     }
     order = 0;
     for (const [name, dollars] of seed.VARIABLE) {
@@ -130,6 +143,46 @@ function seedOnce(db) {
     });
     db.prepare(`INSERT INTO meta (key, value) VALUES ('seeded', ?)`).run(new Date().toISOString());
   })();
+}
+
+/**
+ * Applies each entry in seed.DATA_MIGRATIONS at most once. This is what lets a
+ * budget that is already deployed pick up a new bill, since seeding only ever
+ * runs against a brand-new database.
+ */
+function applyDataMigrations(db) {
+  const done = db.prepare(`SELECT 1 FROM meta WHERE key = ?`);
+  const mark = db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)`);
+
+  for (const migration of seed.DATA_MIGRATIONS) {
+    if (done.get(migration.key)) continue;
+
+    db.transaction(() => {
+      const spec = migration.category;
+      if (spec) {
+        const existing = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(spec.name);
+        if (!existing) {
+          // Slot it in after a named sibling so the checklist stays in a sensible order.
+          const anchor = spec.after
+            ? db.prepare(`SELECT sort_order FROM categories WHERE name = ? AND kind = ?`).get(spec.after, spec.kind)
+            : null;
+          const order = anchor
+            ? anchor.sort_order + 1
+            : db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = ?`).get(spec.kind).n;
+
+          if (anchor) {
+            db.prepare(`UPDATE categories SET sort_order = sort_order + 1 WHERE kind = ? AND sort_order >= ?`)
+              .run(spec.kind, order);
+          }
+          db.prepare(`
+            INSERT INTO categories (name, kind, budget_cents, sort_order, starts_month)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(spec.name, spec.kind, Math.round(spec.budget * 100), order, spec.startsMonth || null);
+        }
+      }
+      mark.run(migration.key, new Date().toISOString());
+    })();
+  }
 }
 
 module.exports = { open, DEFAULT_DB_PATH };
