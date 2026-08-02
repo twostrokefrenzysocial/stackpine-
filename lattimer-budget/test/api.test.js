@@ -625,6 +625,74 @@ test('an archived category cannot take new transactions', async () => {
   assert.equal(res.status, 404);
 });
 
+// ---------------------------------------------------------------- weekly breakdown
+
+test('weeks tile the whole month with no gaps', async () => {
+  const s = await state();
+  assert.ok(s.weeks.length >= 4 && s.weeks.length <= 6, `got ${s.weeks.length} weeks`);
+  assert.equal(s.weeks[0].from, `${s.month}-01`, 'first week starts on the 1st');
+  const last = s.weeks[s.weeks.length - 1];
+  assert.ok(/-(28|29|30|31)$/.test(last.to), 'last week ends on the month end');
+  for (let i = 1; i < s.weeks.length; i++) {
+    const prevEnd = new Date(s.weeks[i - 1].to + 'T00:00:00Z');
+    const nextStart = new Date(s.weeks[i].from + 'T00:00:00Z');
+    assert.equal(nextStart - prevEnd, 86400000, 'weeks are contiguous');
+  }
+  assert.equal(s.weeks.filter((w) => w.isCurrent).length, 1, 'exactly one current week');
+});
+
+test('spending and income land in the right week', async () => {
+  const before = await state();
+  const wk = before.weeks.find((w) => w.isCurrent);
+
+  const spend = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceriesId, amount: 55.25, note: 'weekly test' },
+  });
+  const incomeRes = await call('/api/income/entries', { method: 'POST', body: { amount: 200, label: 'weekly income' } });
+
+  const s = incomeRes.body.state;
+  const now = s.weeks.find((w) => w.isCurrent);
+  assert.equal(now.everyday, wk.everyday + 55.25, 'groceries count as everyday spending');
+  assert.equal(now.spent, wk.spent + 55.25);
+  assert.equal(now.income, wk.income + 200);
+
+  // a bill payment counts as spent but NOT as everyday pace
+  const gas = byName(s.categories, 'Natural gas');
+  const paid = await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: true } });
+  const after = paid.body.state.weeks.find((w) => w.isCurrent);
+  assert.equal(after.everyday, now.everyday, 'bills stay out of the everyday number');
+  assert.equal(after.spent, now.spent + 150);
+
+  // current-week summary matches
+  assert.equal(paid.body.state.week.everyday, after.everyday);
+  assert.ok(paid.body.state.week.allowance > 0);
+
+  // cleanup
+  await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+  await call(`/api/income/entries/${incomeRes.body.id}`, { method: 'DELETE' });
+});
+
+test('the weekly allowance is the variable budget at an even daily pace', async () => {
+  const s = await state();
+  const varBudget = s.categories.filter((c) => c.kind === 'variable')
+    .reduce((sum, c) => sum + Math.round(c.budget * 100), 0);
+  const daysInMonth = Number(s.months && new Date(
+    Number(s.month.slice(0, 4)), Number(s.month.slice(5, 7)), 0
+  ).getDate());
+  assert.equal(Math.round(s.week.allowance * 100), Math.round((varBudget * 7) / daysInMonth));
+});
+
+test('a past month has weeks but no current-week pace', async (t) => {
+  process.env.BACKDATE_GRACE_DAYS = '0';
+  t.after(() => { delete process.env.BACKDATE_GRACE_DAYS; });
+  const res = await call(`/api/state?month=${monthOf(-1)}`);
+  assert.ok(res.body.weeks.length >= 4);
+  assert.equal(res.body.week, null);
+  assert.equal(res.body.weeks.filter((w) => w.isCurrent).length, 0);
+});
+
 // ---------------------------------------------------------------- income received
 
 test('logging a paycheck records the actual amount against its source', async () => {
@@ -826,7 +894,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v2'],
+    ['/sw.js', 'lfb-v3'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {

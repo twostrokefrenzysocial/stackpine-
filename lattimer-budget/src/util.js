@@ -93,6 +93,25 @@ function dueDateIn(month, dueDay) {
   return `${month}-${String(day).padStart(2, '0')}`;
 }
 
+/** The Sunday that starts the week containing this date. */
+function weekStartOf(dateStr) {
+  const y = Number(dateStr.slice(0, 4));
+  const m = Number(dateStr.slice(5, 7));
+  const d = Number(dateStr.slice(8, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay());
+  return dt.toISOString().slice(0, 10);
+}
+
+/** dateStr plus n days, as YYYY-MM-DD. */
+function addDays(dateStr, n) {
+  const y = Number(dateStr.slice(0, 4));
+  const m = Number(dateStr.slice(5, 7));
+  const d = Number(dateStr.slice(8, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  return dt.toISOString().slice(0, 10);
+}
+
 /** Whole days from today to a date, negative when the date has passed. */
 function daysUntil(dateStr) {
   const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
@@ -173,6 +192,8 @@ module.exports = {
   isWritableMonth,
   earliestWritableDate,
   lastDayOfMonth,
+  weekStartOf,
+  addDays,
   dueDateIn,
   daysUntil,
   isValidDate,

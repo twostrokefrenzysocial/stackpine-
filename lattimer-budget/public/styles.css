@@ -556,6 +556,49 @@ select.input {
 .card-foot-btn { padding: 10px 14px; }
 .summary-sub { display: block; font-size: 11px; opacity: .7; }
 
+/* Weekly view */
+.week-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.wbar { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; min-width: 0; }
+.wbar i {
+  display: block;
+  width: 70%;
+  max-width: 44px;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--navy-soft);
+  opacity: .45;
+}
+.wbar-now i { background: var(--orange); opacity: 1; }
+.wbar-amt { font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.wbar-cap { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.wbar-now .wbar-cap { color: var(--orange); }
+.wbar-in { font-size: 8px; line-height: 1; color: var(--ok); min-height: 8px; }
+.week-in { color: var(--ok); font-weight: 700; }
+
+.week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 6px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--navy-soft);
+  border-top: 2px solid var(--line);
+}
+.week-head:first-child { border-top: 0; }
+.week-head .week-in { text-transform: none; }
+@media (prefers-color-scheme: dark) { .week-head { color: var(--orange-soft); } }
+
 @media (min-width: 560px) {
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }

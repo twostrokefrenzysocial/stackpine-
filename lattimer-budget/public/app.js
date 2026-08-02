@@ -83,6 +83,14 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   }
 
+  /** Sunday that starts the week containing this date (matches the server). */
+  function weekStartClient(dateStr) {
+    var p = dateStr.split('-');
+    var dt = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])));
+    dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay());
+    return dt.toISOString().slice(0, 10);
+  }
+
   function lastDayOf(month) {
     var y = Number(month.slice(0, 4));
     var m = Number(month.slice(5, 7));
@@ -404,6 +412,27 @@
       summaryCell('Bills left', billsLeft) +
       '</div></section>';
 
+    // Weekly pace: everyday spending only — the mortgage landing in week one
+    // is not "overspending", so bills stay out of this number.
+    if (d.week || (d.weeks && d.weeks.length)) {
+      html += '<div class="section-title"><span>Week by week</span>' +
+        (d.week ? '<span>' + monthDay(d.week.from) + ' – ' + monthDay(d.week.to) + '</span>' : '') +
+        '</div><section class="card">';
+      if (d.week) {
+        html += '<div class="cat-head"><span class="cat-name">This week, everyday spending</span>' +
+          '<span class="cat-nums">' + money(d.week.everyday) + ' / ~' + money(d.week.allowance, { cents: false }) + '</span></div>' +
+          barHtml(d.week.status, d.week.pct) +
+          '<div class="cat-foot"><span>' +
+          (d.week.remaining < 0
+            ? money(-d.week.remaining) + ' over an even pace'
+            : money(d.week.remaining) + ' left at an even pace') + '</span>' +
+          (d.week.income > 0 ? '<span class="week-in">+' + money(d.week.income) + ' came in</span>' : '') +
+          '</div>';
+      }
+      html += weekBarsHtml(d);
+      html += '</section>';
+    }
+
     // Money in: tap Log when a paycheck lands and record what it actually was.
     html += '<div class="section-title"><span>Income</span><span>' +
       money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
@@ -506,6 +535,25 @@
     return html;
   }
 
+  /** Mini per-week chart: everyday spending as bars, income as a green dot row. */
+  function weekBarsHtml(d) {
+    if (!d.weeks || !d.weeks.length) return '';
+    var max = d.weeks.reduce(function (m, w) { return Math.max(m, w.everyday); }, 0);
+    var html = '<div class="week-bars">';
+    d.weeks.forEach(function (w) {
+      var h = max > 0 ? Math.max(4, Math.round((w.everyday / max) * 56)) : 4;
+      html += '<div class="wbar' + (w.isCurrent ? ' wbar-now' : '') + '"' +
+        ' title="' + esc(monthDay(w.from) + ' – ' + monthDay(w.to)) + '">' +
+        '<span class="wbar-amt">' + (w.everyday > 0 ? money(w.everyday, { cents: false }) : '·') + '</span>' +
+        '<i style="height:' + h + 'px"></i>' +
+        '<span class="wbar-cap">' + (w.isCurrent ? 'now' : 'W' + w.n) + '</span>' +
+        (w.income > 0 ? '<span class="wbar-in" title="+' + esc(String(money(w.income))) + ' in">●</span>' : '<span class="wbar-in"> </span>') +
+        '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
   /** Human wording for a bill's due date: "Overdue by 2 days", "Due Fri the 15th". */
   function dueText(c) {
     if (!c.dueDay) return '';
@@ -588,9 +636,30 @@
       return html;
     }
 
+    // Weekly subtotals for whatever is currently filtered.
+    var weekTotals = {};
+    rows.forEach(function (r) {
+      var wk = weekStartClient(r.date);
+      weekTotals[wk] = weekTotals[wk] || { out: 0, inn: 0 };
+      if (r.kind === 'in') weekTotals[wk].inn += r.amount;
+      else weekTotals[wk].out += r.amount;
+    });
+
     html += '<section class="card card-tight">';
     var lastDay = null;
+    var lastWeek = null;
     rows.forEach(function (r) {
+      var wk = weekStartClient(r.date);
+      if (wk !== lastWeek) {
+        lastWeek = wk;
+        var t = weekTotals[wk];
+        var wkLabel = wk < d.month + '-01' ? d.month + '-01' : wk;
+        html += '<div class="week-head"><span>Week of ' + esc(monthDay(wkLabel)) + '</span><span>' +
+          (t.out > 0 ? '−' + money(t.out) : '') +
+          (t.out > 0 && t.inn > 0 ? ' · ' : '') +
+          (t.inn > 0 ? '<b class="week-in">+' + money(t.inn) + '</b>' : '') +
+          '</span></div>';
+      }
       if (r.date !== lastDay) {
         lastDay = r.date;
         html += '<div class="day-head">' + esc(dayLabel(r.date)) + '</div>';

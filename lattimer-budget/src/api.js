@@ -11,6 +11,8 @@ const {
   isWritableMonth,
   earliestWritableDate,
   lastDayOfMonth,
+  weekStartOf,
+  addDays,
   dueDateIn,
   daysUntil,
   isValidDate,
@@ -259,7 +261,8 @@ function createApi(db) {
     const receivedCents = incomeEntryRows.reduce((s, e) => s + e.amount_cents, 0);
     const receivedMap = new Map(q.receivedBySource.all(month).map((r) => [r.source_id, r]));
 
-    const transactions = q.txForMonth.all(month).map((t) => ({
+    const txRows = q.txForMonth.all(month);
+    const transactions = txRows.map((t) => ({
       id: t.id,
       category_id: t.category_id,
       category: t.category,
@@ -294,6 +297,64 @@ function createApi(db) {
     const cur = currentMonth();
     if (!months.includes(cur)) months.unshift(cur);
 
+    // ---- weekly breakdown (Sunday weeks, clipped to the month) ----
+    const monthStart = `${month}-01`;
+    const monthEnd = lastDayOfMonth(month);
+    const daysInMonth = Number(monthEnd.slice(8, 10));
+    const variableBudgetCents = categories
+      .filter((c) => c.kind === 'variable')
+      .reduce((s, c) => s + Math.round(c.budget * 100), 0);
+    // An even weekly pace for everyday (variable) spending. Bills are excluded
+    // on purpose: the mortgage landing in week one is not "overspending".
+    const weeklyAllowanceCents = Math.round((variableBudgetCents * 7) / daysInMonth);
+
+    const weeks = [];
+    let wkStart = weekStartOf(monthStart);
+    let index = 0;
+    while (wkStart <= monthEnd) {
+      const wkEnd = addDays(wkStart, 6);
+      const from = wkStart < monthStart ? monthStart : wkStart;
+      const to = wkEnd > monthEnd ? monthEnd : wkEnd;
+      const inWeek = (d) => d >= from && d <= to;
+
+      const spentAll = txRows.filter((t) => inWeek(t.date)).reduce((s, t) => s + t.amount_cents, 0);
+      const spentEveryday = txRows
+        .filter((t) => inWeek(t.date) && t.category_kind === 'variable')
+        .reduce((s, t) => s + t.amount_cents, 0);
+      const incomeWk = incomeEntryRows.filter((e) => inWeek(e.date)).reduce((s, e) => s + e.amount_cents, 0);
+
+      index += 1;
+      weeks.push({
+        n: index,
+        from,
+        to,
+        spent: toDollars(spentAll),
+        everyday: toDollars(spentEveryday),
+        income: toDollars(incomeWk),
+        isCurrent: month === cur && today() >= from && today() <= to,
+      });
+      wkStart = addDays(wkStart, 7);
+    }
+
+    const currentWeek = weeks.find((w) => w.isCurrent) || null;
+    const week = currentWeek
+      ? {
+          from: currentWeek.from,
+          to: currentWeek.to,
+          everyday: currentWeek.everyday,
+          spent: currentWeek.spent,
+          income: currentWeek.income,
+          allowance: toDollars(weeklyAllowanceCents),
+          remaining: toDollars(weeklyAllowanceCents - Math.round(currentWeek.everyday * 100)),
+          pct: weeklyAllowanceCents > 0
+            ? Math.round((Math.round(currentWeek.everyday * 100) / weeklyAllowanceCents) * 1000) / 10
+            : 0,
+          status: statusFor(weeklyAllowanceCents > 0
+            ? (Math.round(currentWeek.everyday * 100) / weeklyAllowanceCents) * 100
+            : 0),
+        }
+      : null;
+
     return {
       person,
       month,
@@ -322,6 +383,8 @@ function createApi(db) {
       },
       categories,
       upcoming,
+      weeks,
+      week,
       transactions,
       debts,
       fund: {
