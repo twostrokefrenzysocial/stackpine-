@@ -1210,6 +1210,9 @@ function createApi(db) {
         direction: r.direction,
         category_id: categoryId,
         guessedBy,
+        // Moving money between your own accounts is neither income nor
+        // spending — flag it so the UI leaves it unchecked.
+        transfer: /\btransfer\b.{0,12}\b(to|from)\b|\bonline transfer\b/i.test(r.description),
         alreadyImported,
         maybeManual: !alreadyImported && r.direction === 'out'
           ? manualMatch.get(r.date, r.cents).n > 0

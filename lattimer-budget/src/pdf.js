@@ -59,7 +59,7 @@ async function extractLines(buffer) {
 // ---------------------------------------------------------------- line parsing
 
 const IN_SECTION = /deposit|additions|credits|money in|interest paid/i;
-const OUT_SECTION = /withdrawal|purchases|debits|money out|checks|payments|fees|charges/i;
+const OUT_SECTION = /withdrawal|purchases|debits|deduction|money out|checks|payments|fees|charges/i;
 
 const DATE_TOKEN = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g;
 const MONEY_TOKEN = /\(?-?\$?(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/g;
@@ -106,15 +106,34 @@ function parsePdfLines(lines, todayIso) {
 
   let direction = 'out'; // the safe default for a bank statement
   const rows = [];
+  let lastRow = null; // last transaction, for wrapped-description lines
 
   for (const line of lines) {
     const hasDate = /\b\d{1,2}\/\d{1,2}\b/.test(line);
     if (!hasDate) {
-      // Pure heading lines steer the direction of what follows.
-      if (OUT_SECTION.test(line)) direction = 'out';
-      else if (IN_SECTION.test(line)) direction = 'in';
+      const hasMoney = /\d+\.\d{2}/.test(line);
+      // Statement descriptions wrap: "Direct Payment - X..." with the payee
+      // ("Kids Country...") on the next line. Fold a short, plain line into
+      // the transaction right above it — that's where the merchant often is.
+      if (lastRow && !hasMoney && /[A-Za-z]/.test(line) && line.length <= 60 &&
+          !/^date\b/i.test(line) && !OUT_SECTION.test(line) && !IN_SECTION.test(line)) {
+        lastRow.description = (lastRow.description + ' ' + line).replace(/\s+/g, ' ').trim().slice(0, 120);
+        lastRow = null; // one continuation line only
+        continue;
+      }
+      lastRow = null;
+      // Heading lines steer the direction of what follows — but only lines
+      // with no amounts qualify. PNC interleaves sidebar summaries like
+      // "...Additions totaling $1,405.01." with the headings, and those must
+      // not flip the direction back.
+      if (!hasMoney) {
+        if (/daily balance|balance summary|balance detail/i.test(line)) direction = null;
+        else if (OUT_SECTION.test(line)) direction = 'out';
+        else if (IN_SECTION.test(line)) direction = 'in';
+      }
       continue;
     }
+    lastRow = null;
 
     // Tokenize: positions of every date and every money value on the line.
     const dates = [];
@@ -170,16 +189,29 @@ function parsePdfLines(lines, todayIso) {
         if (prefix && prefix.length <= 20) desc = prefix + ' ' + desc;
       }
       desc = desc.replace(/\s+/g, ' ').trim().slice(0, 120);
-      // Date + amount with no words is a daily-balance row, not a transaction.
-      if (!desc) continue;
+      // A transaction has words. Dates + amounts alone are balance-table
+      // rows, and stray fragments (".01") are never a real description —
+      // except a bare check number, which gets named for what it is.
+      if (!/[A-Za-z]/.test(desc)) {
+        if (/^\d{3,5}$/.test(desc)) desc = 'Check ' + desc;
+        else continue;
+      }
+
+      // What the row says about itself beats the section heading.
+      let dir = negative ? 'out' : direction;
+      if (/\btransfer to\b|\bpayment to\b|\bwithdrawal\b/i.test(desc)) dir = 'out';
+      else if (/\btransfer from\b|\binterest payment\b/i.test(desc)) dir = 'in';
+      if (!dir) continue; // inside a balance table with no self-description
 
       const year = resolveYear(s.start.mo, s.start.year);
-      rows.push({
+      const row = {
         date: `${year}-${String(s.start.mo).padStart(2, '0')}-${String(s.start.day).padStart(2, '0')}`,
         description: desc,
         cents,
-        direction: negative ? 'out' : direction,
-      });
+        direction: dir,
+      };
+      rows.push(row);
+      lastRow = row;
     }
   }
 

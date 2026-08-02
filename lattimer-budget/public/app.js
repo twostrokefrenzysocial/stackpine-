@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 8;
+  var APP_VERSION = 9;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -1528,7 +1528,7 @@
     api('/import/preview', { method: 'POST', body: payload })
       .then(function (out) {
         IMP.rows = out.rows.map(function (r) {
-          r.include = !r.alreadyImported && r.writable && r.direction === 'out' && !r.maybeManual;
+          r.include = !r.alreadyImported && r.writable && r.direction === 'out' && !r.maybeManual && !r.transfer;
           if (r.direction === 'out' && !r.category_id) r.category_id = defaultImportCategory();
           return r;
         });
@@ -1558,6 +1558,7 @@
       var status = '';
       if (r.alreadyImported) status = '<span class="badge">already in</span>';
       else if (!r.writable) status = '<span class="badge">closed month</span>';
+      else if (r.transfer) status = '<span class="badge">↔ between accounts</span>';
       else if (r.direction === 'in') status = '<span class="badge badge-ok">deposit → income</span>';
       else if (r.maybeManual) status = '<span class="badge badge-alert">maybe entered by hand</span>';
       else if (r.guessedBy === 'learned') status = '<span class="badge badge-ok">remembered</span>';

@@ -1032,7 +1032,7 @@ test('a PDF statement previews with sections, years and directions right', async
   assert.equal(pos.date, `${last}-11`, 'embedded posting date does not split the row');
   assert.equal(pos.amount, 55);
 
-  const check = res.body.rows.find((r) => /1024/.test(r.description));
+  const check = res.body.rows.find((r) => /Check 1024/.test(r.description));
   assert.equal(check.amount, 250, 'check number before the date still parses');
   assert.equal(check.direction, 'out');
 
@@ -1041,6 +1041,55 @@ test('a PDF statement previews with sections, years and directions right', async
   assert.equal(payroll.amount, 1502.75);
 
   assert.equal(res.body.rows.filter((r) => !r.description).length, 0, 'no empty descriptions');
+});
+
+test('a real-world savings statement: sidebars, wrapped payees, transfers, balance tables', async () => {
+  const last = monthOf(-1);
+  const mm = last.slice(5, 7);
+  const yyyy = last.slice(0, 4);
+  // Mirrors the family's actual PNC statement structure.
+  const pdf = buildPdf([
+    `Virtual Wallet Statement   Period ${mm}/01/${yyyy} to ${mm}/28/${yyyy}`,
+    'Activity Detail',
+    'Deposits and Other Additions There were 3 Deposits and Other',
+    'Additions totaling $727.50.',
+    'Date Amount Description',
+    `${mm}/17 338.75 Online Transfer From XXXXX0922`,
+    `${mm}/18 338.75 Online Transfer From XXXXX0922`,
+    `${mm}/28 .01 Interest Payment`,
+    'There was 1 Online or Electronic',
+    'Online and Electronic Banking Deductions',
+    'Banking Deduction totaling',
+    'Date Amount Description',
+    '$1,405.00.',
+    `${mm}/22 1,405.00 Direct Payment - XXXXXX0909`,
+    'Kids Country Gre XXXXXX1234',
+    'Daily Balance Detail',
+    'Date Balance Date Balance Date Balance',
+    `${mm}/08 677.51 ${mm}/27 1,355.02 ${mm}/28 677.51`,
+    `${mm}/17 1,355.01 ${mm}/22 .01`,
+  ]);
+
+  const res = await call('/api/import/preview', { method: 'POST', body: { pdf: pdf.toString('base64') } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.rows.length, 3, 'two transfers + one payment; no balance junk, no fragments');
+
+  const transfers = res.body.rows.filter((r) => /Transfer From/.test(r.description));
+  assert.equal(transfers.length, 2);
+  for (const t2 of transfers) {
+    assert.equal(t2.direction, 'in');
+    assert.equal(t2.transfer, true, 'own-account transfers are flagged');
+  }
+
+  const payment = res.body.rows.find((r) => /Direct Payment/.test(r.description));
+  assert.equal(payment.direction, 'out', 'the interleaved sidebar must not flip the deduction to income');
+  assert.match(payment.description, /Kids Country/, 'the wrapped payee line is folded in');
+  const s = await state();
+  assert.equal(payment.category_id, byName(s.categories, 'Child care (Kids Country)').id,
+    'the merged description is enough to auto-categorize');
+  assert.equal(payment.transfer, false);
+
+  assert.equal(res.body.rows.filter((r) => !/[A-Za-z]/.test(r.description)).length, 0, 'no wordless rows');
 });
 
 test('a last-month statement imports even though the month is closed to manual edits', async (t) => {
@@ -1373,7 +1422,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v8'],
+    ['/sw.js', 'lfb-v9'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {
