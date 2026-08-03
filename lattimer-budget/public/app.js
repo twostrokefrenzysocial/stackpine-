@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 13;
+  var APP_VERSION = 14;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -152,7 +152,9 @@
       body: opts.body ? JSON.stringify(opts.body) : undefined,
       cache: 'no-store',
     }).catch(function () {
-      throw new Error('No connection — check your signal and try again.');
+      var err = new Error('No connection — check your signal and try again.');
+      err.offline = true;
+      throw err;
     }).then(function (res) {
       return res.json().catch(function () { return null; }).then(function (data) {
         if (!res.ok) {
@@ -167,8 +169,12 @@
     });
   }
 
-  /** Any write: apply the state the server hands back, or surface the error. */
-  function mutate(path, opts, successMessage) {
+  /**
+   * Any write: apply the state the server hands back, or surface the error.
+   * With queueLabel set, a write that fails for lack of signal is saved on
+   * this phone instead and synced automatically later (offline Quick Add).
+   */
+  function mutate(path, opts, successMessage, queueLabel) {
     if (S.busy) return Promise.resolve(null);
     S.busy = true;
     return api(path, opts)
@@ -182,7 +188,12 @@
         return result;
       })
       .catch(function (err) {
-        toast(err.message, 'error');
+        if (err.offline && queueLabel && opts && opts.body) {
+          enqueueEntry(path, opts.body, queueLabel);
+          toast('No signal — ' + queueLabel + ' is saved on this phone and will sync by itself 📶');
+        } else {
+          toast(err.message, 'error');
+        }
         setSync('offline');
         return null;
       })
@@ -192,10 +203,71 @@
       });
   }
 
+  // ---- offline queue: entries saved without signal, synced when it returns
+
+  var QUEUE_KEY = 'lfb.queue';
+  var CACHE_KEY = 'lfb.cache';
+
+  function loadQueue() {
+    try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch (e) { return []; }
+  }
+  function saveQueue(q) {
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* full — queue is small, unlikely */ }
+  }
+  function newClientId() {
+    return 'q-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+  function enqueueEntry(path, body, label) {
+    var q = loadQueue();
+    q.push({ path: path, body: body, label: label, ts: Date.now() });
+    saveQueue(q);
+    render();
+  }
+
+  var flushBusy = false;
+  /** Send queued entries in order; stop on no-signal, drop on real rejection. */
+  function flushQueue() {
+    if (flushBusy || !loadQueue().length) return;
+    flushBusy = true;
+    var synced = 0;
+    (function step() {
+      var q = loadQueue();
+      if (!q.length) return done();
+      var item = q[0];
+      api(item.path, { method: 'POST', body: item.body })
+        .then(function () {
+          synced++;
+          saveQueue(loadQueue().slice(1));
+          step();
+        })
+        .catch(function (err) {
+          if (err.offline) return done(); // still no signal — try again later
+          // The server said no (closed month, deleted category…). Retrying
+          // forever would wedge the queue; surface it and move on.
+          saveQueue(loadQueue().slice(1));
+          toast('Could not sync ' + (item.label || 'an entry') + ': ' + err.message, 'error');
+          step();
+        });
+      function done() {
+        flushBusy = false;
+        if (synced) {
+          toast(synced === 1 ? 'Synced the entry saved on this phone ✓' : 'Synced ' + synced + ' entries saved on this phone ✓');
+          refresh(true);
+        } else if (S.data) render();
+      }
+    })();
+  }
+
   function applyState(state) {
     S.data = state;
     S.month = state.month;
+    S.cachedAt = null;
     setSync(S.sse && S.sse.readyState === 1 ? 'live' : S.sync === 'offline' ? 'polling' : S.sync);
+    // Keep the freshest current-month state on the phone so the app still
+    // opens (and Quick Add still works) with no signal.
+    if (state.month === state.currentMonth) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), state: state })); } catch (e) { /* best effort */ }
+    }
     render();
   }
 
@@ -210,8 +282,18 @@
       .catch(function (err) {
         if (!quiet) toast(err.message, 'error');
         setSync('offline');
-        // Cold launch with no signal: the cached shell loads but has no data.
+        // Cold launch with no signal: fall back to the last synced state so
+        // the family can still see the budget and queue Quick Adds.
         if (!S.data) {
+          var cached = null;
+          try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { /* no cache */ }
+          if (cached && cached.state) {
+            S.data = cached.state;
+            S.month = cached.state.month;
+            S.cachedAt = cached.at;
+            render();
+            return;
+          }
           el('fab').hidden = true;
           el('view').innerHTML = '<div class="card empty"><p><b>No connection</b></p>' +
             '<p class="small">The app is installed and ready — it just needs a signal to load this month.</p>' +
@@ -421,6 +503,18 @@
     var billsLeft = fixed.reduce(function (sum, c) { return c.paid ? sum : sum + c.budget; }, 0);
 
     var html = '';
+
+    // Offline: viewing the last synced copy and/or entries waiting to sync.
+    if (S.cachedAt) {
+      html += '<div class="offline-note">📶 No connection — showing the budget as of ' +
+        esc(new Date(S.cachedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+        '. You can still add — it saves on this phone.</div>';
+    }
+    var queued = loadQueue();
+    if (queued.length) {
+      html += '<div class="offline-note">' + queued.length + (queued.length === 1 ? ' entry' : ' entries') +
+        ' saved on this phone — will sync when there\'s signal.</div>';
+    }
 
     html += '<section class="card summary">' +
       '<div class="summary-cap">Left to spend</div>' +
@@ -1118,6 +1212,15 @@
       setTimeout(refreshPushStatus, 0);
     }
 
+    html += '<div class="section-title"><span>Backups</span></div><section class="card">' +
+      '<p class="muted small" style="margin:0 0 10px">The whole budget is copied automatically every night ' +
+      'and kept on the server — two weeks of nightly copies plus a year of monthly ones. ' +
+      'Download a copy now and then to keep one off the server too.</p>' +
+      '<div id="backup-status" class="muted small" style="margin-bottom:10px">Checking…</div>' +
+      '<button type="button" class="btn btn-block btn-sm" data-act="backup-download">⬇ Download a backup</button>' +
+      '</section>';
+    setTimeout(refreshBackupStatus, 0);
+
     html += '<div class="section-title"><span>Savings goal</span></div><section class="card">' +
       '<div class="edit-row" style="grid-template-columns:1fr 118px">' +
       '<span class="edit-name">Put away each month<br><span class="muted small">Progress shows on the Plan tab</span></span>' +
@@ -1207,6 +1310,38 @@
     var arr = new Uint8Array(raw.length);
     for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
     return arr;
+  }
+
+  function refreshBackupStatus() {
+    var box = el('backup-status');
+    if (!box) return;
+    api('/backup/status').then(function (out) {
+      box.textContent = out.newest
+        ? 'Last backup: ' + monthDay(out.newest.date) + ' · ' + out.count + ' cop' + (out.count === 1 ? 'y' : 'ies') + ' kept'
+        : 'No backup yet — the first one runs tonight.';
+    }).catch(function () { box.textContent = 'Could not check just now.'; });
+  }
+
+  function downloadBackup(btn) {
+    btn.disabled = true;
+    fetch('/api/backup/download', { headers: { Authorization: 'Bearer ' + S.token } })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Download failed — try again.');
+        return res.blob();
+      })
+      .then(function (blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'lattimer-budget-' + (S.data ? S.data.today : 'backup') + '.db';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 30000);
+        toast('Backup downloaded — keep it somewhere safe 💾');
+        refreshBackupStatus();
+      })
+      .catch(function (err) { toast(err.message, 'error'); })
+      .then(function () { btn.disabled = false; });
   }
 
   function refreshPushStatus() {
@@ -1410,9 +1545,12 @@
   function quickAddSave(categoryId) {
     var amount = qaAmount();
     if (!(amount > 0)) return;
-    var body = { category_id: Number(categoryId), amount: amount, note: QA.note, date: QA.date, person: QA.person };
+    var body = {
+      category_id: Number(categoryId), amount: amount, note: QA.note,
+      date: QA.date, person: QA.person, client_id: newClientId(),
+    };
     closeSheet();
-    mutate('/transactions', { method: 'POST', body: body }, money(amount) + ' saved');
+    mutate('/transactions', { method: 'POST', body: body }, money(amount) + ' saved', money(amount) + ' of spending');
   }
 
   function quickAddSaveIncome(sourceId) {
@@ -1424,10 +1562,11 @@
       note: QA.note,
       date: QA.date,
       person: QA.person,
+      client_id: newClientId(),
     };
     if (!body.source_id) body.label = 'Other income';
     closeSheet();
-    mutate('/income/entries', { method: 'POST', body: body }, '+' + money(amount) + ' received 🎉');
+    mutate('/income/entries', { method: 'POST', body: body }, '+' + money(amount) + ' received 🎉', money(amount) + ' of income');
   }
 
   // ---- edit transaction ------------------------------------------------
@@ -1671,8 +1810,11 @@
       if (r.alreadyImported) status = '<span class="badge">already in</span>';
       else if (!r.writable) status = '<span class="badge">closed month</span>';
       else if (r.transfer) status = '<span class="badge">↔ between accounts</span>';
+      else if (r.maybeManual) {
+        status = '<span class="badge badge-alert" title="' + esc(r.match ? r.match.label : '') + '">already logged? ' +
+          (r.match ? esc(monthDay(r.match.date)) + (r.match.person ? ' by ' + esc(r.match.person) : '') : '') + '</span>';
+      }
       else if (r.direction === 'in') status = '<span class="badge badge-ok">deposit → income</span>';
-      else if (r.maybeManual) status = '<span class="badge badge-alert">maybe entered by hand</span>';
       else if (r.guessedBy === 'learned') status = '<span class="badge badge-ok">remembered</span>';
 
       var disabled = r.alreadyImported || !r.writable;
@@ -2079,6 +2221,9 @@
           })
           .catch(function (err) { toast(err.message, 'error'); });
         break;
+      case 'backup-download':
+        downloadBackup(node);
+        break;
       case 'review-dismiss':
         localStorage.setItem('lfb.review.' + node.dataset.month, 'seen');
         render();
@@ -2294,11 +2439,17 @@
     });
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && S.data) refresh(true);
+      if (!document.hidden && S.data) { flushQueue(); refresh(true); }
     });
     window.addEventListener('online', function () {
+      flushQueue();
       if (S.data) { refresh(true); startRealtime(); }
     });
+    // Belt and suspenders: whatever events we miss, queued entries retry on
+    // a slow interval until they make it through.
+    setInterval(function () {
+      if (S.token && loadQueue().length && navigator.onLine !== false) flushQueue();
+    }, 20000);
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       S.installPrompt = e;
@@ -2314,6 +2465,7 @@
     S.pinned = false;
     refresh().then(function () {
       if (S.data) startRealtime();
+      flushQueue();
     });
   }
 

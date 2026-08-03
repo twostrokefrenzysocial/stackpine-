@@ -178,6 +178,14 @@ function migrate(db) {
   addColumnIfMissing(db, 'categories', 'cadence', 'TEXT');
   // Percent-of-income bills: tithe is 10% of net income, not a fixed number.
   addColumnIfMissing(db, 'categories', 'percent_income', 'INTEGER');
+  // Offline Quick Add: a phone-generated id so an entry queued without signal
+  // is inserted exactly once, no matter how many times the sync retries.
+  addColumnIfMissing(db, 'transactions', 'client_id', 'TEXT');
+  addColumnIfMissing(db, 'income_entries', 'client_id', 'TEXT');
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_client ON transactions (client_id) WHERE client_id IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_income_client ON income_entries (client_id) WHERE client_id IS NOT NULL;
+  `);
 }
 
 function seedOnce(db) {

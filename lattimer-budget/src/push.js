@@ -6,6 +6,7 @@
 
 const webpush = require('web-push');
 const { today, currentMonth, previousMonth, TZ, dueDateIn, daysUntil, toDollars, nextOccurrence } = require('./util');
+const { runBackup } = require('./backup');
 
 function ensureVapid(db) {
   let pub = db.prepare(`SELECT value FROM meta WHERE key = 'vapid_public'`).get()?.value;
@@ -117,8 +118,17 @@ function hourInFamilyTz() {
  * redeploys never double-send.
  */
 async function tick(db) {
-  if (hourInFamilyTz() < 9) return;
   const day = today();
+
+  // Nightly backup: the first tick of each new day snapshots the database.
+  // This runs before the 9am gate so it happens shortly after midnight.
+  const lastBackup = db.prepare(`SELECT value FROM meta WHERE key = 'backup_last'`).get()?.value;
+  if (lastBackup !== day) {
+    await runBackup(db, day);
+    db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('backup_last', ?)`).run(day);
+  }
+
+  if (hourInFamilyTz() < 9) return;
 
   const lastDigest = db.prepare(`SELECT value FROM meta WHERE key = 'push_last_digest'`).get()?.value;
   if (lastDigest !== day) {

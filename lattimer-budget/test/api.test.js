@@ -1651,7 +1651,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v13'],
+    ['/sw.js', 'lfb-v14'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--navy'],
   ]) {
@@ -1674,4 +1674,110 @@ test('healthz reports ok', async () => {
   const res = await fetch(base() + '/healthz');
   assert.equal(res.status, 200);
   assert.equal((await res.json()).ok, true);
+});
+
+// ------------------------------------------------- offline sync, reconciliation, backups
+
+const shiftDay = (iso, n) =>
+  new Date(Date.parse(iso + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const usDate = (iso) => `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}`;
+
+test('a client_id makes Quick Add idempotent (offline retries)', async () => {
+  const s = await state();
+  const groceries = byName(s.categories, 'Groceries');
+  const body = { category_id: groceries.id, amount: 91.73, client_id: 'phone-q-1' };
+
+  const first = await call('/api/transactions', { method: 'POST', body });
+  assert.equal(first.status, 201);
+  const retry = await call('/api/transactions', { method: 'POST', body });
+  assert.equal(retry.status, 200);
+  assert.equal(retry.body.deduped, true);
+  assert.equal(retry.body.id, first.body.id);
+  assert.equal(retry.body.state.transactions.filter((t) => t.amount === 91.73).length, 1);
+  await call(`/api/transactions/${first.body.id}`, { method: 'DELETE' });
+});
+
+test('a client_id makes income logging idempotent too', async () => {
+  const body = { amount: 55.51, label: 'Odd job', client_id: 'phone-q-2' };
+  const first = await call('/api/income/entries', { method: 'POST', body });
+  assert.equal(first.status, 201);
+  const retry = await call('/api/income/entries', { method: 'POST', body });
+  assert.equal(retry.status, 200);
+  assert.equal(retry.body.deduped, true);
+  assert.equal(retry.body.id, first.body.id);
+  await call(`/api/income/entries/${first.body.id}`, { method: 'DELETE' });
+});
+
+test('import preview flags statement rows already logged by hand (±3 days)', async () => {
+  const s = await state();
+  const fuel = byName(s.categories, 'Fuel');
+  // A hand-logged fill-up; the bank posts it two days later.
+  const logged = shiftDay(s.today, -2);
+  const tx = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: fuel.id, amount: 47.36, date: logged, note: 'gas station' },
+  });
+  assert.equal(tx.status, 201);
+
+  const csv = 'Date,Description,Withdrawals,Deposits\n' +
+    `${usDate(s.today)},SHELL SERVICE STATION 4412,47.36,\n` +
+    `${usDate(shiftDay(s.today, -10))},SHELL SERVICE STATION 4412,47.36,`;
+  const preview = await call('/api/import/preview', { method: 'POST', body: { text: csv } });
+  assert.equal(preview.status, 200);
+
+  const near = preview.body.rows.find((r) => r.date === s.today);
+  assert.equal(near.maybeManual, true, 'two days out is within the match window');
+  assert.equal(near.match.date, logged);
+  assert.ok(near.match.label.includes('Fuel'));
+
+  const far = preview.body.rows.find((r) => r.date !== s.today);
+  assert.equal(far.maybeManual, false, 'ten days out is not a match');
+
+  await call(`/api/transactions/${tx.body.id}`, { method: 'DELETE' });
+});
+
+test('import preview flags deposits already logged as income', async () => {
+  const s = await state();
+  const logged = shiftDay(s.today, -1);
+  const entry = await call('/api/income/entries', {
+    method: 'POST',
+    body: { amount: 321.09, label: 'Side gig', date: logged },
+  });
+  assert.equal(entry.status, 201);
+
+  const csv = 'Date,Description,Withdrawals,Deposits\n' +
+    `${usDate(s.today)},MOBILE CHECK DEPOSIT,,321.09`;
+  const preview = await call('/api/import/preview', { method: 'POST', body: { text: csv } });
+  const dep = preview.body.rows[0];
+  assert.equal(dep.direction, 'in');
+  assert.equal(dep.maybeManual, true);
+  assert.equal(dep.match.label, 'Side gig');
+
+  await call(`/api/income/entries/${entry.body.id}`, { method: 'DELETE' });
+});
+
+test('a backup snapshot is written, listed, and is a real database', async () => {
+  const run = await call('/api/backup/run', { method: 'POST' });
+  assert.equal(run.status, 200);
+  assert.equal(run.body.ok, true);
+
+  const status = await call('/api/backup/status');
+  assert.ok(status.body.count >= 1);
+  assert.match(status.body.newest.file, /^budget-\d{4}-\d{2}-\d{2}\.db$/);
+  assert.ok(status.body.newest.size > 0);
+
+  const Database = require('better-sqlite3');
+  const snap = new Database(path.join(tmpDir, 'backups', status.body.newest.file), { readonly: true });
+  const n = snap.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
+  snap.close();
+  assert.ok(n > 0, 'the snapshot contains the family data');
+});
+
+test('a backup can be downloaded from the phone', async () => {
+  const res = await fetch(base() + '/api/backup/download', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(res.status, 200);
+  const buf = Buffer.from(await res.arrayBuffer());
+  assert.equal(buf.subarray(0, 15).toString(), 'SQLite format 3');
 });

@@ -28,6 +28,8 @@ const {
 const { SETTLEMENT_FUND_CATEGORY } = require('./seed');
 const { parseStatement, merchantKey, keywordGuess, importHash } = require('./import');
 const { extractLines, parsePdfLines } = require('./pdf');
+const { runBackup, listBackups, snapshotForDownload } = require('./backup');
+const fs = require('fs');
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -610,6 +612,14 @@ function createApi(db) {
     return name;
   }
 
+  // Offline Quick Add sends a phone-generated id with each entry so a retry
+  // of the same queued entry can never insert twice.
+  function readClientId(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const id = String(value).trim().slice(0, 64);
+    return id || null;
+  }
+
   // ---------------------------------------------------------------- auth
 
   router.post('/login', (req, res) => {
@@ -710,6 +720,14 @@ function createApi(db) {
 
   router.post('/transactions', auth, (req, res) => {
     const body = req.body || {};
+    const clientId = readClientId(body.client_id);
+    if (clientId) {
+      const existing = db.prepare(`SELECT id, month FROM transactions WHERE client_id = ?`).get(clientId);
+      if (existing) {
+        // The queued entry already made it through on an earlier retry.
+        return res.status(200).json({ id: existing.id, deduped: true, state: buildState(existing.month, req.person) });
+      }
+    }
     const category = activeCategory(body.category_id);
     const amount = readAmount(body.amount);
     const date = readDate(body.date);
@@ -721,10 +739,10 @@ function createApi(db) {
 
     const info = db
       .prepare(`
-        INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?)
+        INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)
       `)
-      .run(category.id, amount, note, person, date, date.slice(0, 7), now, now);
+      .run(category.id, amount, note, person, date, date.slice(0, 7), now, now, clientId);
 
     broadcast('transaction:add', req.person);
     res.status(201).json({ id: info.lastInsertRowid, state: buildState(date.slice(0, 7), req.person) });
@@ -956,6 +974,13 @@ function createApi(db) {
 
   router.post('/income/entries', auth, (req, res) => {
     const body = req.body || {};
+    const clientId = readClientId(body.client_id);
+    if (clientId) {
+      const existing = db.prepare(`SELECT id, month FROM income_entries WHERE client_id = ?`).get(clientId);
+      if (existing) {
+        return res.status(200).json({ id: existing.id, deduped: true, state: buildState(existing.month, req.person) });
+      }
+    }
     const amount = readAmount(body.amount);
     const date = readDate(body.date);
     requireMonthWritable(date);
@@ -967,9 +992,9 @@ function createApi(db) {
     const now = new Date().toISOString();
 
     const id = db.prepare(`
-      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(source ? source.id : null, label, amount, note, person, date, date.slice(0, 7), now, now).lastInsertRowid;
+      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, client_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(source ? source.id : null, label, amount, note, person, date, date.slice(0, 7), now, now, clientId).lastInsertRowid;
 
     broadcast('income:received', req.person);
     res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
@@ -1289,9 +1314,21 @@ function createApi(db) {
     SELECT (SELECT COUNT(*) FROM transactions WHERE import_hash = @h) +
            (SELECT COUNT(*) FROM income_entries WHERE import_hash = @h) AS n
   `);
+  // Reconciliation: a statement row that matches something entered by hand.
+  // Banks post a few days after the purchase, so the match window is the
+  // amount plus a date within ±3 days. Tap-to-pay bill payments count too.
   const manualMatch = db.prepare(`
-    SELECT COUNT(*) AS n FROM transactions
-    WHERE date = ? AND amount_cents = ? AND source != 'import'
+    SELECT t.id, t.date, t.note, t.person, c.name AS category
+    FROM transactions t JOIN categories c ON c.id = t.category_id
+    WHERE t.amount_cents = @cents AND t.source != 'import'
+      AND t.date BETWEEN @lo AND @hi
+    ORDER BY ABS(julianday(t.date) - julianday(@date)) LIMIT 1
+  `);
+  const manualIncomeMatch = db.prepare(`
+    SELECT id, date, label, person FROM income_entries
+    WHERE amount_cents = @cents AND import_hash IS NULL
+      AND date BETWEEN @lo AND @hi
+    ORDER BY ABS(julianday(date) - julianday(@date)) LIMIT 1
   `);
   const ruleFor = db.prepare(`SELECT category_id FROM merchant_rules WHERE merchant = ?`);
   const upsertRule = db.prepare(`
@@ -1348,6 +1385,18 @@ function createApi(db) {
         }
       }
 
+      let match = null;
+      if (!alreadyImported) {
+        const win = { cents: r.cents, date: r.date, lo: addDays(r.date, -3), hi: addDays(r.date, 3) };
+        if (r.direction === 'out') {
+          const m = manualMatch.get(win);
+          if (m) match = { date: m.date, label: m.category + (m.note ? ' — ' + m.note : ''), person: m.person };
+        } else {
+          const m = manualIncomeMatch.get(win);
+          if (m) match = { date: m.date, label: m.label, person: m.person };
+        }
+      }
+
       return {
         i,
         date: r.date,
@@ -1360,9 +1409,8 @@ function createApi(db) {
         // spending — flag it so the UI leaves it unchecked.
         transfer: /\btransfer\b.{0,12}\b(to|from)\b|\bonline transfer\b/i.test(r.description),
         alreadyImported,
-        maybeManual: !alreadyImported && r.direction === 'out'
-          ? manualMatch.get(r.date, r.cents).n > 0
-          : false,
+        maybeManual: match !== null,
+        match,
         writable,
       };
     });
@@ -1420,6 +1468,33 @@ function createApi(db) {
 
     broadcast('import:done', req.person);
     res.status(201).json({ added, addedIncome, skipped, state: buildState(currentMonth(), req.person) });
+  });
+
+  // ---------------------------------------------------------------- backups
+
+  router.get('/backup/status', auth, (req, res) => {
+    const backups = listBackups(db);
+    res.json({
+      last: db.prepare(`SELECT value FROM meta WHERE key = 'backup_last'`).get()?.value || null,
+      count: backups.length,
+      newest: backups[0] || null,
+    });
+  });
+
+  // A fresh snapshot the phone downloads and keeps — the off-server copy.
+  router.get('/backup/download', auth, async (req, res) => {
+    const snap = await snapshotForDownload(db, today());
+    if (!snap) throw bad('This database cannot be backed up.');
+    res.download(snap, 'lattimer-budget-' + today() + '.db', () => {
+      fs.unlink(snap, () => {});
+    });
+  });
+
+  // Runs the nightly snapshot right now (also lets the family verify it works).
+  router.post('/backup/run', auth, async (req, res) => {
+    const dest = await runBackup(db, today());
+    db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('backup_last', ?)`).run(today());
+    res.json({ ok: Boolean(dest), backups: listBackups(db).length });
   });
 
   // ---------------------------------------------------------------- budget tune-up
