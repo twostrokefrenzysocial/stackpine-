@@ -81,10 +81,10 @@ test('a tampered token is rejected', async () => {
 
 test('seed data loads once with the expected shape', async () => {
   const s = await state();
-  // 15 active fixed (Subscriptions is archived into split line items),
-  // 14 variable (7 seed + 7 individual subscriptions)
-  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 15);
-  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 14);
+  // 22 active fixed (Subscriptions archived into 7 line items, all bills now),
+  // 7 variable (the everyday seed categories)
+  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 22);
+  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 7);
   assert.equal(s.income.total, 7638);
   assert.equal(s.totals.income, 7638);
   assert.equal(byName(s.categories, 'Mortgage (Rocket)').budget, 1004);
@@ -819,7 +819,7 @@ test('subscriptions are split into individual line items', async () => {
   for (const [name, budget] of [['Apple services', 45], ['Disney+', 14], ['Pestie', 15], ['Kindle Unlimited', 5], ['Bitwarden', 3]]) {
     const c = byName(s.categories, name);
     assert.ok(c, name + ' exists');
-    assert.equal(c.kind, 'variable', name + ' tracks itself from imports');
+    assert.equal(c.kind, 'fixed', name + ' sits on the bill checklist');
     assert.equal(c.budget, budget);
   }
 
@@ -1651,9 +1651,9 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v14'],
+    ['/sw.js', 'lfb-v15'],
     ['/app.js', 'quickAddSave'],
-    ['/styles.css', '--navy'],
+    ['/styles.css', '--ink'],
   ]) {
     const res = await fetch(base() + pathname);
     assert.equal(res.status, 200, `${pathname} should be served`);
@@ -1754,6 +1754,32 @@ test('import preview flags deposits already logged as income', async () => {
   assert.equal(dep.match.label, 'Side gig');
 
   await call(`/api/income/entries/${entry.body.id}`, { method: 'DELETE' });
+});
+
+test('the bank balance anchors once and follows what gets logged', async () => {
+  let s = await state();
+  assert.equal(s.bank.set, false, 'unset until the family anchors it');
+
+  const set = await call('/api/settings/bank', { method: 'PUT', body: { amount: 2500 } });
+  assert.equal(set.status, 200);
+  assert.equal(set.body.state.bank.set, true);
+  assert.equal(set.body.state.bank.balance, 2500);
+
+  const groceries = byName(set.body.state.categories, 'Groceries');
+  const spend = await call('/api/transactions', { method: 'POST', body: { category_id: groceries.id, amount: 40 } });
+  assert.equal(spend.body.state.bank.balance, 2460, 'spending moves it down');
+
+  const inc = await call('/api/income/entries', { method: 'POST', body: { amount: 100, label: 'Refund' } });
+  assert.equal(inc.body.state.bank.balance, 2560, 'income moves it up');
+
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+  await call(`/api/income/entries/${inc.body.id}`, { method: 'DELETE' });
+  s = await state();
+  assert.equal(s.bank.balance, 2500, 'deletes put it back');
+
+  // re-anchoring replaces the number outright
+  const reset = await call('/api/settings/bank', { method: 'PUT', body: { amount: 3111.25 } });
+  assert.equal(reset.body.state.bank.balance, 3111.25);
 });
 
 test('a backup snapshot is written, listed, and is a real database', async () => {

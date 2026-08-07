@@ -221,6 +221,26 @@ function createApi(db) {
     return 'ok';
   }
 
+  /**
+   * "What's in the bank": the family anchors it to their real balance once,
+   * and every dollar logged after that moves it — income up, spending down.
+   * Entries dated before the anchor (or created before it was set) are
+   * already inside the anchored number, so they never count twice.
+   */
+  function bankState() {
+    const raw = db.prepare(`SELECT value FROM meta WHERE key = 'bank_anchor'`).get()?.value;
+    if (!raw) return { set: false, balance: null, asOf: null };
+    let anchor;
+    try { anchor = JSON.parse(raw); } catch (err) { return { set: false, balance: null, asOf: null }; }
+    const inC = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries WHERE date >= ? AND created_at > ?`
+    ).get(anchor.date, anchor.at).n;
+    const outC = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE date >= ? AND created_at > ?`
+    ).get(anchor.date, anchor.at).n;
+    return { set: true, balance: toDollars(anchor.cents + inC - outC), asOf: anchor.date };
+  }
+
   function buildState(month, person) {
     ensureMonth(month);
 
@@ -257,10 +277,14 @@ function createApi(db) {
       const liveCat = liveById.get(row.category_id);
       const isPayday = liveCat?.cadence === 'payday' && row.kind === 'fixed';
 
-      // Per-payday bills complete over several payments in the month.
+      // Per-payday bills complete over several payments in the month. A plain
+      // bill also counts as handled when hand-logged spending covers it (a
+      // subscription logged through Quick Add is that bill, paid).
       const expected = isPayday ? Math.max(1, monthPaydays.length) : 1;
       const paidCount = paidRow ? paidRow.n : 0;
-      const fullyPaid = isPayday ? paidCount >= expected : Boolean(paidRow);
+      const fullyPaid = isPayday
+        ? paidCount >= expected
+        : Boolean(paidRow) || (row.kind === 'fixed' && budget > 0 && spent >= budget);
 
       // Due-date state, only meaningful for an unpaid bill in the live month.
       const dueDay = dueDays.get(row.category_id) ?? null;
@@ -493,6 +517,7 @@ function createApi(db) {
         remaining: toDollars(incomeCents - spentCents),
         budgeted: toDollars(categories.reduce((s, c) => s + Math.round(c.budget * 100), 0)),
       },
+      bank: bankState(),
       categories,
       upcoming,
       weeks,
@@ -855,10 +880,20 @@ function createApi(db) {
       const snapshot = db
         .prepare(`SELECT budget_cents FROM month_budgets WHERE month = ? AND category_id = ?`)
         .get(month, category.id);
+      const budgetC = snapshot?.budget_cents ?? category.budget_cents;
+      // Spending already logged by hand against this bill counts toward it —
+      // paying tops up the remainder instead of double-charging.
+      const handLogged = db
+        .prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE month = ? AND category_id = ? AND source != 'billpay'`)
+        .get(month, category.id).n;
       const amount = req.body?.amount === undefined
-        ? snapshot?.budget_cents ?? category.budget_cents
+        ? budgetC - handLogged
         : readAmount(req.body.amount);
-      if (amount <= 0) throw bad('Set a budget for this bill before marking it paid.');
+      if (amount <= 0) {
+        throw bad(handLogged > 0
+          ? 'What was logged this month already covers this bill.'
+          : 'Set a budget for this bill before marking it paid.');
+      }
       db.transaction(() => {
         db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
           .run(month, category.id);
@@ -1305,6 +1340,15 @@ function createApi(db) {
     if (cents < 0) throw bad('The target cannot be negative.');
     db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('savings_target', ?)`).run(String(cents));
     broadcast('savings:target', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  // "What's in the bank" — anchor it to the real balance; logging moves it.
+  router.put('/settings/bank', auth, (req, res) => {
+    const cents = readAmount(req.body?.amount, { allowNegative: true });
+    db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('bank_anchor', ?)`)
+      .run(JSON.stringify({ cents, date: today(), at: new Date().toISOString() }));
+    broadcast('bank:set', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
   });
 

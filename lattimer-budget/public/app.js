@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 14;
+  var APP_VERSION = 15;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -15,7 +15,7 @@
     data: null,
     tab: 'dashboard',
     filters: { category: '', person: '', type: '', search: '' },
-    ui: { paidOpen: false },
+    ui: { paidOpen: false, openCats: {} },
     pinned: false,
     sse: null,
     pollTimer: null,
@@ -516,24 +516,33 @@
         ' saved on this phone — will sync when there\'s signal.</div>';
     }
 
-    html += '<section class="card summary">' +
-      '<div class="summary-cap">Left to spend</div>' +
-      '<div class="summary-big' + (d.totals.remaining < 0 ? ' summary-neg' : '') + '">' + money(d.totals.remaining, { cents: false }) + '</div>' +
-      '<div class="summary-grid">' +
-      '<button type="button" class="summary-cell summary-tap" data-act="income-sheet">' +
-      '<span class="summary-cap">Money in ›</span><b>' + money(d.totals.received, { cents: false }) + '</b>' +
-      '<span class="summary-sub">' + esc(paydayHint(d) || ('of ' + money(d.totals.income, { cents: false }) + ' — tap to log')) + '</span></button>' +
-      summaryCell('Spent', d.totals.spent) +
-      summaryCell('Budgeted', d.totals.budgeted) +
-      summaryCell('Bills left', billsLeft) +
-      '</div>' +
-      (d.week
-        ? '<div class="summary-week">' +
-          '<div class="row small"><span>This week, everyday spending</span><span>' +
-          money(d.week.everyday) + ' / ~' + money(d.week.allowance, { cents: false }) + '</span></div>' +
-          barHtml(d.week.status, d.week.pct) + '</div>'
-        : '') +
-      '</section>';
+    // What's in the bank — one honest number, then in/out for the month.
+    if (d.bank && d.bank.set) {
+      html += '<section class="card bank">' +
+        '<button type="button" class="bank-tap" data-act="bank-open" title="Tap to correct the balance">' +
+        '<div class="bank-cap">In the bank</div>' +
+        '<div class="bank-big' + (d.bank.balance < 0 ? ' bank-neg' : '') + '">' + money(d.bank.balance) + '</div>' +
+        '</button>' +
+        '<div class="bank-sub">' +
+        '<span class="bank-in"><b class="bank-in">+' + money(d.totals.received, { cents: false }) + '</b> in</span>' +
+        '<span><b>−' + money(d.totals.spent, { cents: false }) + '</b> out this month</span>' +
+        '</div></section>';
+    } else {
+      html += '<section class="card bank">' +
+        '<div class="bank-cap">In the bank</div>' +
+        '<p class="small muted" style="margin:6px 0 10px">Tell it what\'s in checking once — every dollar you log moves it, so it stays current.</p>' +
+        '<button type="button" class="btn btn-block bank-set-btn" data-act="bank-open">Set the balance</button>' +
+        '</section>';
+    }
+
+    // Paychecks: one row, one job — log the money when it lands.
+    var hint = paydayHint(d);
+    html += '<section class="card card-tight"><div class="bill" style="border:0">' +
+      '<span class="bill-name">Money in' +
+      '<span class="bill-sub">' + money(d.totals.received, { cents: false }) + ' of ' +
+      money(d.totals.income, { cents: false }) + ' expected' + (hint ? ' · ' + esc(hint) : '') + '</span></span>' +
+      (d.readOnly ? '' : '<button type="button" class="btn btn-sm btn-in" data-act="income-sheet">Log a check</button>') +
+      '</div></section>';
 
     // Last month's report card: overspending alert + leftover nudge, once per month.
     if (d.review && localStorage.getItem('lfb.review.' + d.review.month) !== 'seen') {
@@ -617,26 +626,50 @@
       html += '</section>';
     }
 
-    html += '<div class="section-title"><span>Spending categories</span></div>';
+    html += '<div class="section-title"><span>Spending</span><span>tap one to see what\'s in it</span></div>';
     if (!variable.length) {
       html += '<div class="card empty">No spending categories yet. Add them in Settings.</div>';
     } else {
       html += '<section class="card card-tight">';
-      variable.forEach(function (c) {
-        html += '<div class="cat">' +
-          '<div class="cat-head"><span class="cat-name">' + esc(c.name) +
-          (c.archived ? ' <span class="badge">closed</span>' : '') + '</span>' +
-          '<span class="cat-nums">' + money(c.spent) + ' / ' + money(c.budget, { cents: false }) + '</span></div>' +
-          barHtml(c.status, c.pct) +
-          '<div class="cat-foot"><span>' + Math.round(c.pct) + '% used</span>' +
-          '<span class="' + (c.remaining < 0 ? 'cat-over' : '') + '">' +
-          (c.remaining < 0 ? money(-c.remaining) + ' over' : money(c.remaining) + ' left') +
-          '</span></div></div>';
-      });
+      variable.forEach(function (c) { html += spendingCatRow(c, d); });
       html += '</section>';
     }
 
     return html;
+  }
+
+  /** A spending category row that opens to show this month's purchases in it. */
+  function spendingCatRow(c, d) {
+    var open = Boolean(S.ui.openCats[c.id]);
+    var html = '<div class="cat' + (open ? ' cat-open' : '') + '">' +
+      '<button type="button" class="cat-btn" data-act="cat-toggle" data-id="' + c.id + '">' +
+      '<div class="cat-head"><span class="cat-name"><span class="cat-chev">▶</span>' + esc(c.name) +
+      (c.archived ? ' <span class="badge">closed</span>' : '') + '</span>' +
+      '<span class="cat-nums"><b>' + money(c.spent) + '</b> of ' + money(c.budget, { cents: false }) + '</span></div>' +
+      barHtml(c.status, c.pct) +
+      '<div class="cat-foot"><span>' + Math.round(c.pct) + '% used</span>' +
+      '<span class="' + (c.remaining < 0 ? 'cat-over' : '') + '">' +
+      (c.remaining < 0 ? money(-c.remaining) + ' over' : money(c.remaining) + ' left') +
+      '</span></div></button>';
+
+    if (open) {
+      var txs = d.transactions.filter(function (t) { return t.category_id === c.id; });
+      html += '<div class="cat-tx">';
+      if (!txs.length) {
+        html += '<div class="cat-tx-none">Nothing spent here yet this month.</div>';
+      } else {
+        txs.forEach(function (t) {
+          html += '<button type="button" class="tx" data-act="edit-tx" data-id="' + t.id + '"' +
+            (d.readOnly && t.source !== 'import' ? ' disabled' : '') + '>' +
+            '<span class="tx-main"><span class="tx-cat">' + esc(t.note || (t.source === 'billpay' ? 'Paid' : t.person)) + '</span>' +
+            '<span class="tx-meta">' + esc(dayLabel(t.date)) + ' · ' + esc(t.person) + '</span></span>' +
+            '<span class="tx-amt">−' + money(t.amount) + '</span>' +
+            '</button>';
+        });
+      }
+      html += '</div>';
+    }
+    return html + '</div>';
   }
 
   /** Mini per-week chart: everyday spending as bars, income as a green dot row. */
@@ -762,6 +795,23 @@
       incomeRowsHtml(S.data));
   }
 
+  function openBankSheet() {
+    var cur = S.data.bank && S.data.bank.set ? S.data.bank.balance : '';
+    openSheet(sheetHead("What's in the bank?") +
+      '<p class="muted small" style="margin-top:0">Enter what checking actually holds right now. From then on, every paycheck and purchase either of you logs moves this number on its own.</p>' +
+      '<label class="field"><span>Balance</span>' +
+      '<input class="input" id="bank-amount" type="number" inputmode="decimal" step="0.01" value="' + esc(cur) + '" placeholder="0.00"></label>' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="bank-save">Save</button>');
+    setTimeout(function () { var i = el('bank-amount'); if (i) i.focus(); }, 60);
+  }
+
+  function saveBank() {
+    var v = parseFloat(el('bank-amount').value);
+    if (isNaN(v)) { toast('Enter the balance first', 'error'); return; }
+    closeSheet();
+    mutate('/settings/bank', { method: 'PUT', body: { amount: v } }, 'Bank balance set ✓');
+  }
+
   function summaryCell(label, value, sub) {
     return '<div class="summary-cell"><span class="summary-cap">' + esc(label) + '</span>' +
       '<b>' + money(value, { cents: false }) + '</b>' +
@@ -823,37 +873,34 @@
 
     var html = '';
 
-    // Weekly progress lives here with the rest of the record.
-    if (d.weeks && d.weeks.length) {
-      html += '<section class="card">' +
-        '<div class="row small"><b>Week by week</b>' +
-        (d.week
-          ? '<span class="muted">' + (d.week.remaining < 0
-            ? money(-d.week.remaining) + ' over pace this week'
-            : money(d.week.remaining) + ' left at pace this week') + '</span>'
-          : '') + '</div>' +
-        weekBarsHtml(d) + '</section>';
-    }
+    // The month at a glance: what came in, what went out, what that nets.
+    var net = inTotal - outTotal;
+    html += '<div class="hist-strip" style="margin-bottom:12px">' +
+      '<div><span>Came in</span><b class="week-in">+' + money(inTotal, { cents: false }) + '</b></div>' +
+      '<div><span>Went out</span><b>−' + money(outTotal, { cents: false }) + '</b></div>' +
+      '<div><span>Net</span><b class="' + (net < 0 ? 'cat-over' : 'week-in') + '">' +
+      (net < 0 ? '−' : '+') + money(Math.abs(net), { cents: false }) + '</b></div>' +
+      '</div>';
 
     html += '<section class="card">' +
       '<div class="row" style="margin-bottom:10px"><div class="chips">' +
       typeChip('', 'Everything') + typeChip('out', 'Spending') + typeChip('in', 'Income') +
       '</div>' +
-      (d.readOnly ? '' : '<button type="button" class="btn btn-sm" data-act="import-open">⇪ Import</button>') +
+      (d.readOnly ? '' : '<button type="button" class="btn btn-sm" data-act="import-open">⇪ Statement</button>') +
       '</div>' +
-      '<label class="field"><span>Category</span><select class="input" data-act="filter-category">' +
+      '<div class="chips" style="margin-bottom:10px">' +
+      personChip('', 'Both of us') +
+      d.people.map(function (p) { return personChip(p, 'Just ' + p); }).join('') +
+      '</div>' +
+      '<input class="input" type="search" placeholder="Search anything — Kroger, brakes, cheer…"' +
+      ' data-act="filter-search" value="' + esc(S.filters.search) + '">' +
+      '<label class="field" style="margin:10px 0 0"><span>Only one category</span><select class="input" data-act="filter-category">' +
       '<option value="">All categories</option>' +
       d.categories.map(function (c) {
         return '<option value="' + c.id + '"' + (S.filters.category === String(c.id) ? ' selected' : '') + '>' +
           esc(c.name) + '</option>';
       }).join('') +
       '</select></label>' +
-      '<div class="chips">' +
-      personChip('', 'Everyone') +
-      d.people.map(function (p) { return personChip(p, p); }).join('') +
-      '</div>' +
-      '<input class="input" type="search" style="margin-top:10px" placeholder="Search — Kroger, brakes, cheer…"' +
-      ' data-act="filter-search" value="' + esc(S.filters.search) + '">' +
       '</section>';
 
     if (perPerson.length > 1) {
@@ -862,19 +909,16 @@
           return '<div class="who-total"><span class="tx-avatar" data-person="' + esc(x.person) + '">' +
             esc(x.person.charAt(0)) + '</span><div><b>' + esc(x.person) + '</b>' +
             '<span class="small muted">' +
-            (x.out > 0 ? '−' + money(x.out) : '') +
+            (x.out > 0 ? '−' + money(x.out) + ' spent' : '') +
             (x.out > 0 && x.inn > 0 ? ' · ' : '') +
-            (x.inn > 0 ? '<b class="week-in">+' + money(x.inn) + '</b>' : '') +
+            (x.inn > 0 ? '<b class="week-in">+' + money(x.inn) + ' in</b>' : '') +
             '</span></div></div>';
         }).join('') +
         '</div></section>';
     }
 
-    var headline = [];
-    if (outTotal || showOut) headline.push('−' + money(outTotal));
-    if (inTotal) headline.push('+' + money(inTotal));
     html += '<div class="section-title"><span>' + rows.length + ' entr' + (rows.length === 1 ? 'y' : 'ies') +
-      '</span><span>' + headline.join(' · ') + '</span></div>';
+      ' · newest first</span><span>tap one to fix it</span></div>';
 
     if (!rows.length) {
       html += '<div class="card empty">Nothing recorded yet for ' + esc(monthLabel(d.month)) + '.</div>';
@@ -914,8 +958,8 @@
         (d.readOnly && r.src !== 'import' ? ' disabled' : '') + '>' +
         '<span class="tx-avatar" data-person="' + esc(r.person) + '">' + esc(r.person.charAt(0)) + '</span>' +
         '<span class="tx-main"><span class="tx-cat">' + esc(r.title) + '</span>' +
-        '<span class="tx-meta">' + esc(r.meta) + ' · ' + esc(shortDate(r.date)) + '</span></span>' +
-        '<span class="tx-amt">' + (r.kind === 'in' ? '+' : '') + money(r.amount) + '</span>' +
+        '<span class="tx-meta">' + esc(r.person) + (r.meta && r.meta !== r.person ? ' · ' + esc(r.meta) : '') + '</span></span>' +
+        '<span class="tx-amt">' + (r.kind === 'in' ? '+' : '−') + money(r.amount) + '</span>' +
         '</button>';
     });
     html += '</section>';
@@ -1211,6 +1255,16 @@
         '</div></section>';
       setTimeout(refreshPushStatus, 0);
     }
+
+    html += '<div class="section-title"><span>Bank balance</span></div><section class="card">' +
+      '<p class="muted small" style="margin:0 0 10px">' +
+      (d.bank && d.bank.set
+        ? 'Showing ' + money(d.bank.balance) + ' right now. If the app has drifted from the real account, reset it here.'
+        : 'Tell the app what checking holds once — from then on everything you log keeps it current.') +
+      '</p>' +
+      '<button type="button" class="btn btn-block btn-sm" data-act="bank-open">' +
+      (d.bank && d.bank.set ? 'Correct the balance' : 'Set the balance') + '</button>' +
+      '</section>';
 
     html += '<div class="section-title"><span>Backups</span></div><section class="card">' +
       '<p class="muted small" style="margin:0 0 10px">The whole budget is copied automatically every night ' +
@@ -2233,6 +2287,12 @@
         S.ui.paidOpen = !S.ui.paidOpen;
         render();
         break;
+      case 'cat-toggle':
+        S.ui.openCats[node.dataset.id] = !S.ui.openCats[node.dataset.id];
+        render();
+        break;
+      case 'bank-open': openBankSheet(); break;
+      case 'bank-save': saveBank(); break;
       case 'save-add': openSavings('in', node.dataset.amount || ''); break;
       case 'save-add-goal': openSavings('in', '', node.dataset.id); break;
       case 'save-out': openSavings('out', ''); break;

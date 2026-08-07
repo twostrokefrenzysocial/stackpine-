@@ -96,6 +96,12 @@ const DATA_MIGRATIONS = [
     },
   },
   {
+    // Subscriptions are bills that charge themselves, not everyday spending —
+    // they belong on the tap-to-pay checklist.
+    key: '2026-08-subscriptions-are-bills',
+    toFixed: ['Apple services', 'Disney+', 'Pestie', 'Fabletics', 'Kindle Unlimited', 'Bitwarden', 'Ring'],
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

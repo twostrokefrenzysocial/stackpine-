@@ -259,6 +259,16 @@ function applyDataMigrations(db) {
             .run(name, Math.round(dollars * 100), order);
         }
       }
+      if (migration.toFixed) {
+        // Reclassify spending categories as fixed bills (subscriptions are
+        // bills, not everyday spending). History stays attached.
+        for (const name of migration.toFixed) {
+          const row = db.prepare(`SELECT id FROM categories WHERE name = ? AND archived = 0 AND kind = 'variable'`).get(name);
+          if (!row) continue;
+          const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = 'fixed'`).get().n;
+          db.prepare(`UPDATE categories SET kind = 'fixed', sort_order = ? WHERE id = ?`).run(order, row.id);
+        }
+      }
       const spec = migration.category;
       if (spec) {
         const existing = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(spec.name);
