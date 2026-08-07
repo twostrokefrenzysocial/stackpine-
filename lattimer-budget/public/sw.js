@@ -1,11 +1,11 @@
 /* Lattimer Family Budget service worker: offline app shell, never cached API. */
 
-var VERSION = 'lfb-v21';
+var VERSION = 'lfb-v22';
 var SHELL = [
   '/',
   '/index.html',
-  '/styles.css?v=21',
-  '/app.js?v=21',
+  '/styles.css?v=22',
+  '/app.js?v=22',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

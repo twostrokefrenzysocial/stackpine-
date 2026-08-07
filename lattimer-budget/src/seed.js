@@ -200,6 +200,28 @@ const DATA_MIGRATIONS = [
     archiveCategories: ['Settlement fund'],
   },
   {
+    // The agreed plan: the funeral-triage income the family is counting on,
+    // trimmed everyday budgets that keep groceries and fuel whole, and the
+    // vehicle-maintenance line folded into their two personal allowances.
+    // Totals $1,470 of everyday spending against $8,138 coming in.
+    key: '2026-09-agreed-budget',
+    addIncome: {
+      name: 'Funeral triage software',
+      amount: 500,
+      per_month: 1,
+      person: 'Chris',
+      cadence: 'monthly',
+      onlyIfSourceCount: 2,
+    },
+    amounts: {
+      'Eating out & fun': 210,
+      'Personal - Chris': 67.5,
+      'Personal - Miriam': 67.5,
+      'Household & misc': 75,
+    },
+    archiveCategories: ['Vehicle parts & maintenance'],
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

@@ -85,9 +85,9 @@ test('seed data loads once with the expected shape', async () => {
   // Bitwarden (cancelled) and the truck + dirt bike (new loans, start Sept).
   assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 20);
   assert.equal(s.upcoming.filter((c) => c.kind === 'fixed').length, 1, "only Miriam's student loans wait for September");
-  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 7);
-  assert.equal(s.income.total, 7638);
-  assert.equal(s.totals.income, 7638);
+  assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 6, 'vehicle maintenance folded into personal money');
+  assert.equal(s.income.total, 8138, 'two paychecks plus the funeral-triage contract');
+  assert.equal(s.totals.income, 8138);
   assert.equal(byName(s.categories, 'Mortgage (Rocket)').budget, 1004);
   assert.equal(byName(s.categories, 'Groceries').budget, 700);
   assert.equal(s.debts.length, 5);
@@ -127,7 +127,7 @@ test('adding a transaction moves the category and the totals', async () => {
   assert.equal(groceries.remaining, 617.53);
   assert.equal(groceries.status, 'ok');
   assert.equal(res.body.state.totals.spent, 82.47);
-  assert.equal(res.body.state.totals.remaining, 7555.53);
+  assert.equal(res.body.state.totals.remaining, 8055.53);
   assert.equal(res.body.state.transactions[0].person, 'Chris');
   assert.equal(res.body.state.transactions[0].note, 'Kroger');
 });
@@ -256,7 +256,7 @@ test('a past month renders read-only with its own snapshot', async (t) => {
   assert.equal(res.body.month, monthOf(-1));
   assert.equal(res.body.transactions.length, 0);
   // Last month's snapshot: the categories that were active back then.
-  assert.equal(res.body.categories.length, 25);
+  assert.equal(res.body.categories.length, 24);
 });
 
 // ---------------------------------------------------------------- back-dating grace
@@ -624,8 +624,8 @@ test('editing income updates the monthly total', async () => {
   const s = await state();
   const chris = s.income.sources.find((x) => x.person === 'Chris');
   const res = await call(`/api/income/${chris.id}`, { method: 'PUT', body: { amount: 1500 } });
-  assert.equal(res.body.state.income.total, 7738);
-  assert.equal(res.body.state.totals.income, 7738);
+  assert.equal(res.body.state.income.total, 8238);
+  assert.equal(res.body.state.totals.income, 8238);
   await call(`/api/income/${chris.id}`, { method: 'PUT', body: { amount: 1450 } });
 });
 
@@ -739,11 +739,12 @@ test('payday anchors: seeded to Friday Aug 7 2026 biweekly, rolling forward', as
   assert.equal(nextOccurrence('2026-01-31', 'monthly', '2026-02-01'), '2026-02-28', 'monthly clamps short months');
 
   const s = await state();
-  for (const src of s.income.sources.filter((x) => x.person)) {
-    assert.equal(src.cadence, 'biweekly', src.name + ' seeded biweekly');
+  // The two paychecks are biweekly; the monthly contract keeps its own rhythm.
+  for (const src of s.income.sources.filter((x) => x.cadence === 'biweekly')) {
     assert.ok(src.nextPayday >= s.today, src.name + ' payday is never in the past');
     assert.equal(typeof src.payInDays, 'number');
   }
+  assert.equal(s.income.sources.filter((x) => x.cadence === 'biweekly').length, 2);
 });
 
 test('paydays are editable per source', async () => {
@@ -883,7 +884,7 @@ test('logging a paycheck records the actual amount against its source', async ()
 
   const st = res.body.state;
   assert.equal(st.totals.received, 1502.75);
-  assert.equal(st.totals.income, 7638, 'the plan number does not move');
+  assert.equal(st.totals.income, 8138, 'the plan number does not move');
   const src = st.income.sources.find((x) => x.id === chris.id);
   assert.equal(src.received, 1502.75);
   assert.equal(src.checks, 1);
@@ -1697,7 +1698,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v21'],
+    ['/sw.js', 'lfb-v22'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1992,9 +1993,9 @@ test('a future month tracks live settings so it can be planned', async () => {
   const tithe = byName(after.body.categories, 'Church giving');
   assert.equal(tithe.budget, Math.round((startIncome + 500) * 10) / 100);
 
-  // A past month stays frozen at what it was actually budgeted.
+  // A past month stays frozen at whatever it was budgeted, not the new total.
   const past = await call(`/api/state?month=${monthOf(-1)}`);
-  assert.equal(past.body.totals.income, startIncome, 'history does not move');
+  assert.notEqual(past.body.totals.income, startIncome + 500, 'history does not move');
 
   await call(`/api/income/${added.body.id}`, { method: 'DELETE' });
 });

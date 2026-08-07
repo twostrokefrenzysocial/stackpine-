@@ -1824,13 +1824,18 @@ function createApi(db) {
     });
 
     const floor5 = (n) => Math.max(0, Math.floor(n / 500) * 500);
-    const round5 = (n) => Math.max(0, Math.round(n / 500) * 500);
     const sumProxy = rows.reduce((s, r) => s + r.proxy, 0);
     const fits = sumProxy <= availableC;
 
     let targets;
     if (fits) {
-      targets = rows.map((r) => ({ ...r, target: round5(r.proxy) }));
+      // Round DOWN to the nearest $5: a suggestion must never ask for more
+      // than history actually shows. A category with no history keeps its
+      // budget rather than drifting down for no reason.
+      targets = rows.map((r) => ({
+        ...r,
+        target: r.avg === null ? r.cat.budget_cents : floor5(r.proxy),
+      }));
     } else {
       // Cuts: shrink lifestyle first, protect the four walls.
       const essC = rows.filter((r) => r.essential).reduce((s, r) => s + r.proxy, 0);

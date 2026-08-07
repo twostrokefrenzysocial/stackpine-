@@ -329,6 +329,20 @@ function applyDataMigrations(db) {
           db.prepare(`UPDATE categories SET account_id = ? WHERE name = ? AND archived = 0`).run(acc.id, bill);
         }
       }
+      if (migration.addIncome) {
+        // Only add when the family has not already added it themselves —
+        // guarded on the source count so a hand-added one is never doubled.
+        const spec = migration.addIncome;
+        const count = db.prepare(`SELECT COUNT(*) AS n FROM income_sources`).get().n;
+        if (count === spec.onlyIfSourceCount) {
+          const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM income_sources`).get().n;
+          db.prepare(`
+            INSERT INTO income_sources (name, person, amount_cents, per_month, sort_order, next_date, cadence)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(spec.name, spec.person, Math.round(spec.amount * 100), spec.per_month, order,
+            spec.nextDate || null, spec.cadence || null);
+        }
+      }
       if (migration.archiveCategories) {
         for (const name of migration.archiveCategories) {
           db.prepare(`UPDATE categories SET archived = 1 WHERE name = ?`).run(name);
