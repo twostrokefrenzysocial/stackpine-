@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 19;
+  var APP_VERSION = 20;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 

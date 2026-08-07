@@ -1697,7 +1697,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v19'],
+    ['/sw.js', 'lfb-v20'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1969,6 +1969,34 @@ test('the new loans are live now and come from the business account', async () =
   }
   // Only the student loans are still waiting.
   assert.deepEqual((s.upcoming || []).map((c) => c.name), ["Miriam's student loans"]);
+});
+
+test('a future month tracks live settings so it can be planned', async () => {
+  const nextMonth = monthOf(1);
+  const before = await call(`/api/state?month=${nextMonth}`);
+  assert.equal(before.status, 200);
+  const startIncome = before.body.totals.income;
+
+  // A raise (or a new side income) must show up in next month's plan, not
+  // just this month's — otherwise planning ahead reads stale numbers.
+  const added = await call('/api/income', {
+    method: 'POST',
+    body: { name: 'Side contract', amount: 500, per_month: 1, person: 'Chris' },
+  });
+  assert.equal(added.status, 201);
+
+  const after = await call(`/api/state?month=${nextMonth}`);
+  assert.equal(after.body.totals.income, startIncome + 500, 'next month sees the new income');
+
+  // The tithe follows it, since it is a percent of income.
+  const tithe = byName(after.body.categories, 'Church giving');
+  assert.equal(tithe.budget, Math.round((startIncome + 500) * 10) / 100);
+
+  // A past month stays frozen at what it was actually budgeted.
+  const past = await call(`/api/state?month=${monthOf(-1)}`);
+  assert.equal(past.body.totals.income, startIncome, 'history does not move');
+
+  await call(`/api/income/${added.body.id}`, { method: 'DELETE' });
 });
 
 test('a backup snapshot is written, listed, and is a real database', async () => {

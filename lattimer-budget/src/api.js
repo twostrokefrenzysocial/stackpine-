@@ -253,9 +253,13 @@ function createApi(db) {
     }
   }
 
-  /** A past month keeps whatever it was budgeted at; seed it once if never seen. */
+  /**
+   * The current month and any month still ahead track live settings, so a
+   * plan being made for next month picks up a new income source or budget.
+   * Only a month already in the past is frozen at what it was budgeted.
+   */
   function ensureMonth(month) {
-    if (month === currentMonth()) {
+    if (month >= currentMonth()) {
       syncCurrentMonth(month);
       return;
     }
