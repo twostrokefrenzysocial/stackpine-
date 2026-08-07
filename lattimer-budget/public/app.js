@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 15;
+  var APP_VERSION = 16;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -259,6 +259,7 @@
   }
 
   function applyState(state) {
+    if (maybeSelfUpdate(state.app)) return;
     S.data = state;
     S.month = state.month;
     S.cachedAt = null;
@@ -386,8 +387,33 @@
     el('sync-text').textContent = next === 'live' ? 'live' : next === 'polling' ? 'syncing' : 'offline';
   }
 
+  /**
+   * The server says a newer build of the app exists: wipe every cache the
+   * old build could hide in and load fresh. Runs at most once per session.
+   */
+  var updating = false;
+  function maybeSelfUpdate(appRev) {
+    if (updating || !appRev || appRev <= APP_VERSION) return false;
+    updating = true;
+    toast('Updating the app…');
+    var reloadNow = function () { location.reload(); };
+    var purge = ('caches' in window)
+      ? caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        })
+      : Promise.resolve();
+    purge
+      .then(function () {
+        return ('serviceWorker' in navigator) ? navigator.serviceWorker.getRegistration() : null;
+      })
+      .then(function (reg) { return reg ? reg.update() : null; })
+      .then(reloadNow, reloadNow);
+    return true;
+  }
+
   function onVersion(info) {
     if (!info || !S.data) return;
+    if (maybeSelfUpdate(info.app)) return;
     if (info.version === S.data.version) return;
     refresh(true).then(function () {
       if (info.by && info.by !== S.person) toast(info.by + ' just updated the budget');
@@ -516,22 +542,32 @@
         ' saved on this phone — will sync when there\'s signal.</div>';
     }
 
-    // What's in the bank — one honest number, then in/out for the month.
+    // What's in the bank — every account, one honest number each.
     if (d.bank && d.bank.set) {
       html += '<section class="card bank">' +
-        '<button type="button" class="bank-tap" data-act="bank-open" title="Tap to correct the balance">' +
         '<div class="bank-cap">In the bank</div>' +
-        '<div class="bank-big' + (d.bank.balance < 0 ? ' bank-neg' : '') + '">' + money(d.bank.balance) + '</div>' +
-        '</button>' +
+        '<div class="bank-big' + (d.bank.total < 0 ? ' bank-neg' : '') + '">' + money(d.bank.total) + '</div>' +
+        '<div class="bank-accounts">' +
+        d.bank.accounts.map(function (a) {
+          return '<button type="button" class="bank-acc" data-act="account-open" data-id="' + a.id + '" title="Tap to fix or rename">' +
+            '<span>' + esc(a.name) + '</span><b' + (a.balance < 0 ? ' class="cat-over"' : '') + '>' + money(a.balance) + '</b></button>';
+        }).join('') +
+        '</div>' +
         '<div class="bank-sub">' +
         '<span class="bank-in"><b class="bank-in">+' + money(d.totals.received, { cents: false }) + '</b> in</span>' +
         '<span><b>−' + money(d.totals.spent, { cents: false }) + '</b> out this month</span>' +
-        '</div></section>';
+        '</div>' +
+        (d.readOnly ? '' :
+          '<div class="chips" style="margin-top:10px">' +
+          (d.bank.accounts.length > 1 ? '<button type="button" class="chip" data-act="qa-move">⇄ Move money</button>' : '') +
+          '<button type="button" class="chip" data-act="account-open" data-id="">+ Account</button>' +
+          '</div>') +
+        '</section>';
     } else {
       html += '<section class="card bank">' +
         '<div class="bank-cap">In the bank</div>' +
-        '<p class="small muted" style="margin:6px 0 10px">Tell it what\'s in checking once — every dollar you log moves it, so it stays current.</p>' +
-        '<button type="button" class="btn btn-block bank-set-btn" data-act="bank-open">Set the balance</button>' +
+        '<p class="small muted" style="margin:6px 0 10px">Add your accounts (checking, savings…) with what\'s really in them — every dollar you log moves the right one.</p>' +
+        '<button type="button" class="btn btn-block bank-set-btn" data-act="account-open" data-id="">Add an account</button>' +
         '</section>';
     }
 
@@ -795,21 +831,39 @@
       incomeRowsHtml(S.data));
   }
 
-  function openBankSheet() {
-    var cur = S.data.bank && S.data.bank.set ? S.data.bank.balance : '';
-    openSheet(sheetHead("What's in the bank?") +
-      '<p class="muted small" style="margin-top:0">Enter what checking actually holds right now. From then on, every paycheck and purchase either of you logs moves this number on its own.</p>' +
-      '<label class="field"><span>Balance</span>' +
-      '<input class="input" id="bank-amount" type="number" inputmode="decimal" step="0.01" value="' + esc(cur) + '" placeholder="0.00"></label>' +
-      '<button type="button" class="btn btn-primary btn-block" data-act="bank-save">Save</button>');
-    setTimeout(function () { var i = el('bank-amount'); if (i) i.focus(); }, 60);
+  /** Add a new account (no id) or fix/rename an existing one. */
+  function openAccountSheet(id) {
+    var acc = bankAccounts().filter(function (a) { return a.id === Number(id); })[0] || null;
+    openSheet(sheetHead(acc ? acc.name : 'Add an account') +
+      '<p class="muted small" style="margin-top:0">' +
+      (acc
+        ? 'Fix the balance to match the real account — everything logged from now on keeps it current.'
+        : 'Name it like the bank does (Checking, Savings…) and enter what it really holds right now.') +
+      '</p>' +
+      '<label class="field"><span>Name</span>' +
+      '<input class="input" id="acc-name" maxlength="60" value="' + esc(acc ? acc.name : '') + '" placeholder="Checking"></label>' +
+      '<label class="field"><span>Balance right now</span>' +
+      '<input class="input" id="acc-balance" type="number" inputmode="decimal" step="0.01" value="' + esc(acc ? acc.balance : '') + '" placeholder="0.00"></label>' +
+      '<div class="stack">' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="account-save" data-id="' + (acc ? acc.id : '') + '">' +
+      (acc ? 'Save' : 'Add account') + '</button>' +
+      (acc ? '<button type="button" class="btn btn-danger btn-block" data-act="account-delete" data-id="' + acc.id + '">Remove this account</button>' : '') +
+      '</div>');
+    setTimeout(function () { var i = el(acc ? 'acc-balance' : 'acc-name'); if (i) i.focus(); }, 60);
   }
 
-  function saveBank() {
-    var v = parseFloat(el('bank-amount').value);
-    if (isNaN(v)) { toast('Enter the balance first', 'error'); return; }
+  function saveAccount(id) {
+    var name = el('acc-name').value.trim();
+    var v = parseFloat(el('acc-balance').value);
+    if (!name) { toast('Give the account a name', 'error'); return; }
     closeSheet();
-    mutate('/settings/bank', { method: 'PUT', body: { amount: v } }, 'Bank balance set ✓');
+    if (id) {
+      var body = { name: name };
+      if (!isNaN(v)) body.balance = v;
+      mutate('/accounts/' + id, { method: 'PUT', body: body }, 'Account updated ✓');
+    } else {
+      mutate('/accounts', { method: 'POST', body: { name: name, balance: isNaN(v) ? 0 : v } }, name + ' added ✓');
+    }
   }
 
   function summaryCell(label, value, sub) {
@@ -849,6 +903,14 @@
         if (matches(r)) allRows.push(r);
       });
     }
+    // Money moved between accounts shows in the record but counts in no total.
+    if (S.filters.type === '' && !S.filters.category) {
+      (d.transfers || []).forEach(function (t) {
+        var r = { kind: 'move', id: t.id, date: t.date, person: t.person, amount: t.amount,
+          title: t.from + ' → ' + t.to, meta: t.note || 'Moved between accounts' };
+        if (matches(r)) allRows.push(r);
+      });
+    }
 
     var rows = S.filters.person
       ? allRows.filter(function (r) { return r.person === S.filters.person; })
@@ -862,7 +924,7 @@
       var out = 0;
       var inn = 0;
       allRows.forEach(function (r) {
-        if (r.person !== p) return;
+        if (r.person !== p || r.kind === 'move') return;
         if (r.kind === 'in') inn += r.amount; else out += r.amount;
       });
       return { person: p, out: out, inn: inn };
@@ -931,7 +993,7 @@
       var wk = weekStartClient(r.date);
       weekTotals[wk] = weekTotals[wk] || { out: 0, inn: 0 };
       if (r.kind === 'in') weekTotals[wk].inn += r.amount;
-      else weekTotals[wk].out += r.amount;
+      else if (r.kind === 'out') weekTotals[wk].out += r.amount;
     });
 
     html += '<section class="card card-tight">';
@@ -953,13 +1015,15 @@
         lastDay = r.date;
         html += '<div class="day-head">' + esc(dayLabel(r.date)) + '</div>';
       }
+      var rowAct = r.kind === 'in' ? 'edit-inc' : r.kind === 'move' ? 'transfer-open' : 'edit-tx';
       html += '<button type="button" class="tx' + (r.kind === 'in' ? ' tx-in' : '') + '"' +
-        ' data-act="' + (r.kind === 'in' ? 'edit-inc' : 'edit-tx') + '" data-id="' + r.id + '"' +
+        ' data-act="' + rowAct + '" data-id="' + r.id + '"' +
         (d.readOnly && r.src !== 'import' ? ' disabled' : '') + '>' +
-        '<span class="tx-avatar" data-person="' + esc(r.person) + '">' + esc(r.person.charAt(0)) + '</span>' +
+        '<span class="tx-avatar" data-person="' + esc(r.person) + '">' + (r.kind === 'move' ? '⇄' : esc(r.person.charAt(0))) + '</span>' +
         '<span class="tx-main"><span class="tx-cat">' + esc(r.title) + '</span>' +
         '<span class="tx-meta">' + esc(r.person) + (r.meta && r.meta !== r.person ? ' · ' + esc(r.meta) : '') + '</span></span>' +
-        '<span class="tx-amt">' + (r.kind === 'in' ? '+' : '−') + money(r.amount) + '</span>' +
+        '<span class="tx-amt' + (r.kind === 'move' ? ' muted' : '') + '">' +
+        (r.kind === 'in' ? '+' : r.kind === 'move' ? '' : '−') + money(r.amount) + '</span>' +
         '</button>';
     });
     html += '</section>';
@@ -1002,12 +1066,17 @@
 
     if (leftover < 0) {
       html += '<div class="card due-alert">This plan spends ' + money(-leftover, { cents: false }) +
-        ' more than comes in. Trim budgets below or in Settings.</div>';
+        ' more than comes in. Apply the plan below to fix it.</div>';
     }
 
-    // Ramsey coach: which Baby Step you're on, and the percentage check.
-    html += '<div class="section-title"><span>Coach</span><span>Ramsey Baby Steps</span></div>' +
-      '<section class="card" id="coach-box"><p class="muted small" style="margin:0">Checking the plan…</p></section>';
+    // The one plan that matters: built from real spending, never over income.
+    html += '<div class="section-title"><span>Your plan, from real spending</span></div>' +
+      '<section class="card" id="plan-suggest"><p class="muted small" style="margin:0">Reading the last few months…</p></section>';
+    setTimeout(loadPlanSuggest, 0);
+
+    // Which Baby Step they're on — just the step, no homework.
+    html += '<div class="section-title"><span>Where you are</span><span>Ramsey Baby Steps</span></div>' +
+      '<section class="card" id="coach-box"><p class="muted small" style="margin:0">Checking…</p></section>';
     setTimeout(loadCoach, 0);
 
     // Paychecks: log actual amounts as they land.
@@ -1059,31 +1128,63 @@
     }
     html += '</section>';
 
-    // What each budget is, next to what history says it should be.
-    html += '<div class="section-title"><span>Everyday budgets</span><span>' + money(everydayTotal, { cents: false }) + '</span></div>';
-    html += '<section class="card card-tight">';
-    variable.forEach(function (c) {
-      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) + '</span>' +
-        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
-    });
-    html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm btn-primary" data-act="tuneup-open">What should these be? Review suggestions</button></div>';
-    html += '</section>';
-
-    html += '<div class="section-title"><span>Fixed bills</span><span>' + money(billsTotal, { cents: false }) + '</span></div>';
-    html += '<section class="card card-tight">';
-    fixed.forEach(function (c) {
-      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) +
-        (c.dueDay ? ' <span class="muted small">· due the ' + ordinal(c.dueDay) + '</span>' : '') + '</span>' +
-        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
-    });
-    (d.upcoming || []).forEach(function (c) {
-      html += '<div class="cat" style="opacity:.6"><div class="cat-head"><span class="cat-name">' + esc(c.name) +
-        ' <span class="muted small">· starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
-        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
-    });
-    html += '</section>';
-
     return html;
+  }
+
+  /**
+   * The suggested budget, right on the page: what history says each everyday
+   * category should get, capped so the whole plan stays under income
+   * (four-walls essentials protected). One button applies the lot.
+   */
+  var PLAN = { list: [], totals: null };
+
+  function loadPlanSuggest() {
+    api('/budget/suggestions').then(function (out) {
+      var box = el('plan-suggest');
+      if (!box) return;
+      PLAN.list = out.suggestions;
+      PLAN.totals = out.totals;
+      if (!out.suggestions.length) {
+        box.innerHTML = '<p class="muted small" style="margin:0">Your everyday budgets already match what you really spend. ' +
+          (out.totals.leftover > 0
+            ? 'After bills and budgets there\'s <b class="week-in">' + money(out.totals.leftover, { cents: false }) +
+              '</b> left — give every dollar a job: savings or the debt snowball.'
+            : 'Check back after more spending is logged.') + '</p>';
+        return;
+      }
+      var html = '<p class="muted small" style="margin:0 0 6px">' +
+        (out.mode === 'cut'
+          ? 'The current plan spends more than comes in, so this trims — fun money first, food and fuel last:'
+          : 'Based on what you actually spent the last few months:') + '</p>';
+      out.suggestions.forEach(function (s) {
+        html += '<div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)">' +
+          '<span style="font-weight:600">' + esc(s.name) +
+          (s.essential ? ' <span class="badge badge-ok">four walls</span>' : '') + '</span>' +
+          '<span class="cat-nums">' + money(s.current, { cents: false }) + ' → <b>' + money(s.suggested, { cents: false }) + '</b></span>' +
+          '</div>';
+      });
+      var afterAll = out.totals.ifAllApplied;
+      html += '<div class="cat-foot" style="margin-top:8px"><span>Plan if applied</span>' +
+        '<span>' + money(afterAll, { cents: false }) + ' of ' + money(out.totals.income, { cents: false }) + ' income</span></div>' +
+        (out.totals.leftover > 0
+          ? '<div class="cat-foot"><span>Left for savings &amp; debt</span><span class="week-in">' + money(out.totals.leftover, { cents: false }) + '</span></div>'
+          : '') +
+        '<button type="button" class="btn btn-primary btn-block" style="margin-top:10px" data-act="plan-apply">Use this plan</button>' +
+        '<button type="button" class="btn btn-block btn-sm" style="margin-top:8px" data-act="tuneup-open">Pick and choose instead</button>';
+      box.innerHTML = html;
+    }).catch(function () {
+      var box = el('plan-suggest');
+      if (box) box.innerHTML = '<p class="muted small" style="margin:0">Could not build the plan right now.</p>';
+    });
+  }
+
+  function planApplyAll() {
+    var changes = PLAN.list.map(function (s) {
+      return { category_id: s.category_id, budget: s.suggested };
+    });
+    if (!changes.length) return;
+    mutate('/budget/apply', { method: 'POST', body: { changes: changes } },
+      'Plan applied — ' + changes.length + ' budget' + (changes.length === 1 ? '' : 's') + ' updated ✓');
   }
 
   function loadCoach() {
@@ -1091,35 +1192,25 @@
       var box = el('coach-box');
       if (!box) return;
       var html = '';
-      out.steps.slice(0, 3).forEach(function (st) {
+      out.steps.forEach(function (st) {
         var isNow = st.n === out.currentStep;
-        html += '<div class="coach-step' + (st.done ? ' coach-done' : isNow ? ' coach-now' : '') + '">' +
-          '<span class="coach-n">' + (st.done ? '✓' : st.n) + '</span>' +
+        if (!isNow) {
+          html += '<div class="coach-step' + (st.done ? ' coach-done' : '') + '">' +
+            '<span class="coach-n">' + (st.done ? '✓' : st.n) + '</span>' +
+            '<div class="coach-body"><span class="small' + (st.done ? '' : ' muted') + '">' + esc(st.title) + '</span></div></div>';
+          return;
+        }
+        html += '<div class="coach-step coach-now">' +
+          '<span class="coach-n">' + st.n + '</span>' +
           '<div class="coach-body"><b>' + esc(st.title) + '</b>' +
           '<span class="small muted">' + esc(st.detail) + '</span>' +
-          (!st.done && st.progress > 0 ? barHtml(st.progress >= 100 ? 'ok' : 'warn', st.progress) : '') +
+          (st.progress > 0 ? barHtml(st.progress >= 100 ? 'ok' : 'warn', st.progress) : '') +
           '</div></div>';
-        if (isNow && st.n === 2 && st.snowball && st.snowball.length) {
-          html += '<div class="coach-snowball"><span class="small muted">Snowball order — smallest first, lawsuit up top:</span>';
-          st.snowball.slice(0, 3).forEach(function (dbt, i2) {
-            html += '<div class="row small" style="padding:3px 0"><span>' + (i2 + 1) + '. ' + esc(dbt.name) + '</span>' +
-              '<span>settle ' + money(dbt.target, { cents: false }) + '</span></div>';
-          });
-          html += '</div>';
-        }
-      });
-      html += '<div class="small muted" style="margin:8px 0 6px"><b>How the plan compares to Ramsey\'s percentages:</b></div>';
-      out.bands.forEach(function (b) {
-        var label2 = b.note ? '·' : b.status === 'over' ? '▲' : b.status === 'under' ? '▽' : '✓';
-        html += '<div class="row small coach-band coach-' + esc(b.status) + '">' +
-          '<span>' + label2 + ' ' + esc(b.group) +
-          (b.note ? '' : ' <span class="muted">(' + (b.lo === b.hi ? b.lo + '%' : b.lo + '–' + b.hi + '%') + ')</span>') + '</span>' +
-          '<span>' + money(b.amount, { cents: false }) + ' = <b>' + b.pct + '%</b></span></div>';
       });
       box.innerHTML = html;
     }).catch(function () {
       var box = el('coach-box');
-      if (box) box.innerHTML = '<p class="muted small" style="margin:0">Could not load the coach right now.</p>';
+      if (box) box.innerHTML = '<p class="muted small" style="margin:0">Could not load this right now.</p>';
     });
   }
 
@@ -1256,14 +1347,20 @@
       setTimeout(refreshPushStatus, 0);
     }
 
-    html += '<div class="section-title"><span>Bank balance</span></div><section class="card">' +
-      '<p class="muted small" style="margin:0 0 10px">' +
-      (d.bank && d.bank.set
-        ? 'Showing ' + money(d.bank.balance) + ' right now. If the app has drifted from the real account, reset it here.'
-        : 'Tell the app what checking holds once — from then on everything you log keeps it current.') +
-      '</p>' +
-      '<button type="button" class="btn btn-block btn-sm" data-act="bank-open">' +
-      (d.bank && d.bank.set ? 'Correct the balance' : 'Set the balance') + '</button>' +
+    html += '<div class="section-title"><span>Accounts</span>' +
+      (d.bank && d.bank.set ? '<span>' + money(d.bank.total) + ' total</span>' : '') + '</div><section class="card">';
+    if (d.bank && d.bank.accounts.length) {
+      d.bank.accounts.forEach(function (a) {
+        html += '<div class="edit-row" style="grid-template-columns:1fr auto auto">' +
+          '<span class="edit-name">' + esc(a.name) + '</span>' +
+          '<b>' + money(a.balance) + '</b>' +
+          '<button type="button" class="btn btn-sm" data-act="account-open" data-id="' + a.id + '">Fix</button>' +
+          '</div>';
+      });
+    } else {
+      html += '<p class="muted small" style="margin:0 0 10px">Add each real account (checking, savings, business…) with what it holds — every dollar you log moves the right one.</p>';
+    }
+    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="account-open" data-id="">+ Add account</button>' +
       '</section>';
 
     html += '<div class="section-title"><span>Backups</span></div><section class="card">' +
@@ -1480,9 +1577,30 @@
 
   // ---- quick add -------------------------------------------------------
 
-  var QA = { digits: '', step: 1, note: '', date: null, person: null, details: false, mode: 'out', sourceId: null, sourceLabel: '', locked: false };
+  var QA = { digits: '', step: 1, note: '', date: null, person: null, details: false, mode: 'out', sourceId: null, sourceLabel: '', locked: false, account: null, fromId: null, toId: null };
 
   function qaAmount() { return Number(QA.digits || '0') / 100; }
+
+  function bankAccounts() {
+    return (S.data && S.data.bank && S.data.bank.accounts) || [];
+  }
+
+  /** Last account used on this phone, falling back to the first one. */
+  function defaultAccount() {
+    var accs = bankAccounts();
+    var saved = Number(localStorage.getItem('lfb.account'));
+    if (accs.some(function (a) { return a.id === saved; })) return saved;
+    return accs.length ? accs[0].id : null;
+  }
+
+  function accountChips(selected, act) {
+    var accs = bankAccounts();
+    if (accs.length < 2) return '';
+    return '<div class="chips qa-chips">' + accs.map(function (a) {
+      return '<button type="button" class="chip" data-act="' + act + '" data-id="' + a.id + '"' +
+        ' aria-pressed="' + (a.id === Number(selected) ? 'true' : 'false') + '">' + esc(a.name) + '</button>';
+    }).join('') + '</div>';
+  }
 
   function openQuickAdd(mode, source) {
     if (!S.data) { toast('Still loading — try again in a second', 'error'); return; }
@@ -1494,10 +1612,13 @@
       date: defaultDate(),
       person: source && source.person ? source.person : S.person,
       details: false,
-      mode: mode === 'in' ? 'in' : 'out',
+      mode: mode === 'in' ? 'in' : mode === 'move' ? 'move' : 'out',
       sourceId: source ? source.id : null,
       sourceLabel: source ? source.name : '',
       locked: Boolean(source),
+      account: defaultAccount(),
+      fromId: defaultAccount(),
+      toId: null,
     };
     renderQuickAdd();
   }
@@ -1511,6 +1632,9 @@
         html += '<div class="chips mode-toggle">' +
           '<button type="button" class="chip" data-act="qa-mode" data-mode="out" aria-pressed="' + (QA.mode === 'out') + '">Spending</button>' +
           '<button type="button" class="chip chip-in" data-act="qa-mode" data-mode="in" aria-pressed="' + (QA.mode === 'in') + '">Income</button>' +
+          (bankAccounts().length > 1
+            ? '<button type="button" class="chip" data-act="qa-mode" data-mode="move" aria-pressed="' + (QA.mode === 'move') + '">Move</button>'
+            : '') +
           '</div>';
       } else {
         html += '<p class="muted small" style="margin:0 0 4px;text-align:center">How much actually came in?</p>';
@@ -1534,6 +1658,13 @@
         html += '<button type="button" class="detail-toggle" data-act="qa-details">+ Note, date or person</button>';
       }
 
+      // Which account this money touches (only shown once there are several).
+      if (QA.mode !== 'move' && bankAccounts().length > 1) {
+        html += '<div class="field" style="margin:0"><span style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 5px;text-align:center">' +
+          (QA.mode === 'in' ? 'Into which account?' : 'From which account?') + '</span>' +
+          accountChips(QA.account, 'qa-account') + '</div>';
+      }
+
       // The fast path: their most-used categories, one tap to save.
       if (QA.mode === 'out') {
         html += '<div class="chips qa-chips">' +
@@ -1544,10 +1675,21 @@
 
       var nextLabel = QA.mode === 'in'
         ? (QA.locked ? 'Save paycheck' : 'Choose source →')
-        : 'All categories →';
+        : QA.mode === 'move' ? 'Pick the accounts →' : 'All categories →';
       html += '<button type="button" class="btn btn-accent btn-block" data-act="qa-next"' +
         (QA.digits ? '' : ' disabled') + '>' + nextLabel + '</button>';
       openSheet(html);
+      return;
+    }
+
+    if (QA.mode === 'move') {
+      var moveBody = sheetHead(money(qaAmount()) + ' — move between accounts') +
+        '<div class="field"><span>From</span>' + accountRadio('mv-from', QA.fromId) + '</div>' +
+        '<div class="field"><span>To</span>' + accountRadio('mv-to', QA.toId) + '</div>' +
+        '<button type="button" class="btn btn-primary btn-block" data-act="qa-move-save"' +
+        (QA.fromId && QA.toId && QA.fromId !== QA.toId ? '' : ' disabled') + '>Move it</button>' +
+        '<button type="button" class="btn btn-block" style="margin-top:10px" data-act="qa-back">← Change amount</button>';
+      openSheet(moveBody);
       return;
     }
 
@@ -1596,13 +1738,35 @@
       '<b>' + esc(c.name) + '</b><span>' + left + '</span></button>';
   }
 
+  function accountRadio(act, selected) {
+    return '<div class="chips">' + bankAccounts().map(function (a) {
+      return '<button type="button" class="chip" data-act="' + act + '" data-id="' + a.id + '"' +
+        ' aria-pressed="' + (a.id === Number(selected) ? 'true' : 'false') + '">' +
+        esc(a.name) + ' · ' + money(a.balance, { cents: false }) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function quickAddMove() {
+    var amount = qaAmount();
+    if (!(amount > 0) || !QA.fromId || !QA.toId || QA.fromId === QA.toId) return;
+    var from = bankAccounts().filter(function (a) { return a.id === QA.fromId; })[0];
+    var to = bankAccounts().filter(function (a) { return a.id === QA.toId; })[0];
+    closeSheet();
+    mutate('/transfers', {
+      method: 'POST',
+      body: { from_id: QA.fromId, to_id: QA.toId, amount: amount, date: QA.date, note: QA.note },
+    }, money(amount) + ' moved ' + (from ? from.name : '') + ' → ' + (to ? to.name : ''));
+  }
+
   function quickAddSave(categoryId) {
     var amount = qaAmount();
     if (!(amount > 0)) return;
     var body = {
       category_id: Number(categoryId), amount: amount, note: QA.note,
       date: QA.date, person: QA.person, client_id: newClientId(),
+      account_id: QA.account,
     };
+    if (QA.account) localStorage.setItem('lfb.account', String(QA.account));
     closeSheet();
     mutate('/transactions', { method: 'POST', body: body }, money(amount) + ' saved', money(amount) + ' of spending');
   }
@@ -1617,8 +1781,10 @@
       date: QA.date,
       person: QA.person,
       client_id: newClientId(),
+      account_id: QA.account,
     };
     if (!body.source_id) body.label = 'Other income';
+    if (QA.account) localStorage.setItem('lfb.account', String(QA.account));
     closeSheet();
     mutate('/income/entries', { method: 'POST', body: body }, '+' + money(amount) + ' received 🎉', money(amount) + ' of income');
   }
@@ -1638,6 +1804,13 @@
         }).join('') + '</select></label>' +
       '<label class="field"><span>Date</span>' +
       '<input class="input" id="tx-date" type="date" value="' + esc(t.date) + '"' + dateBounds() + '></label>' +
+      (bankAccounts().length > 1
+        ? '<label class="field"><span>Account</span><select class="input" id="tx-account">' +
+          bankAccounts().map(function (a) {
+            var sel = (t.account_id ? t.account_id === a.id : a.id === bankAccounts()[0].id);
+            return '<option value="' + a.id + '"' + (sel ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+          }).join('') + '</select></label>'
+        : '') +
       '<div class="field"><span>Who</span>' + personPicker(t.person) + '</div>' +
       '<label class="field"><span>Note</span>' +
       '<input class="input" id="tx-note" maxlength="200" value="' + esc(t.note) + '"></label>' +
@@ -1657,6 +1830,8 @@
       note: $('#tx-note').value,
       person: QA.person,
     };
+    var accSel = $('#tx-account');
+    if (accSel) body.account_id = Number(accSel.value);
     if (!(body.amount > 0)) { toast('Enter an amount above zero', 'error'); return; }
     closeSheet();
     mutate('/transactions/' + id, { method: 'PUT', body: body }, 'Saved');
@@ -1814,6 +1989,12 @@
     openSheet(sheetHead('Import bank statement') +
       '<p class="muted small" style="margin-top:0">Upload last month\'s statement PDF, a CSV export ' +
       '(PNC: Account Activity → Download), or paste the text. You review everything before it saves.</p>' +
+      (bankAccounts().length > 1
+        ? '<label class="field"><span>This statement is from</span><select class="input" id="imp-account">' +
+          bankAccounts().map(function (a, i) {
+            return '<option value="' + a.id + '"' + (a.id === defaultAccount() ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+          }).join('') + '</select></label>'
+        : '') +
       '<label class="btn btn-block" style="margin-bottom:10px">Choose PDF or CSV file' +
       '<input type="file" id="imp-file" accept=".csv,.pdf,text/csv,text/plain,application/pdf" data-act="imp-file" hidden></label>' +
       '<label class="field"><span>Or paste it</span>' +
@@ -1909,7 +2090,8 @@
     });
     if (!chosen.length) return;
     IMP.busy = true;
-    api('/import/commit', { method: 'POST', body: { rows: chosen } })
+    var accSel = el('imp-account');
+    api('/import/commit', { method: 'POST', body: { rows: chosen, account_id: accSel ? Number(accSel.value) : undefined } })
       .then(function (out) {
         closeSheet();
         if (out.state) applyState(out.state);
@@ -2217,9 +2399,23 @@
         break;
       case 'qa-mode':
         captureQaDetails();
-        QA.mode = node.dataset.mode === 'in' ? 'in' : 'out';
+        QA.mode = node.dataset.mode === 'in' ? 'in' : node.dataset.mode === 'move' ? 'move' : 'out';
         renderQuickAdd();
         break;
+      case 'qa-account':
+        captureQaDetails();
+        QA.account = Number(id);
+        renderQuickAdd();
+        break;
+      case 'mv-from':
+        QA.fromId = Number(id);
+        renderQuickAdd();
+        break;
+      case 'mv-to':
+        QA.toId = Number(id);
+        renderQuickAdd();
+        break;
+      case 'qa-move-save': quickAddMove(); break;
       case 'qa-next':
         if (!QA.digits) break;
         captureQaDetails();
@@ -2244,6 +2440,16 @@
         break;
       }
       case 'edit-inc': openEditIncome(id); break;
+      case 'transfer-open': {
+        var tr = (S.data.transfers || []).filter(function (x) { return x.id === Number(id); })[0];
+        if (!tr) break;
+        openSheet(sheetHead('Moved between accounts') +
+          '<p style="margin-top:0"><b>' + money(tr.amount) + '</b> from <b>' + esc(tr.from) + '</b> to <b>' + esc(tr.to) + '</b>' +
+          '<span class="muted small" style="display:block;margin-top:4px">' + esc(dayLabel(tr.date)) + ' · ' + esc(tr.person) +
+          (tr.note ? ' · ' + esc(tr.note) : '') + '</span></p>' +
+          '<button type="button" class="btn btn-danger btn-block" data-act="transfer-delete" data-id="' + tr.id + '">Delete this transfer</button>');
+        break;
+      }
       case 'inc-entry-save': saveIncomeEntry(id); break;
       case 'inc-entry-delete': {
         var deadInc = S.data.income.entries.filter(function (x) { return x.id === Number(id); })[0];
@@ -2291,8 +2497,18 @@
         S.ui.openCats[node.dataset.id] = !S.ui.openCats[node.dataset.id];
         render();
         break;
-      case 'bank-open': openBankSheet(); break;
-      case 'bank-save': saveBank(); break;
+      case 'account-open': openAccountSheet(node.dataset.id); break;
+      case 'account-save': saveAccount(node.dataset.id); break;
+      case 'account-delete':
+        closeSheet();
+        mutate('/accounts/' + id, { method: 'DELETE' }, 'Account removed');
+        break;
+      case 'qa-move': openQuickAdd('move'); break;
+      case 'plan-apply': planApplyAll(); break;
+      case 'transfer-delete':
+        closeSheet();
+        mutate('/transfers/' + id, { method: 'DELETE' }, 'Transfer removed');
+        break;
       case 'save-add': openSavings('in', node.dataset.amount || ''); break;
       case 'save-add-goal': openSavings('in', '', node.dataset.id); break;
       case 'save-out': openSavings('out', ''); break;

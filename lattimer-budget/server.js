@@ -36,12 +36,15 @@ function createApp(db) {
   app.use(
     express.static(PUBLIC_DIR, {
       index: 'index.html',
-      maxAge: '1h',
+      etag: true,
       setHeaders(res, filePath) {
-        const name = path.basename(filePath);
-        // The shell and the worker must never be served stale, or a deploy
-        // can leave a phone pinned to an old build.
-        if (name === 'sw.js' || name === 'index.html' || name === 'manifest.json') {
+        // Everything except icons revalidates on every load ("no-cache"
+        // still allows 304s, so repeat loads stay fast). A deploy must
+        // never leave a phone pinned to an old build — the service worker
+        // provides the offline copy, not the HTTP cache.
+        if (filePath.includes(`${path.sep}icons${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=604800');
+        } else {
           res.setHeader('Cache-Control', 'no-cache');
         }
       },

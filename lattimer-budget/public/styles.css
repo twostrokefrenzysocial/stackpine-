@@ -346,6 +346,19 @@ select.input {
 .bank-set-btn { margin-top: 4px; }
 .bank-tap { width: 100%; text-align: left; padding: 0; border: 0; background: none; display: block; }
 .bank-tap:active { opacity: .7; }
+.bank-accounts { display: grid; gap: 2px; margin-top: 10px; }
+.bank-acc {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-size: 14.5px;
+}
+.bank-acc:last-child { border-bottom: 0; }
+.bank-acc span { font-weight: 600; }
+.bank-acc b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.bank-acc:active { opacity: .7; }
 
 /* The Plan tab's math panel. */
 .summary { background: var(--ink); border-color: var(--ink); color: var(--ink-contrast); }

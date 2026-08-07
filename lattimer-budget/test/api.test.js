@@ -1651,7 +1651,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v15'],
+    ['/sw.js', 'lfb-v16'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1756,30 +1756,107 @@ test('import preview flags deposits already logged as income', async () => {
   await call(`/api/income/entries/${entry.body.id}`, { method: 'DELETE' });
 });
 
-test('the bank balance anchors once and follows what gets logged', async () => {
+test('accounts anchor once and follow what gets logged', async () => {
   let s = await state();
-  assert.equal(s.bank.set, false, 'unset until the family anchors it');
+  assert.equal(s.bank.set, false, 'unset until the family adds accounts');
 
-  const set = await call('/api/settings/bank', { method: 'PUT', body: { amount: 2500 } });
-  assert.equal(set.status, 200);
-  assert.equal(set.body.state.bank.set, true);
-  assert.equal(set.body.state.bank.balance, 2500);
+  const checking = await call('/api/accounts', { method: 'POST', body: { name: 'Checking', balance: 2500 } });
+  assert.equal(checking.status, 201);
+  const savings = await call('/api/accounts', { method: 'POST', body: { name: 'Savings', balance: 1200 } });
+  const biz = await call('/api/accounts', { method: 'POST', body: { name: 'Two Stroke Frenzy', balance: 300.50 } });
+  s = biz.body.state;
+  assert.equal(s.bank.set, true);
+  assert.equal(s.bank.accounts.length, 3);
+  assert.equal(s.bank.total, 4000.5);
 
-  const groceries = byName(set.body.state.categories, 'Groceries');
-  const spend = await call('/api/transactions', { method: 'POST', body: { category_id: groceries.id, amount: 40 } });
-  assert.equal(spend.body.state.bank.balance, 2460, 'spending moves it down');
+  // spending and income move the account they were logged against
+  const groceries = byName(s.categories, 'Groceries');
+  const spend = await call('/api/transactions', {
+    method: 'POST', body: { category_id: groceries.id, amount: 40, account_id: checking.body.id },
+  });
+  const bal = (st, id) => st.bank.accounts.find((a) => a.id === id).balance;
+  assert.equal(bal(spend.body.state, checking.body.id), 2460);
+  assert.equal(bal(spend.body.state, savings.body.id), 1200, 'other accounts untouched');
 
-  const inc = await call('/api/income/entries', { method: 'POST', body: { amount: 100, label: 'Refund' } });
-  assert.equal(inc.body.state.bank.balance, 2560, 'income moves it up');
+  const inc = await call('/api/income/entries', {
+    method: 'POST', body: { amount: 100, label: 'Refund', account_id: savings.body.id },
+  });
+  assert.equal(bal(inc.body.state, savings.body.id), 1300);
 
+  // an entry with no account lands in the first one
+  const dflt = await call('/api/transactions', { method: 'POST', body: { category_id: groceries.id, amount: 10 } });
+  assert.equal(bal(dflt.body.state, checking.body.id), 2450);
+
+  // transfers move money across without touching income or spending totals
+  const spentBefore = dflt.body.state.totals.spent;
+  const move = await call('/api/transfers', {
+    method: 'POST', body: { from_id: savings.body.id, to_id: checking.body.id, amount: 200 },
+  });
+  assert.equal(move.status, 201);
+  assert.equal(bal(move.body.state, savings.body.id), 1100);
+  assert.equal(bal(move.body.state, checking.body.id), 2650);
+  assert.equal(move.body.state.totals.spent, spentBefore, 'a transfer is not spending');
+  assert.equal(move.body.state.transfers.length, 1);
+  assert.equal(move.body.state.transfers[0].from, 'Savings');
+
+  // same account both sides is refused
+  const bad = await call('/api/transfers', {
+    method: 'POST', body: { from_id: savings.body.id, to_id: savings.body.id, amount: 5 },
+  });
+  assert.equal(bad.status, 400);
+
+  // deleting the transfer puts both balances back
+  const undo = await call(`/api/transfers/${move.body.id}`, { method: 'DELETE' });
+  assert.equal(bal(undo.body.state, savings.body.id), 1300);
+
+  // re-anchoring replaces an account's number outright
+  const fix = await call(`/api/accounts/${checking.body.id}`, { method: 'PUT', body: { balance: 3000 } });
+  assert.equal(bal(fix.body.state, checking.body.id), 3000);
+
+  // archiving hides the account but keeps history rows
+  const bye = await call(`/api/accounts/${biz.body.id}`, { method: 'DELETE' });
+  assert.equal(bye.body.state.bank.accounts.length, 2);
+
+  // clean up entries so later tests see the usual month
   await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+  await call(`/api/transactions/${dflt.body.id}`, { method: 'DELETE' });
   await call(`/api/income/entries/${inc.body.id}`, { method: 'DELETE' });
-  s = await state();
-  assert.equal(s.bank.balance, 2500, 'deletes put it back');
+});
 
-  // re-anchoring replaces the number outright
-  const reset = await call('/api/settings/bank', { method: 'PUT', body: { amount: 3111.25 } });
-  assert.equal(reset.body.state.bank.balance, 3111.25);
+test('the API reports its build revision so old phones can self-update', async () => {
+  const APP_REV = require('../src/version');
+  const v = await call('/api/version');
+  assert.equal(v.body.app, APP_REV);
+  const s = await state();
+  assert.equal(s.app, APP_REV);
+});
+
+test('recategorizing an imported row teaches the importer for next time', async () => {
+  const s = await state();
+  const fuel = byName(s.categories, 'Fuel');
+  const eat = byName(s.categories, 'Eating out & fun');
+
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: s.today, description: 'CIRCLE K 05512', amount: 9.87, direction: 'out', category_id: fuel.id }] },
+  });
+  assert.equal(commit.status, 201);
+  const row = commit.body.state.transactions.find((t) => t.note === 'CIRCLE K 05512');
+
+  // the family fixes it: that stop was snacks, not fuel
+  const fix = await call(`/api/transactions/${row.id}`, { method: 'PUT', body: { category_id: eat.id } });
+  assert.equal(fix.status, 200);
+
+  // the next statement with that merchant guesses the corrected category,
+  // outranking the built-in gas-station keyword
+  const preview = await call('/api/import/preview', {
+    method: 'POST',
+    body: { text: `Date,Description,Withdrawals,Deposits\n${usDate(s.today)},CIRCLE K 05512,4.50,` },
+  });
+  assert.equal(preview.body.rows[0].category_id, eat.id);
+  assert.equal(preview.body.rows[0].guessedBy, 'learned');
+
+  await call(`/api/transactions/${row.id}`, { method: 'DELETE' });
 });
 
 test('a backup snapshot is written, listed, and is a real database', async () => {

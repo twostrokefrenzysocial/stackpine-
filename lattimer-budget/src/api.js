@@ -29,6 +29,7 @@ const { SETTLEMENT_FUND_CATEGORY } = require('./seed');
 const { parseStatement, merchantKey, keywordGuess, importHash } = require('./import');
 const { extractLines, parsePdfLines } = require('./pdf');
 const { runBackup, listBackups, snapshotForDownload } = require('./backup');
+const APP_REV = require('./version');
 const fs = require('fs');
 
 class HttpError extends Error {
@@ -221,24 +222,60 @@ function createApi(db) {
     return 'ok';
   }
 
+  const activeAccounts = () =>
+    db.prepare(`SELECT * FROM accounts WHERE archived = 0 ORDER BY sort_order, id`).all();
+
+  /** The account new entries land in when none is chosen. */
+  function primaryAccountId() {
+    return activeAccounts()[0]?.id ?? null;
+  }
+
+  function readAccount(value) {
+    if (value === undefined || value === null || value === '') return primaryAccountId();
+    const id = Number(value);
+    const row = db.prepare(`SELECT id FROM accounts WHERE id = ? AND archived = 0`).get(id);
+    if (!row) throw bad('That account no longer exists.');
+    return row.id;
+  }
+
   /**
-   * "What's in the bank": the family anchors it to their real balance once,
-   * and every dollar logged after that moves it — income up, spending down.
-   * Entries dated before the anchor (or created before it was set) are
-   * already inside the anchored number, so they never count twice.
+   * "What's in the bank", per account: each is anchored to its real balance
+   * once, and every dollar logged after that moves it — income up, spending
+   * down, transfers across. Entries dated before the anchor (or created
+   * before it was set) are already inside the anchored number, so they never
+   * count twice. Legacy rows without an account belong to the first one.
    */
   function bankState() {
-    const raw = db.prepare(`SELECT value FROM meta WHERE key = 'bank_anchor'`).get()?.value;
-    if (!raw) return { set: false, balance: null, asOf: null };
-    let anchor;
-    try { anchor = JSON.parse(raw); } catch (err) { return { set: false, balance: null, asOf: null }; }
-    const inC = db.prepare(
-      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries WHERE date >= ? AND created_at > ?`
-    ).get(anchor.date, anchor.at).n;
-    const outC = db.prepare(
-      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions WHERE date >= ? AND created_at > ?`
-    ).get(anchor.date, anchor.at).n;
-    return { set: true, balance: toDollars(anchor.cents + inC - outC), asOf: anchor.date };
+    const accounts = activeAccounts();
+    const firstId = accounts[0]?.id ?? -1;
+    const rows = accounts.map((a) => {
+      const legacy = a.id === firstId;
+      const inC = db.prepare(
+        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries
+         WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
+      ).get(a.id, legacy ? 1 : 0, a.anchor_date, a.anchor_at).n;
+      const outC = db.prepare(
+        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions
+         WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
+      ).get(a.id, legacy ? 1 : 0, a.anchor_date, a.anchor_at).n;
+      const tIn = db.prepare(
+        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE to_id = ? AND date >= ? AND created_at > ?`
+      ).get(a.id, a.anchor_date, a.anchor_at).n;
+      const tOut = db.prepare(
+        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE from_id = ? AND date >= ? AND created_at > ?`
+      ).get(a.id, a.anchor_date, a.anchor_at).n;
+      return {
+        id: a.id,
+        name: a.name,
+        balance: toDollars(a.anchor_cents + inC - outC + tIn - tOut),
+        asOf: a.anchor_date,
+      };
+    });
+    return {
+      set: rows.length > 0,
+      accounts: rows,
+      total: toDollars(rows.reduce((s, r) => s + Math.round(r.balance * 100), 0)),
+    };
   }
 
   function buildState(month, person) {
@@ -362,6 +399,25 @@ function createApi(db) {
       person: t.person,
       date: t.date,
       source: t.source,
+      account_id: t.account_id,
+    }));
+
+    const transfers = db.prepare(`
+      SELECT t.*, fa.name AS from_name, ta.name AS to_name
+      FROM transfers t
+      JOIN accounts fa ON fa.id = t.from_id
+      JOIN accounts ta ON ta.id = t.to_id
+      WHERE t.month = ? ORDER BY t.date DESC, t.id DESC
+    `).all(month).map((t) => ({
+      id: t.id,
+      from_id: t.from_id,
+      to_id: t.to_id,
+      from: t.from_name,
+      to: t.to_name,
+      amount: toDollars(t.amount_cents),
+      note: t.note,
+      person: t.person,
+      date: t.date,
     }));
 
     const fund = fundBalanceCents();
@@ -494,6 +550,7 @@ function createApi(db) {
     return {
       person,
       month,
+      app: APP_REV,
       today: today(),
       currentMonth: cur,
       timezone: TZ,
@@ -518,6 +575,7 @@ function createApi(db) {
         budgeted: toDollars(categories.reduce((s, c) => s + Math.round(c.budget * 100), 0)),
       },
       bank: bankState(),
+      transfers,
       categories,
       upcoming,
       weeks,
@@ -591,6 +649,7 @@ function createApi(db) {
           note: e.note,
           person: e.person,
           date: e.date,
+          account_id: e.account_id,
         })),
       },
     };
@@ -676,7 +735,7 @@ function createApi(db) {
   });
 
   router.get('/version', auth, (req, res) => {
-    res.json(lastChange);
+    res.json(Object.assign({ app: APP_REV }, lastChange));
   });
 
   router.get('/events', auth, (req, res) => {
@@ -760,14 +819,15 @@ function createApi(db) {
     requireStarted(category, date.slice(0, 7));
     const person = readPerson(body.person, req.person);
     const note = readNote(body.note);
+    const accountId = readAccount(body.account_id);
     const now = new Date().toISOString();
 
     const info = db
       .prepare(`
-        INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, client_id)
-        VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)
+        INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, client_id, account_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?)
       `)
-      .run(category.id, amount, note, person, date, date.slice(0, 7), now, now, clientId);
+      .run(category.id, amount, note, person, date, date.slice(0, 7), now, now, clientId, accountId);
 
     broadcast('transaction:add', req.person);
     res.status(201).json({ id: info.lastInsertRowid, state: buildState(date.slice(0, 7), req.person) });
@@ -792,12 +852,20 @@ function createApi(db) {
     requireStarted(category, date.slice(0, 7));
     const person = readPerson(body.person, existing.person);
     const note = body.note === undefined ? existing.note : readNote(body.note);
+    const accountId = body.account_id === undefined ? existing.account_id : readAccount(body.account_id);
 
     db.prepare(`
       UPDATE transactions
-      SET category_id = ?, amount_cents = ?, note = ?, person = ?, date = ?, month = ?, updated_at = ?
+      SET category_id = ?, amount_cents = ?, note = ?, person = ?, date = ?, month = ?, updated_at = ?, account_id = ?
       WHERE id = ?
-    `).run(category.id, amount, note, person, date, date.slice(0, 7), new Date().toISOString(), existing.id);
+    `).run(category.id, amount, note, person, date, date.slice(0, 7), new Date().toISOString(), accountId, existing.id);
+
+    // Recategorizing an imported row is a correction worth remembering: the
+    // next statement files that merchant where the family actually put it.
+    if (isImport && category.id !== existing.category_id) {
+      const key = merchantKey(existing.note);
+      if (key) upsertRule.run(key, category.id, new Date().toISOString());
+    }
 
     broadcast('transaction:edit', req.person);
     res.json({ ok: true, state: buildState(date.slice(0, 7), req.person) });
@@ -870,9 +938,9 @@ function createApi(db) {
         }
         if (amount <= 0) throw bad('Set a per-payday amount for this bill first.');
         db.prepare(`
-          INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at)
-          VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?)
-        `).run(category.id, amount, req.person, date, month, now, now);
+          INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
+          VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
+        `).run(category.id, amount, req.person, date, month, now, now, readAccount(req.body?.account_id));
       } else if (existing.length) {
         db.prepare(`DELETE FROM transactions WHERE id = ?`).run(existing[0].id);
       }
@@ -898,9 +966,9 @@ function createApi(db) {
         db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
           .run(month, category.id);
         db.prepare(`
-          INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at)
-          VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?)
-        `).run(category.id, amount, req.person, date, month, now, now);
+          INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
+          VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
+        `).run(category.id, amount, req.person, date, month, now, now, readAccount(req.body?.account_id));
       })();
     } else {
       db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
@@ -1024,12 +1092,13 @@ function createApi(db) {
     const source = readIncomeSource(body.source_id);
     const rawLabel = String(body.label ?? '').trim();
     const label = (rawLabel || (source ? source.name : 'Income')).slice(0, 60);
+    const accountId = readAccount(body.account_id);
     const now = new Date().toISOString();
 
     const id = db.prepare(`
-      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, client_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(source ? source.id : null, label, amount, note, person, date, date.slice(0, 7), now, now, clientId).lastInsertRowid;
+      INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, client_id, account_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(source ? source.id : null, label, amount, note, person, date, date.slice(0, 7), now, now, clientId, accountId).lastInsertRowid;
 
     broadcast('income:received', req.person);
     res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
@@ -1343,13 +1412,77 @@ function createApi(db) {
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
   });
 
-  // "What's in the bank" — anchor it to the real balance; logging moves it.
-  router.put('/settings/bank', auth, (req, res) => {
-    const cents = readAmount(req.body?.amount, { allowNegative: true });
-    db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('bank_anchor', ?)`)
-      .run(JSON.stringify({ cents, date: today(), at: new Date().toISOString() }));
-    broadcast('bank:set', req.person);
+  // ---------------------------------------------------------------- accounts
+
+  // Create an account anchored to its real balance right now.
+  router.post('/accounts', auth, (req, res) => {
+    const name = readName(req.body?.name);
+    const cents = readAmount(req.body?.balance ?? 0, { allowNegative: true });
+    const clash = activeAccounts().some((a) => a.name.toLowerCase() === name.toLowerCase());
+    if (clash) throw bad('An account with that name already exists.');
+    if (activeAccounts().length >= 10) throw bad('That is a lot of accounts — archive one first.');
+    const now = new Date().toISOString();
+    const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM accounts`).get().n;
+    const id = db.prepare(`
+      INSERT INTO accounts (name, sort_order, anchor_cents, anchor_date, anchor_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(name, order, cents, today(), now, now).lastInsertRowid;
+    broadcast('account:add', req.person);
+    res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
+  });
+
+  // Rename, or re-anchor the balance when it has drifted from the real bank.
+  router.put('/accounts/:id', auth, (req, res) => {
+    const acc = db.prepare(`SELECT * FROM accounts WHERE id = ? AND archived = 0`).get(Number(req.params.id));
+    if (!acc) throw notFound('Account not found.');
+    const body = req.body || {};
+    if (body.name !== undefined) {
+      db.prepare(`UPDATE accounts SET name = ? WHERE id = ?`).run(readName(body.name), acc.id);
+    }
+    if (body.balance !== undefined) {
+      const cents = readAmount(body.balance, { allowNegative: true });
+      db.prepare(`UPDATE accounts SET anchor_cents = ?, anchor_date = ?, anchor_at = ? WHERE id = ?`)
+        .run(cents, today(), new Date().toISOString(), acc.id);
+    }
+    broadcast('account:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  // Archive: history keeps its rows; the account leaves the pickers.
+  router.delete('/accounts/:id', auth, (req, res) => {
+    const acc = db.prepare(`SELECT * FROM accounts WHERE id = ? AND archived = 0`).get(Number(req.params.id));
+    if (!acc) throw notFound('Account not found.');
+    db.prepare(`UPDATE accounts SET archived = 1 WHERE id = ?`).run(acc.id);
+    broadcast('account:delete', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  // Moving money between accounts — neither income nor spending.
+  router.post('/transfers', auth, (req, res) => {
+    const body = req.body || {};
+    const fromId = readAccount(body.from_id);
+    const toId = readAccount(body.to_id);
+    if (body.from_id === undefined || body.to_id === undefined) throw bad('Pick both accounts.');
+    if (fromId === toId) throw bad('Pick two different accounts.');
+    const amount = readAmount(body.amount);
+    const date = readDate(body.date);
+    if (date > today()) throw bad('Transfers cannot be in the future.');
+    const note = readNote(body.note);
+    const now = new Date().toISOString();
+    const id = db.prepare(`
+      INSERT INTO transfers (from_id, to_id, amount_cents, note, person, date, month, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(fromId, toId, amount, note, req.person, date, date.slice(0, 7), now).lastInsertRowid;
+    broadcast('transfer:add', req.person);
+    res.status(201).json({ id, state: buildState(date.slice(0, 7), req.person) });
+  });
+
+  router.delete('/transfers/:id', auth, (req, res) => {
+    const t = db.prepare(`SELECT * FROM transfers WHERE id = ?`).get(Number(req.params.id));
+    if (!t) throw notFound('Transfer not found.');
+    db.prepare(`DELETE FROM transfers WHERE id = ?`).run(t.id);
+    broadcast('transfer:delete', req.person);
+    res.json({ ok: true, state: buildState(t.month, req.person) });
   });
 
   // ---------------------------------------------------------------- statement import
@@ -1475,6 +1608,8 @@ function createApi(db) {
     let added = 0;
     let addedIncome = 0;
     let skipped = 0;
+    // The whole statement belongs to one account, chosen up front.
+    const accountId = readAccount(req.body?.account_id);
     const now = new Date().toISOString();
 
     db.transaction(() => {
@@ -1488,20 +1623,20 @@ function createApi(db) {
 
         if (raw.direction === 'in') {
           db.prepare(`
-            INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, import_hash)
-            VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO income_entries (source_id, label, amount_cents, note, person, date, month, created_at, updated_at, import_hash, account_id)
+            VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
             (merchantKey(description) || 'Deposit').slice(0, 60),
-            amount, description, req.person, date, date.slice(0, 7), now, now, hash
+            amount, description, req.person, date, date.slice(0, 7), now, now, hash, accountId
           );
           addedIncome++;
         } else {
           const category = activeCategory(raw.category_id);
           requireStarted(category, date.slice(0, 7));
           db.prepare(`
-            INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, import_hash)
-            VALUES (?, ?, ?, ?, ?, ?, 'import', ?, ?, ?)
-          `).run(category.id, amount, description, req.person, date, date.slice(0, 7), now, now, hash);
+            INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, import_hash, account_id)
+            VALUES (?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?)
+          `).run(category.id, amount, description, req.person, date, date.slice(0, 7), now, now, hash, accountId);
           added++;
 
           const key = merchantKey(description);

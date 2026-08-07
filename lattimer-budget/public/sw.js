@@ -1,11 +1,11 @@
 /* Lattimer Family Budget service worker: offline app shell, never cached API. */
 
-var VERSION = 'lfb-v15';
+var VERSION = 'lfb-v16';
 var SHELL = [
   '/',
   '/index.html',
-  '/styles.css',
-  '/app.js',
+  '/styles.css?v=16',
+  '/app.js?v=16',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -16,7 +16,14 @@ var SHELL = [
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(VERSION).then(function (cache) {
-      return cache.addAll(SHELL);
+      // cache: 'reload' bypasses the HTTP cache — a new worker must never
+      // "update" itself with stale copies of the old build.
+      return Promise.all(SHELL.map(function (url) {
+        return fetch(new Request(url, { cache: 'reload' })).then(function (res) {
+          if (!res.ok) throw new Error('shell fetch failed: ' + url);
+          return cache.put(url, res);
+        });
+      }));
     }).then(function () {
       return self.skipWaiting();
     })

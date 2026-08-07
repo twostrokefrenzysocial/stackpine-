@@ -185,7 +185,50 @@ function migrate(db) {
   db.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_client ON transactions (client_id) WHERE client_id IS NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_income_client ON income_entries (client_id) WHERE client_id IS NOT NULL;
+
+    -- The family's real accounts (checking, savings, business…). Each is
+    -- anchored to its true balance once; logged money moves it from there.
+    CREATE TABLE IF NOT EXISTS accounts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      sort_order   INTEGER NOT NULL DEFAULT 0,
+      archived     INTEGER NOT NULL DEFAULT 0,
+      anchor_cents INTEGER NOT NULL DEFAULT 0,
+      anchor_date  TEXT NOT NULL,
+      anchor_at    TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    );
+
+    -- Money moved between accounts: not income, not spending.
+    CREATE TABLE IF NOT EXISTS transfers (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_id      INTEGER NOT NULL REFERENCES accounts(id),
+      to_id        INTEGER NOT NULL REFERENCES accounts(id),
+      amount_cents INTEGER NOT NULL,
+      note         TEXT NOT NULL DEFAULT '',
+      person       TEXT NOT NULL,
+      date         TEXT NOT NULL,
+      month        TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_transfers_month ON transfers (month);
   `);
+  // Which account an entry touched; NULL (legacy rows) reads as the first one.
+  addColumnIfMissing(db, 'transactions', 'account_id', 'INTEGER REFERENCES accounts(id)');
+  addColumnIfMissing(db, 'income_entries', 'account_id', 'INTEGER REFERENCES accounts(id)');
+
+  // A single-balance anchor from before accounts existed becomes account #1.
+  const oldAnchor = db.prepare(`SELECT value FROM meta WHERE key = 'bank_anchor'`).get()?.value;
+  if (oldAnchor && db.prepare(`SELECT COUNT(*) AS n FROM accounts`).get().n === 0) {
+    try {
+      const a = JSON.parse(oldAnchor);
+      db.prepare(`
+        INSERT INTO accounts (name, sort_order, anchor_cents, anchor_date, anchor_at, created_at)
+        VALUES ('Checking', 0, ?, ?, ?, ?)
+      `).run(a.cents, a.date, a.at, new Date().toISOString());
+    } catch (err) { /* malformed anchor — start clean */ }
+    db.prepare(`DELETE FROM meta WHERE key = 'bank_anchor'`).run();
+  }
 }
 
 function seedOnce(db) {
