@@ -782,3 +782,7 @@ select.input {
 }
 
 .section-head-inline { font-size: 13px; font-weight: 650; }
+
+/* Plan page: the totals row that closes each list */
+.plan-row-total { border-top: 1px solid var(--line); background: var(--card-2); }
+.plan-row-total .cat-name { font-weight: 650; }

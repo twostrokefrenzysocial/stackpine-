@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 20;
+  var APP_VERSION = 21;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -1107,98 +1107,105 @@
     var everydayTotal = variable.reduce(function (s, c) { return s + c.budget; }, 0);
     var target = d.savings.target || 0;
     var leftover = d.totals.income - billsTotal - everydayTotal - target;
+    var short = leftover < 0;
 
-    var html = '';
-
-    // The plan, top to bottom: money in, money out, what should be left.
-    html += '<section class="card summary">' +
-      '<div class="summary-cap">The plan for ' + esc(monthLabel(d.month)) + '</div>' +
+    // One page, read top to bottom: what comes in, what goes out, what is
+    // left — then a single button that balances it.
+    var html = '<section class="card summary">' +
+      '<div class="summary-cap">' + esc(monthLabel(d.month)) + '</div>' +
       '<div class="plan-math">' +
-      planLine('Income', d.totals.income, '+') +
-      planLine('Fixed bills', billsTotal, '−') +
+      planLine('Money in', d.totals.income, '+') +
+      planLine('Bills', billsTotal, '−') +
       planLine('Everyday spending', everydayTotal, '−') +
       (target > 0 ? planLine('Savings', target, '−') : '') +
-      '<div class="plan-line plan-total"><span>' + (leftover < 0 ? 'Short each month' : 'Breathing room') + '</span>' +
-      '<b class="' + (leftover < 0 ? 'summary-neg' : '') + '">' + money(Math.abs(leftover), { cents: false }) + '</b></div>' +
+      '<div class="plan-line plan-total"><span>' + (short ? 'Short' : 'Left over') + '</span>' +
+      '<b class="' + (short ? 'summary-neg' : '') + '">' + money(Math.abs(leftover), { cents: false }) + '</b></div>' +
       '</div></section>';
 
-    if (leftover < 0) {
-      html += '<div class="card due-alert">This plan spends ' + money(-leftover, { cents: false }) +
-        ' more than comes in. Apply the plan below to fix it.</div>';
-    }
-
-    // Why this month is tighter than the last one.
-    if (d.newThisMonth && d.newThisMonth.length) {
-      var newTotal = d.newThisMonth.reduce(function (s, c) { return s + c.budget; }, 0);
-      html += '<section class="card"><div class="section-head-inline">Starting this month</div>' +
-        '<p class="muted small" style="margin:2px 0 8px">' + money(newTotal, { cents: false }) +
-        ' of new bills begin in ' + esc(monthLabel(d.month)) + ' — that is what changed.</p>' +
-        d.newThisMonth.map(function (c) {
-          return '<div class="row small" style="padding:4px 0"><span>' + esc(c.name) + '</span>' +
-            '<b>' + money(c.budget, { cents: false }) + '</b></div>';
-        }).join('') + '</section>';
-    }
-
-    // The one plan that matters: built from real spending, never over income.
-    html += '<div class="section-title"><span>Your plan, from real spending</span></div>' +
-      '<section class="card" id="plan-suggest"><p class="muted small" style="margin:0">Reading the last few months…</p></section>';
+    // The fix, right where the problem is stated.
+    html += '<section class="card" id="plan-suggest"><p class="muted small" style="margin:0">Working out a plan…</p></section>';
     setTimeout(loadPlanSuggest, 0);
 
-    // Which Baby Step they're on — just the step, no homework.
-    html += '<div class="section-title"><span>Where you are</span><span>Ramsey Baby Steps</span></div>' +
-      '<section class="card" id="coach-box"><p class="muted small" style="margin:0">Checking…</p></section>';
-    setTimeout(loadCoach, 0);
+    // ---- money in: what each paycheck brings, and when
+    html += '<div class="section-title"><span>Money in</span><span>' +
+      money(d.totals.income, { cents: false }) + ' / mo</span></div><section class="card card-tight">';
+    d.income.sources.forEach(function (s2) {
+      var when = s2.nextPayday ? nextPaydayText(s2, d) : (s2.per_month + '× a month');
+      html += '<div class="cat"><div class="cat-head">' +
+        '<span class="cat-name">' + esc(s2.name) +
+        '<span class="muted small" style="display:block;font-weight:400">' +
+        money(s2.amount, { cents: false }) + ' × ' + s2.per_month + ' · ' + esc(when) + '</span></span>' +
+        '<span class="cat-nums"><b>' + money(s2.monthly, { cents: false }) + '</b></span></div></div>';
+    });
+    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total coming in</span>' +
+      '<span class="cat-nums"><b>' + money(d.totals.income, { cents: false }) + '</b></span></div></div>' +
+      '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="add-income">+ Add income source</button></div>' +
+      '</section>';
 
-    // Paychecks: log actual amounts as they land.
-    html += '<div class="section-title"><span>Income</span><span>' +
-      money(d.totals.received) + ' of ' + money(d.totals.income, { cents: false }) + ' received</span></div>';
-    html += '<section class="card card-tight">' + incomeRowsHtml(d) + '</section>';
+    // ---- every bill, in one list
+    html += '<div class="section-title"><span>Bills</span><span>' + money(billsTotal, { cents: false }) + ' / mo</span></div>' +
+      '<section class="card card-tight">';
+    fixed.forEach(function (c) {
+      var note = c.percent ? c.percent + '% of what comes in'
+        : c.cadence === 'payday' ? money(c.perPay, { cents: false }) + ' every payday'
+        : c.duePayday !== null && c.duePayday !== undefined ? 'with the ' + (c.dueDate ? monthDay(c.dueDate) : '') + ' check'
+        : c.dueDay ? 'the ' + ordinal(c.dueDay)
+        : 'no date set';
+      html += '<div class="cat"><div class="cat-head">' +
+        '<span class="cat-name">' + esc(c.name) +
+        (c.autoPay ? ' <span class="badge badge-auto">auto</span>' : '') +
+        '<span class="muted small" style="display:block;font-weight:400">' + esc(note) + '</span></span>' +
+        '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
+    });
+    (d.upcoming || []).forEach(function (c) {
+      html += '<div class="cat" style="opacity:.55"><div class="cat-head">' +
+        '<span class="cat-name">' + esc(c.name) +
+        '<span class="muted small" style="display:block;font-weight:400">starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
+        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
+    });
+    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total bills</span>' +
+      '<span class="cat-nums"><b>' + money(billsTotal, { cents: false }) + '</b></span></div></div></section>';
 
-    // Savings
-    html += '<div class="section-title"><span>Savings</span>' +
-      (d.savings.thisMonth ? '<span class="week-in">+' + money(d.savings.thisMonth) + ' this month</span>' : '') + '</div>';
-    html += '<section class="card">' +
-      '<div class="row"><div><div class="summary-cap muted">Put away so far</div>' +
-      '<div class="fund-balance">' + money(d.savings.balance) + '</div></div>' +
-      '<div class="stack" style="gap:6px">' +
+    // ---- everyday budgets
+    html += '<div class="section-title"><span>Everyday spending</span><span>' +
+      money(everydayTotal, { cents: false }) + ' / mo</span></div><section class="card card-tight">';
+    variable.forEach(function (c) {
+      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) + '</span>' +
+        '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
+    });
+    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total everyday</span>' +
+      '<span class="cat-nums"><b>' + money(everydayTotal, { cents: false }) + '</b></span></div></div></section>';
+
+    // ---- savings, kept to one line unless there is something to show
+    html += '<div class="section-title"><span>Savings</span><span>' + money(d.savings.balance) + ' put away</span></div>' +
+      '<section class="card"><div class="row">' +
+      '<span class="small muted">' + (target > 0
+        ? money(d.savings.thisMonth) + ' of ' + money(target, { cents: false }) + ' this month'
+        : 'No monthly goal set') + '</span>' +
+      '<span class="stack" style="grid-auto-flow:column;gap:6px">' +
       '<button type="button" class="btn btn-sm btn-in" data-act="save-add">+ Add</button>' +
       '<button type="button" class="btn btn-sm" data-act="save-out">Take out</button>' +
-      '</div></div>';
-    if (target > 0) {
-      var pctSaved = Math.min(100, (d.savings.thisMonth / target) * 100);
-      html += '<div class="cat-head" style="margin-top:10px"><span class="cat-name small">This month\'s goal</span>' +
-        '<span class="cat-nums">' + money(d.savings.thisMonth) + ' / ' + money(target, { cents: false }) + '</span></div>' +
-        barHtml(pctSaved >= 100 ? 'ok' : 'warn', pctSaved);
-    } else {
-      html += '<p class="muted small" style="margin:10px 0 0">No monthly goal set — add one in Settings and this turns into a progress bar.</p>';
-    }
-    // Named goals: Christmas, emergency fund, the next dirt bike...
+      '</span></div>';
     if (d.savings.goals.length) {
       d.savings.goals.forEach(function (g) {
         html += '<div class="goal" data-act="goal-edit" data-id="' + g.id + '" role="button" tabindex="0">' +
           '<div class="cat-head"><span class="cat-name">' + esc(g.name) + '</span>' +
           '<span class="cat-nums">' + money(g.saved) + (g.target > 0 ? ' / ' + money(g.target, { cents: false }) : '') + '</span></div>' +
-          (g.target > 0 ? barHtml(g.pct >= 100 ? 'ok' : 'warn', g.pct) : '') +
-          (g.pct >= 100 && g.target > 0 ? '<div class="cat-foot"><span class="week-in">Goal reached 🎉</span></div>' : '') +
-          '</div>';
+          (g.target > 0 ? barHtml(g.pct >= 100 ? 'ok' : 'warn', g.pct) : '') + '</div>';
       });
     }
-    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="goal-add">+ Add a named goal (Christmas, emergency fund…)</button>';
-
-    if (d.savings.entries.length) {
-      html += '<div style="margin-top:10px">';
-      d.savings.entries.slice(0, 5).forEach(function (e) {
-        html += '<div class="row small" style="padding:5px 0;border-top:1px solid var(--line)">' +
-          '<span class="muted">' + esc(shortDate(e.date)) + ' · ' + esc(e.note || e.person) + '</span>' +
-          '<span><b class="' + (e.amount < 0 ? '' : 'week-in') + '">' + (e.amount < 0 ? '−' : '+') + money(Math.abs(e.amount)) + '</b>' +
-          ' <button type="button" class="icon-del" style="width:30px;height:28px;font-size:13px" data-act="save-del" data-id="' + e.id + '" aria-label="Delete">✕</button></span>' +
-          '</div>';
-      });
-      html += '</div>';
-    }
-    html += '</section>';
+    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="goal-add">+ Add a savings goal</button>' +
+      '</section>';
 
     return html;
+  }
+
+  /** "every 2 weeks · next Fri Aug 21" for an income source. */
+  function nextPaydayText(src, d) {
+    var cad = src.cadence === 'weekly' ? 'weekly'
+      : src.cadence === 'monthly' ? 'monthly' : 'every 2 weeks';
+    if (!src.nextPayday) return cad;
+    return cad + ', next ' + monthDay(src.nextPayday);
   }
 
   /**
@@ -1214,33 +1221,47 @@
       if (!box) return;
       PLAN.list = out.suggestions;
       PLAN.totals = out.totals;
+      var over = out.totals.current - out.totals.income;
+
       if (!out.suggestions.length) {
-        box.innerHTML = '<p class="muted small" style="margin:0">Your everyday budgets already match what you really spend. ' +
-          (out.totals.leftover > 0
-            ? 'After bills and budgets there\'s <b class="week-in">' + money(out.totals.leftover, { cents: false }) +
-              '</b> left — give every dollar a job: savings or the debt snowball.'
-            : 'Check back after more spending is logged.') + '</p>';
+        box.innerHTML = over > 0
+          ? '<p class="small" style="margin:0"><b>This plan spends ' + money(over, { cents: false }) +
+            ' more than comes in</b>, and the everyday budgets are already as low as they should go. ' +
+            'The gap has to close on the bills side or with more income.</p>'
+          : '<p class="small" style="margin:0"><b>This plan works.</b> Bills and budgets fit inside what comes in' +
+            (out.totals.leftover > 0
+              ? ', with <b class="week-in">' + money(out.totals.leftover, { cents: false }) +
+                '</b> spare — give it a job: savings or the next debt.'
+              : '.') + '</p>';
         return;
       }
-      var html = '<p class="muted small" style="margin:0 0 6px">' +
-        (out.mode === 'cut'
-          ? 'The current plan spends more than comes in, so this trims — fun money first, food and fuel last:'
-          : 'Based on what you actually spent the last few months:') + '</p>';
-      out.suggestions.forEach(function (s) {
+
+      var html = over > 0
+        ? '<p class="small" style="margin:0 0 10px"><b>' + money(over, { cents: false }) + ' short.</b> ' +
+          'These changes close it — fun money first, food and fuel protected:</p>'
+        : '<p class="small" style="margin:0 0 10px"><b>Suggested from what you actually spend:</b></p>';
+
+      out.suggestions.forEach(function (s2) {
+        var down = s2.suggested < s2.current;
         html += '<div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)">' +
-          '<span style="font-weight:600">' + esc(s.name) +
-          (s.essential ? ' <span class="badge badge-ok">four walls</span>' : '') + '</span>' +
-          '<span class="cat-nums">' + money(s.current, { cents: false }) + ' → <b>' + money(s.suggested, { cents: false }) + '</b></span>' +
-          '</div>';
+          '<span style="font-weight:600">' + esc(s2.name) +
+          (s2.essential ? ' <span class="badge badge-ok">four walls</span>' : '') + '</span>' +
+          '<span class="cat-nums muted">' + money(s2.current, { cents: false }) +
+          ' <span style="color:var(--text)">→</span> <b style="color:var(--text)">' +
+          money(s2.suggested, { cents: false }) + '</b>' +
+          (down ? ' <span class="tune-down">−' + money(s2.current - s2.suggested, { cents: false }) + '</span>' : '') +
+          '</span></div>';
       });
-      var afterAll = out.totals.ifAllApplied;
-      html += '<div class="cat-foot" style="margin-top:8px"><span>Plan if applied</span>' +
-        '<span>' + money(afterAll, { cents: false }) + ' of ' + money(out.totals.income, { cents: false }) + ' income</span></div>' +
-        (out.totals.leftover > 0
-          ? '<div class="cat-foot"><span>Left for savings &amp; debt</span><span class="week-in">' + money(out.totals.leftover, { cents: false }) + '</span></div>'
+
+      html += '<div class="cat-foot" style="margin-top:10px"><span>Plan after these changes</span>' +
+        '<span>' + money(out.totals.ifAllApplied, { cents: false }) + ' of ' +
+        money(out.totals.income, { cents: false }) + '</span></div>' +
+        (out.totals.leftover >= 0
+          ? '<div class="cat-foot"><span>Left over</span><span class="week-in">' +
+            money(out.totals.leftover, { cents: false }) + '</span></div>'
           : '') +
-        '<button type="button" class="btn btn-primary btn-block" style="margin-top:10px" data-act="plan-apply">Use this plan</button>' +
-        '<button type="button" class="btn btn-block btn-sm" style="margin-top:8px" data-act="tuneup-open">Pick and choose instead</button>';
+        '<button type="button" class="btn btn-primary btn-block" style="margin-top:12px" data-act="plan-apply">Use this plan</button>' +
+        '<button type="button" class="btn btn-block btn-sm" style="margin-top:8px" data-act="tuneup-open">Change them one at a time</button>';
       box.innerHTML = html;
     }).catch(function () {
       var box = el('plan-suggest');
