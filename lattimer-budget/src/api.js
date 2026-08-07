@@ -218,6 +218,41 @@ function createApi(db) {
     q.upsertMonthIncome.run(month, liveIncomeCents());
   });
 
+  /**
+   * Auto-drafts pay themselves at the bank, so the app ticks them off on the
+   * day they come out instead of waiting to be tapped. Idempotent: a bill
+   * that already has a payment this month is left alone.
+   */
+  function autoPayDueBills(month) {
+    if (month !== currentMonth()) return; // never back-fill a closed month
+    const day = today();
+    const due = db.prepare(`
+      SELECT * FROM categories
+      WHERE kind = 'fixed' AND archived = 0 AND auto_pay = 1 AND due_day IS NOT NULL
+        AND (starts_month IS NULL OR starts_month <= ?)
+    `).all(month);
+    if (!due.length) return;
+
+    const now = new Date().toISOString();
+    for (const c of due) {
+      const dueDate = dueDateIn(month, c.due_day);
+      if (dueDate > day) continue;
+      const already = db.prepare(`
+        SELECT COUNT(*) AS n FROM transactions WHERE month = ? AND category_id = ?
+      `).get(month, c.id).n;
+      if (already) continue;
+      const snapshot = db
+        .prepare(`SELECT budget_cents FROM month_budgets WHERE month = ? AND category_id = ?`)
+        .get(month, c.id);
+      const amount = snapshot?.budget_cents ?? c.budget_cents;
+      if (amount <= 0) continue;
+      db.prepare(`
+        INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
+        VALUES (?, ?, 'Auto-draft', 'Auto', ?, ?, 'billpay', ?, ?, ?)
+      `).run(c.id, amount, dueDate, month, now, now, c.account_id ?? primaryAccountId());
+    }
+  }
+
   /** A past month keeps whatever it was budgeted at; seed it once if never seen. */
   function ensureMonth(month) {
     if (month === currentMonth()) {
@@ -298,6 +333,7 @@ function createApi(db) {
 
   function buildState(month, person) {
     ensureMonth(month);
+    autoPayDueBills(month);
 
     const spentMap = new Map(q.spentByCategory.all(month).map((r) => [r.category_id, r.spent]));
     const paidMap = new Map(q.billPaidRows.all(month).map((r) => [r.category_id, r]));
@@ -380,6 +416,8 @@ function createApi(db) {
         paidCount,
         dueDay,
         duePayday,
+        autoPay: Boolean(liveCat?.auto_pay),
+        accountId: liveCat?.account_id ?? null,
         dueDate,
         dueIn,
         dueStatus,
@@ -970,7 +1008,8 @@ function createApi(db) {
         db.prepare(`
           INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
           VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
-        `).run(category.id, amount, req.person, date, month, now, now, readAccount(req.body?.account_id));
+        `).run(category.id, amount, req.person, date, month, now, now,
+          req.body?.account_id === undefined ? (category.account_id ?? primaryAccountId()) : readAccount(req.body.account_id));
       } else if (existing.length) {
         db.prepare(`DELETE FROM transactions WHERE id = ?`).run(existing[0].id);
       }
@@ -998,7 +1037,8 @@ function createApi(db) {
         db.prepare(`
           INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
           VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
-        `).run(category.id, amount, req.person, date, month, now, now, readAccount(req.body?.account_id));
+        `).run(category.id, amount, req.person, date, month, now, now,
+          req.body?.account_id === undefined ? (category.account_id ?? primaryAccountId()) : readAccount(req.body.account_id));
       })();
     } else {
       db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)
@@ -1088,13 +1128,18 @@ function createApi(db) {
       }
     }
 
+    const autoPay = body.auto_pay === undefined ? category.auto_pay : (body.auto_pay ? 1 : 0);
+    const billAccount = body.account_id === undefined
+      ? category.account_id
+      : (body.account_id === null || body.account_id === '' ? null : readAccount(body.account_id));
+
     const clash = db.prepare(`SELECT id FROM categories WHERE name = ? AND id != ?`).get(name, category.id);
     if (clash) throw bad('A category with that name already exists.');
 
     db.prepare(`
-      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?, due_payday = ?
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?, due_payday = ?, auto_pay = ?, account_id = ?
       WHERE id = ?
-    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, duePayday, category.id);
+    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, duePayday, autoPay, billAccount, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
@@ -1962,7 +2007,14 @@ function createApi(db) {
     res.status(status).json({ error: err.message || 'Something went wrong.' });
   });
 
-  return { router, broadcast, clientCount: () => clients.size };
+  // runAutoPay lets the scheduler tick auto-drafts over on their due day even
+  // if neither phone opens the app.
+  return {
+    router,
+    broadcast,
+    runAutoPay: () => autoPayDueBills(currentMonth()),
+    clientCount: () => clients.size,
+  };
 }
 
 module.exports = { createApi, HttpError };

@@ -81,9 +81,10 @@ test('a tampered token is rejected', async () => {
 
 test('seed data loads once with the expected shape', async () => {
   const s = await state();
-  // 22 active fixed (Subscriptions archived into 7 line items, all bills now),
-  // 7 variable (the everyday seed categories)
-  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 22);
+  // Active fixed bills: the seed list plus the split-out subscriptions, less
+  // Bitwarden (cancelled) and the truck + dirt bike (new loans, start Sept).
+  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 19);
+  assert.equal(s.upcoming.filter((c) => c.kind === 'fixed').length, 3, 'the two new loans and the student loans wait for September');
   assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 7);
   assert.equal(s.income.total, 7638);
   assert.equal(s.totals.income, 7638);
@@ -209,13 +210,13 @@ test('tapping a bill pays it at the budgeted amount, tapping again clears it', a
   assert.equal(paid.status, 200);
   const afterPay = byName(paid.body.state.categories, 'Natural gas');
   assert.equal(afterPay.paid, true);
-  assert.equal(afterPay.spent, 150);
+  assert.equal(afterPay.spent, 169, 'the real amount off the statements');
   assert.equal(paid.body.state.transactions[0].source, 'billpay');
 
   // paying twice must not double-count
   await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
   const twice = await state();
-  assert.equal(byName(twice.categories, 'Natural gas').spent, 150);
+  assert.equal(byName(twice.categories, 'Natural gas').spent, 169);
 
   const unpaid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
   const afterUnpay = byName(unpaid.body.state.categories, 'Natural gas');
@@ -254,7 +255,9 @@ test('a past month renders read-only with its own snapshot', async (t) => {
   assert.equal(res.body.readOnly, true);
   assert.equal(res.body.month, monthOf(-1));
   assert.equal(res.body.transactions.length, 0);
-  assert.equal(res.body.categories.length, 29);
+  // Last month's snapshot: active categories, minus the bills that had not
+  // started yet (the two new loans and the student loans).
+  assert.equal(res.body.categories.length, 26);
 });
 
 // ---------------------------------------------------------------- back-dating grace
@@ -688,7 +691,7 @@ test('spending and income land in the right week', async () => {
   const paid = await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: true } });
   const after = paid.body.state.weeks.find((w) => w.isCurrent);
   assert.equal(after.everyday, now.everyday, 'bills stay out of the everyday number');
-  assert.equal(after.spent, now.spent + 150);
+  assert.equal(after.spent, now.spent + 169);
 
   // current-week summary matches
   assert.equal(paid.body.state.week.everyday, after.everyday);
@@ -840,12 +843,14 @@ test('a bill can be switched between monthly and payday cadence', async () => {
 test('subscriptions are split into individual line items', async () => {
   const s = await state();
   assert.equal(byName(s.categories, 'Subscriptions'), undefined, 'the lump category is archived');
-  for (const [name, budget] of [['Apple services', 45], ['Disney+', 14], ['Pestie', 15], ['Kindle Unlimited', 5], ['Bitwarden', 3]]) {
+  // Amounts are the real ones off the statements; Bitwarden was cancelled.
+  for (const [name, budget] of [['Apple services', 45], ['Disney+', 14], ['Pestie', 48], ['Kindle Unlimited', 13], ['Ring', 5]]) {
     const c = byName(s.categories, name);
     assert.ok(c, name + ' exists');
     assert.equal(c.kind, 'fixed', name + ' sits on the bill checklist');
     assert.equal(c.budget, budget);
   }
+  assert.equal(byName(s.categories, 'Bitwarden'), undefined, 'cancelled subscriptions drop off');
 
   // the matcher files each service into its own line
   const { keywordGuess } = require('../src/import');
@@ -1683,7 +1688,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v17'],
+    ['/sw.js', 'lfb-v18'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1790,24 +1795,29 @@ test('import preview flags deposits already logged as income', async () => {
 
 test('accounts anchor once and follow what gets logged', async () => {
   let s = await state();
-  assert.equal(s.bank.set, false, 'unset until the family adds accounts');
+  // Two accounts ship with the budget (the business one and Liza's), both
+  // anchored at zero until the family fills in the real balances.
+  assert.equal(s.bank.set, true);
+  assert.deepEqual(s.bank.accounts.map((a) => a.name), ['Checking', 'Two Stroke Frenzy', 'Liza']);
+  const checking = s.bank.accounts[0];
+  const seededTotal = s.bank.total;
 
-  const checking = await call('/api/accounts', { method: 'POST', body: { name: 'Checking', balance: 2500 } });
-  assert.equal(checking.status, 201);
+  // the family fills in what checking really holds
+  const anchored = await call(`/api/accounts/${checking.id}`, { method: 'PUT', body: { balance: 2500 } });
+  s = anchored.body.state;
   const savings = await call('/api/accounts', { method: 'POST', body: { name: 'Savings', balance: 1200 } });
   const biz = await call('/api/accounts', { method: 'POST', body: { name: 'Two Stroke Frenzy', balance: 300.50 } });
-  s = biz.body.state;
-  assert.equal(s.bank.set, true);
-  assert.equal(s.bank.accounts.length, 3);
-  assert.equal(s.bank.total, 4000.5);
+  assert.equal(biz.status, 400, 'a duplicate account name is refused');
+  s = savings.body.state;
+  assert.equal(s.bank.accounts.length, 4);
 
   // spending and income move the account they were logged against
   const groceries = byName(s.categories, 'Groceries');
   const spend = await call('/api/transactions', {
-    method: 'POST', body: { category_id: groceries.id, amount: 40, account_id: checking.body.id },
+    method: 'POST', body: { category_id: groceries.id, amount: 40, account_id: checking.id },
   });
   const bal = (st, id) => st.bank.accounts.find((a) => a.id === id).balance;
-  assert.equal(bal(spend.body.state, checking.body.id), 2460);
+  assert.equal(bal(spend.body.state, checking.id), 2460);
   assert.equal(bal(spend.body.state, savings.body.id), 1200, 'other accounts untouched');
 
   const inc = await call('/api/income/entries', {
@@ -1817,16 +1827,16 @@ test('accounts anchor once and follow what gets logged', async () => {
 
   // an entry with no account lands in the first one
   const dflt = await call('/api/transactions', { method: 'POST', body: { category_id: groceries.id, amount: 10 } });
-  assert.equal(bal(dflt.body.state, checking.body.id), 2450);
+  assert.equal(bal(dflt.body.state, checking.id), 2450, 'checking is the household default');
 
   // transfers move money across without touching income or spending totals
   const spentBefore = dflt.body.state.totals.spent;
   const move = await call('/api/transfers', {
-    method: 'POST', body: { from_id: savings.body.id, to_id: checking.body.id, amount: 200 },
+    method: 'POST', body: { from_id: savings.body.id, to_id: checking.id, amount: 200 },
   });
   assert.equal(move.status, 201);
   assert.equal(bal(move.body.state, savings.body.id), 1100);
-  assert.equal(bal(move.body.state, checking.body.id), 2650);
+  assert.equal(bal(move.body.state, checking.id), 2650);
   assert.equal(move.body.state.totals.spent, spentBefore, 'a transfer is not spending');
   assert.equal(move.body.state.transfers.length, 1);
   assert.equal(move.body.state.transfers[0].from, 'Savings');
@@ -1842,12 +1852,12 @@ test('accounts anchor once and follow what gets logged', async () => {
   assert.equal(bal(undo.body.state, savings.body.id), 1300);
 
   // re-anchoring replaces an account's number outright
-  const fix = await call(`/api/accounts/${checking.body.id}`, { method: 'PUT', body: { balance: 3000 } });
-  assert.equal(bal(fix.body.state, checking.body.id), 3000);
+  const fix = await call(`/api/accounts/${checking.id}`, { method: 'PUT', body: { balance: 3000 } });
+  assert.equal(bal(fix.body.state, checking.id), 3000);
 
   // archiving hides the account but keeps history rows
-  const bye = await call(`/api/accounts/${biz.body.id}`, { method: 'DELETE' });
-  assert.equal(bye.body.state.bank.accounts.length, 2);
+  const bye = await call(`/api/accounts/${savings.body.id}`, { method: 'DELETE' });
+  assert.equal(bye.body.state.bank.accounts.length, 3);
 
   // clean up entries so later tests see the usual month
   await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
@@ -1889,6 +1899,68 @@ test('recategorizing an imported row teaches the importer for next time', async 
   assert.equal(preview.body.rows[0].guessedBy, 'learned');
 
   await call(`/api/transactions/${row.id}`, { method: 'DELETE' });
+});
+
+test('auto-drafts tick themselves off on the day they come out', async () => {
+  const s = await state();
+  const disney = byName(s.categories, 'Disney+');
+  assert.equal(disney.autoPay, true, 'seeded as an auto-draft');
+  assert.equal(disney.paid, false, 'the 20th has not arrived in the test month');
+
+  // Move its due day to today: the next read pays it, at its budgeted amount.
+  const dayToday = Number(s.today.slice(8, 10));
+  const hit = await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { due_day: dayToday } });
+  const paid = byName(hit.body.state.categories, 'Disney+');
+  assert.equal(paid.paid, true, 'its day arrived, so it is ticked off');
+  assert.equal(paid.spent, 14);
+  const tx = hit.body.state.transactions.find((t) => t.category_id === disney.id);
+  assert.equal(tx.source, 'billpay');
+  assert.equal(tx.person, 'Auto');
+  assert.equal(tx.date, s.today);
+
+  // Idempotent: reading again does not pay it twice.
+  const again = await state();
+  assert.equal(byName(again.categories, 'Disney+').spent, 14);
+
+  // Turning auto-pay off leaves the payment alone but stops future ones.
+  const off = await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { auto_pay: false } });
+  assert.equal(byName(off.body.state.categories, 'Disney+').autoPay, false);
+
+  // A bill that is not an auto-draft is never touched.
+  const gas = byName(s.categories, 'Natural gas');
+  assert.equal(gas.autoPay, false);
+  assert.equal(byName(again.categories, 'Natural gas').paid, false);
+
+  await call(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+  await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { due_day: 20, auto_pay: true } });
+});
+
+test('a bill remembers which account pays it', async () => {
+  const s = await state();
+  const daycare = byName(s.categories, 'Child care (Kids Country)');
+  const liza = s.bank.accounts.find((a) => a.name === 'Liza');
+  assert.ok(liza, "Liza's account exists");
+  assert.equal(daycare.accountId, liza.id, 'daycare is paid from Liza\'s account');
+
+  const before = s.bank.accounts.find((a) => a.id === liza.id).balance;
+  const paid = await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: true } });
+  const after = paid.body.state.bank.accounts.find((a) => a.id === liza.id).balance;
+  assert.equal(Math.round((before - after) * 100) / 100, daycare.budget, 'it came out of the right account');
+
+  await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: false } });
+});
+
+test('the new loans wait for September and come from the business account', async () => {
+  const s = await state();
+  const biz = s.bank.accounts.find((a) => a.name === 'Two Stroke Frenzy');
+  for (const name of ['Truck (Credit Acceptance)', 'Dirt bike (Lendmark)']) {
+    assert.equal(byName(s.categories, name), undefined, name + ' is not on this month yet');
+    const up = (s.upcoming || []).find((c) => c.name === name);
+    assert.ok(up, name + ' is listed as upcoming');
+    assert.equal(up.startsMonth, '2026-09');
+  }
+  const truck = db.prepare(`SELECT account_id FROM categories WHERE name = 'Truck (Credit Acceptance)'`).get();
+  assert.equal(truck.account_id, biz.id);
 });
 
 test('a backup snapshot is written, listed, and is a real database', async () => {

@@ -23,6 +23,11 @@ function createApp(db) {
 
   const api = createApi(db);
   app.use('/api', api.router);
+  // Auto-drafts tick over on their due day whether or not anyone opens the app.
+  const autoPayTimer = setInterval(() => {
+    try { api.runAutoPay(); } catch (err) { console.error('auto-pay tick failed:', err.message); }
+  }, 30 * 60 * 1000);
+  autoPayTimer.unref();
 
   // db and pinSet let a deploy be verified from outside: the database path in
   // use (should be on the volume) and whether FAMILY_PIN is set, never its value.

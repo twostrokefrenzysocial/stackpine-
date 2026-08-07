@@ -193,7 +193,9 @@ const KEYWORD_GUESSES = [
   { match: /APPLECARD|APPLE CARD|GS BANK/, category: 'Apple Card' },
   { match: /CREDIT ACCEPT/, category: 'Truck (Credit Acceptance)' },
   { match: /LENDMARK/, category: 'Dirt bike (Lendmark)' },
-  { match: /CHURCH|TITHE|GIVING|RIVERTREE/, category: 'Church giving' },
+  // Living Water is the family's church as of Aug 2026; Rivertree is where
+  // they gave before, kept so older statements still file correctly.
+  { match: /CHURCH|TITHE|GIVING|LIVING WATER|RIVERTREE/, category: 'Church giving' },
   // Individual subscription line items (specific before the generic bucket).
   { match: /APPLE COM/, category: 'Apple services' },
   { match: /DISNEY ?PLUS|DISNEY\b/, category: 'Disney+' },

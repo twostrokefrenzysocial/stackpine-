@@ -139,6 +139,55 @@ const DATA_MIGRATIONS = [
     },
   },
   {
+    // Real amounts, averaged out of seven months of statements. Utilities use
+    // the average across the year (gas swings $61 in July to $306 in April),
+    // everything else uses what it currently bills.
+    key: '2026-08-real-amounts',
+    amounts: {
+      'Natural gas': 169,
+      'Electric': 144,
+      'Water/sewer': 104,
+      'AT&T phones': 248,
+      'GEICO': 228,
+      'Discover': 260,
+      'Apple Card': 200,
+      'Apple services': 45,
+      'Ring': 5,
+      'Pestie': 48,
+      'Kindle Unlimited': 13,
+      'Disney+': 14,
+    },
+  },
+  {
+    // Auto-drafts tick themselves off on the day they come out. Only the
+    // reliably monthly ones — Pestie bills every other month, and Ring,
+    // Kindle and Fabletics are irregular, so those stay hand-checked.
+    key: '2026-08-auto-pay',
+    autoPay: ['Child care (Kids Country)', 'GEICO', 'Disney+', 'Apple services'],
+  },
+  {
+    // The truck and the dirt bike are new loans starting next month, and
+    // both come out of the business account. Daycare is paid from Liza's.
+    key: '2026-09-business-and-liza-accounts',
+    // Checking is created first so it is the household default; the family
+    // fills in the real balances (all three start at zero).
+    accounts: ['Checking', 'Two Stroke Frenzy', 'Liza'],
+    billAccounts: {
+      'Truck (Credit Acceptance)': 'Two Stroke Frenzy',
+      'Dirt bike (Lendmark)': 'Two Stroke Frenzy',
+      'Child care (Kids Country)': 'Liza',
+    },
+    startsMonths: {
+      'Truck (Credit Acceptance)': '2026-09',
+      'Dirt bike (Lendmark)': '2026-09',
+    },
+  },
+  {
+    // Cancelled, so it stops counting against the budget. History stays.
+    key: '2026-08-cancel-bitwarden',
+    archiveCategories: ['Bitwarden'],
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

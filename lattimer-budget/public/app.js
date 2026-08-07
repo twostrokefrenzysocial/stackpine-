@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 17;
+  var APP_VERSION = 18;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -654,14 +654,19 @@
       var groups = [];
       var byDate = {};
       unpaidBills.forEach(function (c) {
-        // Bills tied to a paycheck (and the per-payday tithe) group by the
-        // check that pays them; auto-drafts and card charges group together.
+        // Anything that pays itself needs no attention; what's left is
+        // grouped by the paycheck it comes out of.
         var onPayday = (c.duePayday !== null && c.duePayday !== undefined) || c.cadence === 'payday';
-        var key = onPayday && c.dueDate ? c.dueDate : c.dueDate ? 'auto' : 'none';
+        var key = c.autoPay ? 'auto'
+          : onPayday && c.dueDate ? c.dueDate
+          : c.dueDate ? 'watch'
+          : 'none';
         if (!byDate[key]) { byDate[key] = []; groups.push(key); }
         byDate[key].push(c);
       });
-      var rank = function (g) { return g === 'none' ? 2 : g === 'auto' ? 1 : 0; };
+      var rank = function (g) {
+        return g === 'none' ? 3 : g === 'auto' ? 2 : g === 'watch' ? 1 : 0;
+      };
       groups.sort(function (a, b) {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
         return a < b ? -1 : a > b ? 1 : 0;
@@ -671,9 +676,10 @@
         if (multiGroup) {
           var total = byDate[key].reduce(function (s, c) { return s + c.budget; }, 0);
           var head = key === 'none' ? 'No date set'
-            : key === 'auto' ? 'Comes out on its own'
-            : 'Pay with ' + esc(payLabel(key, d));
-          html += '<div class="pay-head"><span>' + head + '</span>' +
+            : key === 'auto' ? '🔒 Pays itself — nothing to do'
+            : key === 'watch' ? 'Keep an eye on these'
+            : '✓ Pay with ' + esc(payLabel(key, d));
+          html += '<div class="pay-head' + (key === 'auto' ? ' pay-head-auto' : '') + '"><span>' + head + '</span>' +
             '<span>' + money(total, { cents: false }) + '</span></div>';
         }
         byDate[key].forEach(function (c) { html += billChecklistRow(c, d); });
@@ -795,24 +801,33 @@
       var due = c.dueStatus ? ' · ' + dueText(c) : '';
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
         esc(c.paidCount + ' of ' + c.expected + ' paydays paid' + due) + '</span>';
+    } else if (c.paid && c.autoPay) {
+      extra = '<span class="bill-sub">Came out on its own · ' + money(c.spent) + '</span>';
     } else if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
       extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
     } else if (!c.paid && c.spent > 0 && c.cadence !== 'payday') {
       extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
     } else if (!c.paid && c.dueDay) {
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
-        esc(dueText(c)) + '</span>';
+        esc(dueText(c)) + (c.autoPay ? ' · comes out on its own' : '') + '</span>';
     }
     var amt = c.percent
       ? (c.dueNow > 0 ? money(c.dueNow) : c.percent + '%')
       : c.cadence === 'payday'
         ? money(c.perPay, { cents: false }) + ' ×' + c.expected
         : money(c.budget, { cents: false });
-    return '<button type="button" class="bill" data-act="toggle-bill" data-id="' + c.id + '"' +
+    var partial = c.cadence === 'payday' && c.paidCount > 0 && !c.paid;
+    // An auto-draft is not a to-do: it shows a lock instead of a checkbox so
+    // the list reads as "these are handled, those are yours".
+    var boxClass = 'bill-box' + (partial ? ' bill-box-partial' : '') + (c.autoPay ? ' bill-box-auto' : '');
+    var boxMark = c.autoPay ? (c.paid ? '✓' : '🔒') : partial ? c.paidCount : '✓';
+    return '<button type="button" class="bill' + (c.autoPay ? ' bill-auto' : '') + '"' +
+      ' data-act="toggle-bill" data-id="' + c.id + '"' +
       ' aria-pressed="' + (c.paid ? 'true' : 'false') + '"' + (d.readOnly || c.archived ? ' disabled' : '') + '>' +
-      '<span class="bill-box' + (c.cadence === 'payday' && c.paidCount > 0 && !c.paid ? ' bill-box-partial' : '') + '" aria-hidden="true">' +
-      (c.cadence === 'payday' && c.paidCount > 0 && !c.paid ? c.paidCount : '✓') + '</span>' +
-      '<span class="bill-name">' + esc(c.name) + (c.archived ? ' <span class="badge">closed</span>' : '') + extra + '</span>' +
+      '<span class="' + boxClass + '" aria-hidden="true">' + boxMark + '</span>' +
+      '<span class="bill-name">' + esc(c.name) +
+      (c.autoPay ? ' <span class="badge badge-auto">auto</span>' : '') +
+      (c.archived ? ' <span class="badge">closed</span>' : '') + extra + '</span>' +
       '<span class="bill-amt">' + amt + '</span>' +
       '</button>';
   }
@@ -1485,6 +1500,19 @@
         : '') +
       '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id +
       '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
+      '</div>' +
+      '<div class="edit-card-extra">' +
+      (c.dueDay != null
+        ? '<label class="switch"><input type="checkbox" data-act="bill-auto" data-id="' + c.id + '"' +
+          (c.autoPay ? ' checked' : '') + '><span>Comes out on its own — tick it off automatically</span></label>'
+        : '') +
+      (bankAccounts().length > 1
+        ? '<label class="mini" style="margin-top:6px"><span>Paid from</span>' +
+          '<select class="input" data-act="bill-account" data-id="' + c.id + '" aria-label="Account ' + esc(c.name) + ' is paid from">' +
+          bankAccounts().map(function (a) {
+            return '<option value="' + a.id + '"' + (c.accountId === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+          }).join('') + '</select></label>'
+        : '') +
       '</div></div>';
   }
 
@@ -2689,6 +2717,11 @@
       var pctVal = Math.round(Number(node.value));
       if (!(pctVal >= 1 && pctVal <= 100)) { toast('Percent must be 1–100', 'error'); render(); return; }
       mutate('/categories/' + id, { method: 'PUT', body: { percent_income: pctVal } }, 'Now ' + pctVal + '% of income');
+    } else if (act === 'bill-auto') {
+      mutate('/categories/' + id, { method: 'PUT', body: { auto_pay: node.checked } },
+        node.checked ? 'Will tick itself off on its due day' : 'Back to checking it off by hand');
+    } else if (act === 'bill-account') {
+      mutate('/categories/' + id, { method: 'PUT', body: { account_id: Number(node.value) } }, 'Account set');
     } else if (act === 'bill-when') {
       var v = node.value;
       if (v === 'p0' || v === 'p1') {

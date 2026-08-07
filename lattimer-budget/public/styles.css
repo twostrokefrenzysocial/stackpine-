@@ -372,6 +372,29 @@ select.input {
 }
 .pay-head:first-child { border-top: 0; padding-top: 4px; }
 
+/* Auto-drafts: handled by the bank, not a to-do for the family */
+.pay-head-auto { color: var(--ok); }
+.bill-auto { opacity: .82; }
+.bill-box-auto {
+  border-style: dashed;
+  border-color: var(--line) !important;
+  background: transparent !important;
+  color: var(--muted) !important;
+  font-size: 13px;
+}
+.bill[aria-pressed="true"] .bill-box-auto {
+  border-style: solid;
+  background: var(--ok-bg) !important;
+  border-color: var(--ok-bg) !important;
+  color: var(--ok) !important;
+}
+.badge-auto { background: var(--ok-bg); color: var(--ok); }
+
+/* Per-bill extras in Settings: auto-draft switch + which account pays it */
+.edit-card-extra { margin-top: 8px; }
+.switch { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--muted); }
+.switch input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--ok); }
+
 /* The Plan tab's math panel. */
 .summary { background: var(--ink); border-color: var(--ink); color: var(--ink-contrast); }
 .summary .summary-big { font-size: 32px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }

@@ -182,6 +182,10 @@ function migrate(db) {
   // date — bills are paid the moment a check lands, most on a 28-day rhythm,
   // so each one belongs to alternating paydays: 0 = this cycle, 1 = the next.
   addColumnIfMissing(db, 'categories', 'due_payday', 'INTEGER');
+  // Auto-drafts pay themselves: on their due day the app ticks them off.
+  addColumnIfMissing(db, 'categories', 'auto_pay', 'INTEGER NOT NULL DEFAULT 0');
+  // Which account a bill is paid from (NULL = the household default).
+  addColumnIfMissing(db, 'categories', 'account_id', 'INTEGER REFERENCES accounts(id)');
   // Offline Quick Add: a phone-generated id so an entry queued without signal
   // is inserted exactly once, no matter how many times the sync retries.
   addColumnIfMissing(db, 'transactions', 'client_id', 'TEXT');
@@ -304,6 +308,46 @@ function applyDataMigrations(db) {
           const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = 'variable'`).get().n;
           db.prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order) VALUES (?, 'variable', ?, ?)`)
             .run(name, Math.round(dollars * 100), order);
+        }
+      }
+      if (migration.accounts) {
+        for (const name of migration.accounts) {
+          const exists = db.prepare(`SELECT id FROM accounts WHERE lower(name) = lower(?)`).get(name);
+          if (exists) continue;
+          const now = new Date().toISOString();
+          const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM accounts`).get().n;
+          db.prepare(`
+            INSERT INTO accounts (name, sort_order, anchor_cents, anchor_date, anchor_at, created_at)
+            VALUES (?, ?, 0, date('now'), ?, ?)
+          `).run(name, order, now, now);
+        }
+      }
+      if (migration.billAccounts) {
+        for (const [bill, accountName] of Object.entries(migration.billAccounts)) {
+          const acc = db.prepare(`SELECT id FROM accounts WHERE lower(name) = lower(?)`).get(accountName);
+          if (!acc) continue;
+          db.prepare(`UPDATE categories SET account_id = ? WHERE name = ? AND archived = 0`).run(acc.id, bill);
+        }
+      }
+      if (migration.archiveCategories) {
+        for (const name of migration.archiveCategories) {
+          db.prepare(`UPDATE categories SET archived = 1 WHERE name = ?`).run(name);
+        }
+      }
+      if (migration.autoPay) {
+        for (const name of migration.autoPay) {
+          db.prepare(`UPDATE categories SET auto_pay = 1 WHERE name = ? AND archived = 0`).run(name);
+        }
+      }
+      if (migration.amounts) {
+        for (const [name, dollars] of Object.entries(migration.amounts)) {
+          db.prepare(`UPDATE categories SET budget_cents = ? WHERE name = ? AND archived = 0`)
+            .run(Math.round(dollars * 100), name);
+        }
+      }
+      if (migration.startsMonths) {
+        for (const [name, month] of Object.entries(migration.startsMonths)) {
+          db.prepare(`UPDATE categories SET starts_month = ? WHERE name = ? AND archived = 0`).run(month, name);
         }
       }
       if (migration.paydayDueDates) {
