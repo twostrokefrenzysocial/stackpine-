@@ -171,6 +171,24 @@ function createApi(db) {
     return Math.max(1, paydaysInMonth(month).length);
   }
 
+  /**
+   * The family pays bills when a check lands, not on the due date, and the
+   * big ones run every 28 days — so each payday alternates between two sets
+   * of bills. Parity 0/1 is measured in fortnights from the earliest payday
+   * anchor, so it stays stable month after month.
+   */
+  function paydayParity(date) {
+    const anchors = q.incomeSources.all().map((s) => s.next_date).filter(Boolean).sort();
+    if (!anchors.length) return 0;
+    const days = Math.round((Date.parse(date + 'T12:00:00Z') - Date.parse(anchors[0] + 'T12:00:00Z')) / 86400000);
+    return ((Math.round(days / 14) % 2) + 2) % 2;
+  }
+
+  /** This month's paydays, each tagged with which bill group it pays. */
+  function paydaysWithParity(month) {
+    return paydaysInMonth(month).map((d) => ({ date: d, parity: paydayParity(d) }));
+  }
+
   /** A category's monthly budget in cents, honouring payday and percent bills. */
   function monthlyBudgetCents(c, month) {
     // Percent-of-income bills (the tithe) follow expected net income.
@@ -301,7 +319,8 @@ function createApi(db) {
     const dueDays = new Map(live.filter((c) => c.due_day).map((c) => [c.id, c.due_day]));
     const liveById = new Map(live.map((c) => [c.id, c]));
     const isCurrent = month === currentMonth();
-    const monthPaydays = paydaysInMonth(month);
+    const monthPaydayRows = paydaysWithParity(month);
+    const monthPaydays = monthPaydayRows.map((p) => p.date);
     const receivedSoFarCents = db
       .prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries WHERE month = ?`)
       .get(month).n;
@@ -325,7 +344,14 @@ function createApi(db) {
 
       // Due-date state, only meaningful for an unpaid bill in the live month.
       const dueDay = dueDays.get(row.category_id) ?? null;
+      const duePayday = liveCat?.due_payday ?? null;
       let dueDate = dueDay ? dueDateIn(month, dueDay) : null;
+      // Bills the family pays by hand land on their paycheck, not a calendar
+      // day: pick this month's payday belonging to that bill's group.
+      if (duePayday !== null) {
+        const mine = monthPaydayRows.filter((p) => p.parity === duePayday).map((p) => p.date);
+        dueDate = mine.find((dt) => dt >= today()) ?? mine[0] ?? null;
+      }
       if (isPayday) dueDate = monthPaydays[Math.min(paidCount, monthPaydays.length - 1)] ?? null;
       let dueIn = null;
       let dueStatus = null;
@@ -353,6 +379,7 @@ function createApi(db) {
         expected: isPayday ? expected : null,
         paidCount,
         dueDay,
+        duePayday,
         dueDate,
         dueIn,
         dueStatus,
@@ -374,9 +401,11 @@ function createApi(db) {
     categories.sort((a, b) => {
       if (a.kind !== b.kind) return a.kind === 'fixed' ? -1 : 1;
       if (a.kind !== 'fixed') return 0;
-      if (a.dueDay && b.dueDay) return a.dueDay - b.dueDay;
-      if (a.dueDay) return -1;
-      if (b.dueDay) return 1;
+      // Whatever gets paid next comes first, whether it's pinned to a payday
+      // or a calendar day; undated bills sink to the bottom.
+      if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
       return 0;
     });
 
@@ -576,6 +605,7 @@ function createApi(db) {
       },
       bank: bankState(),
       transfers,
+      paydays: monthPaydayRows,
       categories,
       upcoming,
       weeks,
@@ -1032,9 +1062,22 @@ function createApi(db) {
     const startsRaw = readStartsMonth(body.starts_month);
     const startsMonth = startsRaw === undefined ? category.starts_month : startsRaw;
     const dueRaw = readDueDay(body.due_day);
-    const dueDay = dueRaw === undefined ? category.due_day : dueRaw;
+    let dueDay = dueRaw === undefined ? category.due_day : dueRaw;
     const cadenceRaw = readBillCadence(body.cadence);
     const cadence = cadenceRaw === undefined ? category.cadence : cadenceRaw;
+    // A bill is scheduled either by paycheck or by calendar day, never both.
+    let duePayday = category.due_payday;
+    if (body.due_payday !== undefined) {
+      if (body.due_payday === null || body.due_payday === '') duePayday = null;
+      else {
+        const p3 = Number(body.due_payday);
+        if (p3 !== 0 && p3 !== 1) throw bad('Pick which paycheck pays this bill.');
+        duePayday = p3;
+      }
+      if (duePayday !== null) dueDay = null;
+    } else if (dueRaw !== undefined && dueRaw !== null) {
+      duePayday = null;
+    }
     let percent = category.percent_income;
     if (body.percent_income !== undefined) {
       if (body.percent_income === null || body.percent_income === '') percent = null;
@@ -1049,9 +1092,9 @@ function createApi(db) {
     if (clash) throw bad('A category with that name already exists.');
 
     db.prepare(`
-      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?, due_payday = ?
       WHERE id = ?
-    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, category.id);
+    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, duePayday, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });

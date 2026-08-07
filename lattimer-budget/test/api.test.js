@@ -499,15 +499,17 @@ test('a due day that overflows a short month lands on its last day', () => {
 
 test('setting a due day shows up on the bill', async () => {
   const s = await state();
-  const bill = byName(s.categories, 'Water/sewer');
+  // Settlement fund is the one seeded bill on no schedule at all.
+  const bill = byName(s.categories, 'Settlement fund');
   assert.equal(bill.dueDay, null);
+  assert.equal(bill.duePayday, null);
   assert.equal(bill.dueStatus, null);
 
   const dayToday = Number(s.today.slice(8, 10));
   const res = await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: dayToday } });
   assert.equal(res.status, 200);
 
-  const due = byName(res.body.state.categories, 'Water/sewer');
+  const due = byName(res.body.state.categories, 'Settlement fund');
   assert.equal(due.dueDay, dayToday);
   assert.equal(due.dueDate, s.today);
   assert.equal(due.dueIn, 0);
@@ -516,40 +518,62 @@ test('setting a due day shows up on the bill', async () => {
 
 test('paying a bill clears its due warning', async () => {
   const s = await state();
-  const bill = byName(s.categories, 'Water/sewer');
+  const bill = byName(s.categories, 'Settlement fund');
   assert.equal(bill.dueStatus, 'today');
 
   const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
-  const after = byName(paid.body.state.categories, 'Water/sewer');
+  const after = byName(paid.body.state.categories, 'Settlement fund');
   assert.equal(after.paid, true);
   assert.equal(after.dueStatus, null, 'a paid bill is not still nagging');
 
   await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: null } });
 });
 
-test('bills with due dates sort to the top, earliest first', async () => {
+test('bills are ordered by whatever gets paid next', async () => {
   const s = await state();
+  const fixed = s.categories.filter((c) => c.kind === 'fixed');
+  const dated = fixed.filter((c) => c.dueDate);
+  const undated = fixed.filter((c) => !c.dueDate);
+
+  // every dated bill precedes every undated one
+  const lastDated = fixed.findIndex((c) => c === dated[dated.length - 1]);
+  const firstUndated = undated.length ? fixed.indexOf(undated[0]) : Infinity;
+  assert.ok(lastDated < firstUndated, 'undated bills follow the dated ones');
+
+  // and the dated ones run earliest-first
+  const dates = dated.map((c) => c.dueDate);
+  assert.deepEqual(dates, dates.slice().sort(), 'due dates ascend');
+});
+
+test('bills the family pays by hand ride their paycheck, not a calendar day', async () => {
+  const s = await state();
+  assert.ok(s.paydays.length, 'the month knows its paydays');
+  // The seeded schedule, read out of real statements: two alternating groups.
   const water = byName(s.categories, 'Water/sewer');
   const electric = byName(s.categories, 'Electric');
-  const gas = byName(s.categories, 'Natural gas');
+  assert.equal(water.duePayday, 0);
+  assert.equal(water.dueDay, null, 'a payday bill has no calendar day');
+  assert.equal(electric.duePayday, 1);
 
-  await call(`/api/categories/${water.id}`, { method: 'PUT', body: { due_day: 20 } });
-  await call(`/api/categories/${electric.id}`, { method: 'PUT', body: { due_day: 5 } });
-  const res = await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: 12 } });
+  const parityOf = (iso) => (s.paydays.find((p) => p.date === iso) || {}).parity;
+  assert.equal(parityOf(water.dueDate), 0, 'due on one of its own paydays');
+  assert.equal(parityOf(electric.dueDate), 1);
+  assert.notEqual(water.dueDate, electric.dueDate, 'the two groups pay on different checks');
 
-  const fixed = res.body.state.categories.filter((c) => c.kind === 'fixed');
-  assert.deepEqual(
-    fixed.slice(0, 3).map((c) => c.name),
-    ['Electric', 'Natural gas', 'Water/sewer']
-  );
-  assert.equal(fixed[3].dueDay, null, 'undated bills follow the dated ones');
+  // switching a bill to a calendar day drops its paycheck slot, and back again
+  const back = await call(`/api/categories/${water.id}`, { method: 'PUT', body: { due_day: 15 } });
+  const cal = byName(back.body.state.categories, 'Water/sewer');
+  assert.equal(cal.duePayday, null);
+  assert.equal(cal.dueDay, 15);
 
-  // clear them again
-  for (const c of [water, electric, gas]) {
-    await call(`/api/categories/${c.id}`, { method: 'PUT', body: { due_day: null } });
-  }
-  const cleared = await state();
-  assert.equal(byName(cleared.categories, 'Electric').dueDay, null);
+  const restored = await call(`/api/categories/${water.id}`, { method: 'PUT', body: { due_payday: 0 } });
+  const again = byName(restored.body.state.categories, 'Water/sewer');
+  assert.equal(again.duePayday, 0);
+  assert.equal(again.dueDay, null);
+
+  const nope = await call(`/api/categories/${water.id}`, { method: 'PUT', body: { due_payday: 7 } });
+  assert.equal(nope.status, 400);
 });
 
 test('a nonsense due day is rejected', async () => {
@@ -1453,12 +1477,19 @@ test('push: vapid key, subscribe, unsubscribe', async () => {
   assert.equal(bye.status, 200);
 });
 
-test('the due-bill digest only counts unpaid dated bills', async () => {
+test('the due-bill digest counts unpaid bills, by paycheck or calendar day', async () => {
   const { computeDueDigest } = require('../src/push');
   const s = await state();
-  const gas = byName(s.categories, 'Natural gas');
-  assert.equal(computeDueDigest(db), null, 'no due days set, nothing to say');
 
+  // A bill on no schedule never nags.
+  const fund = byName(s.categories, 'Settlement fund');
+  assert.equal(fund.dueDay, null);
+  assert.equal(fund.duePayday, null);
+  const before = computeDueDigest(db);
+  assert.ok(!before || !before.body.includes('Settlement fund'), 'an unscheduled bill stays quiet');
+
+  // A calendar bill due today makes the digest, and paying it clears it.
+  const gas = byName(s.categories, 'Natural gas');
   const dayToday = Number(s.today.slice(8, 10));
   await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: dayToday } });
   const digest = computeDueDigest(db);
@@ -1466,10 +1497,11 @@ test('the due-bill digest only counts unpaid dated bills', async () => {
   assert.match(digest.body, /Natural gas/);
 
   await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: true } });
-  assert.equal(computeDueDigest(db), null, 'paying it clears the digest');
+  const after = computeDueDigest(db);
+  assert.ok(!after || !after.body.includes('Natural gas'), 'paying it clears it from the digest');
 
   await call(`/api/bills/${gas.id}/pay`, { method: 'POST', body: { paid: false } });
-  await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_day: null } });
+  await call(`/api/categories/${gas.id}`, { method: 'PUT', body: { due_payday: 1 } });
 });
 
 test('the review counts pending suggestions for its accept button', async (t) => {
@@ -1651,7 +1683,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v16'],
+    ['/sw.js', 'lfb-v17'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {

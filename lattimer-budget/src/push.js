@@ -5,7 +5,7 @@
 // there is nothing to configure.
 
 const webpush = require('web-push');
-const { today, currentMonth, previousMonth, TZ, dueDateIn, daysUntil, toDollars, nextOccurrence } = require('./util');
+const { today, currentMonth, previousMonth, TZ, dueDateIn, daysUntil, toDollars, nextOccurrence, addDays: addDaysIso } = require('./util');
 const { runBackup } = require('./backup');
 
 function ensureVapid(db) {
@@ -48,9 +48,10 @@ async function sendToAll(db, payload) {
 function computeDueDigest(db) {
   const month = currentMonth();
   const bills = db.prepare(`
-    SELECT c.id, c.name, c.due_day, c.budget_cents
+    SELECT c.id, c.name, c.due_day, c.due_payday, c.budget_cents
     FROM categories c
-    WHERE c.kind = 'fixed' AND c.archived = 0 AND c.due_day IS NOT NULL
+    WHERE c.kind = 'fixed' AND c.archived = 0
+      AND (c.due_day IS NOT NULL OR c.due_payday IS NOT NULL)
       AND (c.starts_month IS NULL OR c.starts_month <= ?)
   `).all(month);
   const paid = new Set(
@@ -58,11 +59,34 @@ function computeDueDigest(db) {
       .all(month).map((r) => r.category_id)
   );
 
+  // Bills the family pays by hand ride their paycheck, not a calendar day.
+  const anchors = db.prepare(`SELECT next_date, cadence FROM income_sources WHERE next_date IS NOT NULL`).all();
+  const firstAnchor = anchors.map((s) => s.next_date).sort()[0] || null;
+  const parityOf = (iso) => firstAnchor
+    ? ((Math.round((Date.parse(iso + 'T12:00:00Z') - Date.parse(firstAnchor + 'T12:00:00Z')) / 86400000 / 14) % 2) + 2) % 2
+    : 0;
+  const upcomingPaydays = [];
+  for (const s of anchors) {
+    let d = nextOccurrence(s.next_date, s.cadence || 'biweekly', today());
+    for (let i = 0; d && i < 3; i++) {
+      upcomingPaydays.push(d);
+      d = nextOccurrence(s.next_date, s.cadence || 'biweekly', addDaysIso(d, 1));
+    }
+  }
+  upcomingPaydays.sort();
+
   const overdue = [];
   const dueSoon = [];
   for (const bill of bills) {
     if (paid.has(bill.id)) continue;
-    const days = daysUntil(dueDateIn(month, bill.due_day));
+    let dueOn;
+    if (bill.due_payday !== null && bill.due_payday !== undefined) {
+      dueOn = upcomingPaydays.find((d) => parityOf(d) === bill.due_payday);
+      if (!dueOn) continue;
+    } else {
+      dueOn = dueDateIn(month, bill.due_day);
+    }
+    const days = daysUntil(dueOn);
     if (days < 0) overdue.push(bill);
     else if (days <= 2) dueSoon.push(bill);
   }

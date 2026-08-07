@@ -102,6 +102,43 @@ const DATA_MIGRATIONS = [
     toFixed: ['Apple services', 'Disney+', 'Pestie', 'Fabletics', 'Kindle Unlimited', 'Bitwarden', 'Ring'],
   },
   {
+    // Read out of seven months of real statements: the family pays bills the
+    // moment a paycheck lands rather than waiting for the due date, so the
+    // big ones run on a 28-day rhythm split across alternating paydays.
+    // 0 = paid with the Aug 7 check (and every 4 weeks after);
+    // 1 = paid with the Aug 21 check.
+    key: '2026-08-payday-due-dates',
+    paydayDueDates: {
+      // Group paid Mondays after the Jul 10 / Aug 7 style checks
+      'Discover': 0,
+      'Apple Card': 0,
+      "Miriam's lease": 0,
+      'Water/sewer': 0,
+      "Liza's cheerleading": 0,
+      'Truck (Credit Acceptance)': 0,
+      "Miriam's student loans": 0,
+      // Group paid Mondays after the Jul 24 / Aug 21 style checks
+      'Mortgage (Rocket)': 1,
+      'Electric': 1,
+      'Natural gas': 1,
+      'AT&T phones': 1,
+      'Dirt bike (Lendmark)': 1,
+    },
+    // Auto-drafts and card charges keep their own calendar day — nobody
+    // pays these by hand, they just hit on the same date each month.
+    dueDays: {
+      'Child care (Kids Country)': 29,
+      'GEICO': 19,
+      'Disney+': 20,
+      'Bitwarden': 14,
+      'Ring': 27,
+      'Pestie': 1,
+      'Apple services': 12,
+      'Fabletics': 9,
+      'Kindle Unlimited': 18,
+    },
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",

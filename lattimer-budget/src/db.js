@@ -178,6 +178,10 @@ function migrate(db) {
   addColumnIfMissing(db, 'categories', 'cadence', 'TEXT');
   // Percent-of-income bills: tithe is 10% of net income, not a fixed number.
   addColumnIfMissing(db, 'categories', 'percent_income', 'INTEGER');
+  // Which paycheck a bill gets paid with. The family doesn't wait for the due
+  // date — bills are paid the moment a check lands, most on a 28-day rhythm,
+  // so each one belongs to alternating paydays: 0 = this cycle, 1 = the next.
+  addColumnIfMissing(db, 'categories', 'due_payday', 'INTEGER');
   // Offline Quick Add: a phone-generated id so an entry queued without signal
   // is inserted exactly once, no matter how many times the sync retries.
   addColumnIfMissing(db, 'transactions', 'client_id', 'TEXT');
@@ -300,6 +304,18 @@ function applyDataMigrations(db) {
           const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories WHERE kind = 'variable'`).get().n;
           db.prepare(`INSERT INTO categories (name, kind, budget_cents, sort_order) VALUES (?, 'variable', ?, ?)`)
             .run(name, Math.round(dollars * 100), order);
+        }
+      }
+      if (migration.paydayDueDates) {
+        for (const [name, parity] of Object.entries(migration.paydayDueDates)) {
+          db.prepare(`UPDATE categories SET due_payday = ?, due_day = NULL WHERE name = ? AND archived = 0`)
+            .run(parity, name);
+        }
+      }
+      if (migration.dueDays) {
+        for (const [name, day] of Object.entries(migration.dueDays)) {
+          db.prepare(`UPDATE categories SET due_day = ?, due_payday = NULL WHERE name = ? AND archived = 0`)
+            .run(day, name);
         }
       }
       if (migration.toFixed) {

@@ -360,6 +360,18 @@ select.input {
 .bank-acc b { font-weight: 650; font-variant-numeric: tabular-nums; }
 .bank-acc:active { opacity: .7; }
 
+/* Bills grouped by which paycheck pays them */
+.pay-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 11px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.pay-head:first-child { border-top: 0; padding-top: 4px; }
+
 /* The Plan tab's math panel. */
 .summary { background: var(--ink); border-color: var(--ink); color: var(--ink-contrast); }
 .summary .summary-big { font-size: 32px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }

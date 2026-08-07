@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 16;
+  var APP_VERSION = 17;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -649,7 +649,35 @@
       html += '<div class="card empty">No fixed bills yet. Add them in Settings.</div>';
     } else {
       html += '<section class="card card-tight">';
-      unpaidBills.forEach(function (c) { html += billChecklistRow(c, d); });
+      // The family pays bills the day a check lands, so the list is grouped
+      // by paycheck: this Friday's batch first, then the next one.
+      var groups = [];
+      var byDate = {};
+      unpaidBills.forEach(function (c) {
+        // Bills tied to a paycheck (and the per-payday tithe) group by the
+        // check that pays them; auto-drafts and card charges group together.
+        var onPayday = (c.duePayday !== null && c.duePayday !== undefined) || c.cadence === 'payday';
+        var key = onPayday && c.dueDate ? c.dueDate : c.dueDate ? 'auto' : 'none';
+        if (!byDate[key]) { byDate[key] = []; groups.push(key); }
+        byDate[key].push(c);
+      });
+      var rank = function (g) { return g === 'none' ? 2 : g === 'auto' ? 1 : 0; };
+      groups.sort(function (a, b) {
+        if (rank(a) !== rank(b)) return rank(a) - rank(b);
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
+      var multiGroup = groups.length > 1;
+      groups.forEach(function (key) {
+        if (multiGroup) {
+          var total = byDate[key].reduce(function (s, c) { return s + c.budget; }, 0);
+          var head = key === 'none' ? 'No date set'
+            : key === 'auto' ? 'Comes out on its own'
+            : 'Pay with ' + esc(payLabel(key, d));
+          html += '<div class="pay-head"><span>' + head + '</span>' +
+            '<span>' + money(total, { cents: false }) + '</span></div>';
+        }
+        byDate[key].forEach(function (c) { html += billChecklistRow(c, d); });
+      });
       if (!unpaidBills.length) {
         html += '<div class="empty" style="padding:16px">Every bill is paid this month.</div>';
       }
@@ -672,6 +700,15 @@
     }
 
     return html;
+  }
+
+  /** How a paycheck date reads in a group heading. */
+  function payLabel(iso, d) {
+    if (iso === d.today) return "today's check";
+    var days = Math.round((Date.parse(iso + 'T12:00:00Z') - Date.parse(d.today + 'T12:00:00Z')) / 86400000);
+    if (days < 0) return 'the ' + monthDay(iso) + ' check';
+    if (days <= 7) return "this Friday's check (" + monthDay(iso) + ')';
+    return 'the ' + monthDay(iso) + ' check';
   }
 
   /** A spending category row that opens to show this month's purchases in it. */
@@ -1432,10 +1469,20 @@
       '<option value="monthly"' + (isPayday ? '' : ' selected') + '>monthly</option>' +
       '<option value="payday"' + (isPayday ? ' selected' : '') + '>every payday</option>' +
       '</select></label>' +
-      '<label class="mini"><span>Due day</span>' +
-      '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="31" placeholder="' + (isPayday ? 'auto' : '—') + '" value="' +
-      (c.dueDay == null ? '' : c.dueDay) + '"' + (isPayday ? ' disabled' : '') +
-      ' data-act="due-day" data-id="' + c.id + '" aria-label="Day of month ' + esc(c.name) + ' is due"></label>' +
+      '<label class="mini"><span>Paid when</span>' +
+      '<select class="input" data-act="bill-when" data-id="' + c.id + '"' + (isPayday ? ' disabled' : '') +
+      ' aria-label="When ' + esc(c.name) + ' gets paid">' +
+      '<option value="p0"' + (c.duePayday === 0 ? ' selected' : '') + '>1st paycheck</option>' +
+      '<option value="p1"' + (c.duePayday === 1 ? ' selected' : '') + '>2nd paycheck</option>' +
+      '<option value="day"' + (c.dueDay != null ? ' selected' : '') + '>day of month</option>' +
+      '<option value="none"' + (c.duePayday == null && c.dueDay == null ? ' selected' : '') + '>no date</option>' +
+      '</select></label>' +
+      (c.dueDay != null || (c.duePayday == null && !isPayday)
+        ? '<label class="mini"><span>Day</span>' +
+          '<input class="input" type="number" inputmode="numeric" step="1" min="1" max="31" placeholder="—" value="' +
+          (c.dueDay == null ? '' : c.dueDay) + '"' +
+          ' data-act="due-day" data-id="' + c.id + '" aria-label="Day of month ' + esc(c.name) + ' is due"></label>'
+        : '') +
       '<button type="button" class="icon-del" data-act="del-category" data-id="' + c.id +
       '" aria-label="Remove ' + esc(c.name) + '">✕</button>' +
       '</div></div>';
@@ -2642,6 +2689,17 @@
       var pctVal = Math.round(Number(node.value));
       if (!(pctVal >= 1 && pctVal <= 100)) { toast('Percent must be 1–100', 'error'); render(); return; }
       mutate('/categories/' + id, { method: 'PUT', body: { percent_income: pctVal } }, 'Now ' + pctVal + '% of income');
+    } else if (act === 'bill-when') {
+      var v = node.value;
+      if (v === 'p0' || v === 'p1') {
+        mutate('/categories/' + id, { method: 'PUT', body: { due_payday: v === 'p0' ? 0 : 1 } },
+          'Paid with the ' + (v === 'p0' ? '1st' : '2nd') + ' paycheck');
+      } else if (v === 'none') {
+        mutate('/categories/' + id, { method: 'PUT', body: { due_payday: null, due_day: null } }, 'No due date');
+      } else {
+        // switch to calendar mode; the day field appears for them to fill in
+        mutate('/categories/' + id, { method: 'PUT', body: { due_payday: null, due_day: 1 } }, 'Set the day of the month');
+      }
     } else if (act === 'bill-cadence') {
       mutate('/categories/' + id, { method: 'PUT', body: { cadence: node.value } },
         node.value === 'payday' ? 'Now repeats every payday' : 'Now monthly');
