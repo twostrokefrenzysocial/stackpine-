@@ -644,6 +644,11 @@ function createApi(db) {
       bank: bankState(),
       transfers,
       paydays: monthPaydayRows,
+      // Bills that begin this month — the usual reason a month is suddenly
+      // tighter than the one before it.
+      newThisMonth: live
+        .filter((c) => c.starts_month === month)
+        .map((c) => ({ name: c.name, budget: toDollars(monthlyBudgetCents(c, month)) })),
       categories,
       upcoming,
       weeks,
@@ -1779,8 +1784,10 @@ function createApi(db) {
    * scaling lifestyle categories down first, essentials last — until
    * bills + everyday + savings goal ≤ income.
    */
-  function computeSuggestions() {
-    const cur = currentMonth();
+  function computeSuggestions(month) {
+    // Plans whichever month is being looked at, so a shortfall that starts in
+    // a future month can be solved before it arrives.
+    const cur = isValidMonth(month) ? month : currentMonth();
     const pastMonths = q.months.all()
       .map((r) => r.month)
       .filter((m) => m < cur)
@@ -1873,7 +1880,7 @@ function createApi(db) {
   }
 
   router.get('/budget/suggestions', auth, (req, res) => {
-    res.json(computeSuggestions());
+    res.json(computeSuggestions(req.query.month));
   });
 
   // ---------------------------------------------------------------- Ramsey coach

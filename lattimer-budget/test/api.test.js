@@ -83,8 +83,8 @@ test('seed data loads once with the expected shape', async () => {
   const s = await state();
   // Active fixed bills: the seed list plus the split-out subscriptions, less
   // Bitwarden (cancelled) and the truck + dirt bike (new loans, start Sept).
-  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 19);
-  assert.equal(s.upcoming.filter((c) => c.kind === 'fixed').length, 3, 'the two new loans and the student loans wait for September');
+  assert.equal(s.categories.filter((c) => c.kind === 'fixed').length, 20);
+  assert.equal(s.upcoming.filter((c) => c.kind === 'fixed').length, 1, "only Miriam's student loans wait for September");
   assert.equal(s.categories.filter((c) => c.kind === 'variable').length, 7);
   assert.equal(s.income.total, 7638);
   assert.equal(s.totals.income, 7638);
@@ -255,9 +255,8 @@ test('a past month renders read-only with its own snapshot', async (t) => {
   assert.equal(res.body.readOnly, true);
   assert.equal(res.body.month, monthOf(-1));
   assert.equal(res.body.transactions.length, 0);
-  // Last month's snapshot: active categories, minus the bills that had not
-  // started yet (the two new loans and the student loans).
-  assert.equal(res.body.categories.length, 26);
+  // Last month's snapshot: the categories that were active back then.
+  assert.equal(res.body.categories.length, 25);
 });
 
 // ---------------------------------------------------------------- back-dating grace
@@ -500,19 +499,26 @@ test('a due day that overflows a short month lands on its last day', () => {
   assert.equal(dueDateIn('2026-08', 0), '2026-08-01');  // clamped up
 });
 
+let scratchBillId = 0;
+
 test('setting a due day shows up on the bill', async () => {
   const s = await state();
-  // Settlement fund is the one seeded bill on no schedule at all.
-  const bill = byName(s.categories, 'Settlement fund');
+  // A fresh bill starts on no schedule at all.
+  const made = await call('/api/categories', {
+    method: 'POST', body: { name: 'Scratch bill', kind: 'fixed', budget: 60 },
+  });
+  assert.equal(made.status, 201);
+  scratchBillId = made.body.id;
+  const bill = byName(made.body.state.categories, 'Scratch bill');
   assert.equal(bill.dueDay, null);
   assert.equal(bill.duePayday, null);
   assert.equal(bill.dueStatus, null);
 
   const dayToday = Number(s.today.slice(8, 10));
-  const res = await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: dayToday } });
+  const res = await call(`/api/categories/${scratchBillId}`, { method: 'PUT', body: { due_day: dayToday } });
   assert.equal(res.status, 200);
 
-  const due = byName(res.body.state.categories, 'Settlement fund');
+  const due = byName(res.body.state.categories, 'Scratch bill');
   assert.equal(due.dueDay, dayToday);
   assert.equal(due.dueDate, s.today);
   assert.equal(due.dueIn, 0);
@@ -521,16 +527,16 @@ test('setting a due day shows up on the bill', async () => {
 
 test('paying a bill clears its due warning', async () => {
   const s = await state();
-  const bill = byName(s.categories, 'Settlement fund');
+  const bill = byName(s.categories, 'Scratch bill');
   assert.equal(bill.dueStatus, 'today');
 
   const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
-  const after = byName(paid.body.state.categories, 'Settlement fund');
+  const after = byName(paid.body.state.categories, 'Scratch bill');
   assert.equal(after.paid, true);
   assert.equal(after.dueStatus, null, 'a paid bill is not still nagging');
 
   await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
-  await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { due_day: null } });
+  await call(`/api/categories/${bill.id}`, { method: 'DELETE' });
 });
 
 test('bills are ordered by whatever gets paid next', async () => {
@@ -966,17 +972,19 @@ test('cleanup: remove the logged paycheck', async () => {
 
 test('the settlement fund tracks bills, deposits and settlements', async () => {
   const s = await state();
-  const fundBill = byName(s.categories, 'Settlement fund');
-  await call(`/api/bills/${fundBill.id}/pay`, { method: 'POST', body: { paid: true } });
+  // The settlement-fund bill was retired until the family knows what they
+  // owe, so the fund now grows by deposit; past contributions still count.
+  assert.equal(byName(s.categories, 'Settlement fund'), undefined);
+  const contributed = s.fund.contributed;
 
   const deposit = await call('/api/fund/deposits', {
     method: 'POST',
-    body: { amount: 500, note: 'Third paycheck' },
+    body: { amount: 650 - contributed, note: 'Third paycheck' },
   });
   assert.equal(deposit.status, 201);
-  assert.equal(deposit.body.state.fund.contributed, 150);
-  assert.equal(deposit.body.state.fund.deposited, 500);
+  assert.equal(deposit.body.state.fund.contributed, contributed);
   assert.equal(deposit.body.state.fund.balance, 650);
+  assert.equal(deposit.body.state.fund.deposited, 650 - contributed);
 
   const lvnv = deposit.body.state.debts[0];
   assert.equal(lvnv.coverage, 100); // 650 covers the 500 target
@@ -996,7 +1004,7 @@ test('the settlement fund tracks bills, deposits and settlements', async () => {
   assert.equal(reopened.body.state.debts.find((d) => d.id === lvnv.id).settled, false);
 
   const removedDeposit = await call(`/api/fund/deposits/${deposit.body.id}`, { method: 'DELETE' });
-  assert.equal(removedDeposit.body.state.fund.balance, 150);
+  assert.equal(removedDeposit.body.state.fund.balance, contributed, 'removing the deposit leaves past contributions');
 });
 
 test('debt details can be edited', async () => {
@@ -1487,11 +1495,12 @@ test('the due-bill digest counts unpaid bills, by paycheck or calendar day', asy
   const s = await state();
 
   // A bill on no schedule never nags.
-  const fund = byName(s.categories, 'Settlement fund');
-  assert.equal(fund.dueDay, null);
-  assert.equal(fund.duePayday, null);
+  const made = await call('/api/categories', {
+    method: 'POST', body: { name: 'Quiet bill', kind: 'fixed', budget: 20 },
+  });
   const before = computeDueDigest(db);
-  assert.ok(!before || !before.body.includes('Settlement fund'), 'an unscheduled bill stays quiet');
+  assert.ok(!before || !before.body.includes('Quiet bill'), 'an unscheduled bill stays quiet');
+  await call(`/api/categories/${made.body.id}`, { method: 'DELETE' });
 
   // A calendar bill due today makes the digest, and paying it clears it.
   const gas = byName(s.categories, 'Natural gas');
@@ -1688,7 +1697,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v18'],
+    ['/sw.js', 'lfb-v19'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1950,17 +1959,16 @@ test('a bill remembers which account pays it', async () => {
   await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: false } });
 });
 
-test('the new loans wait for September and come from the business account', async () => {
+test('the new loans are live now and come from the business account', async () => {
   const s = await state();
   const biz = s.bank.accounts.find((a) => a.name === 'Two Stroke Frenzy');
   for (const name of ['Truck (Credit Acceptance)', 'Dirt bike (Lendmark)']) {
-    assert.equal(byName(s.categories, name), undefined, name + ' is not on this month yet');
-    const up = (s.upcoming || []).find((c) => c.name === name);
-    assert.ok(up, name + ' is listed as upcoming');
-    assert.equal(up.startsMonth, '2026-09');
+    const bill = byName(s.categories, name);
+    assert.ok(bill, name + ' is payable now — August was paid out of pocket');
+    assert.equal(bill.accountId, biz.id, name + ' is paid from the business account');
   }
-  const truck = db.prepare(`SELECT account_id FROM categories WHERE name = 'Truck (Credit Acceptance)'`).get();
-  assert.equal(truck.account_id, biz.id);
+  // Only the student loans are still waiting.
+  assert.deepEqual((s.upcoming || []).map((c) => c.name), ["Miriam's student loans"]);
 });
 
 test('a backup snapshot is written, listed, and is a real database', async () => {

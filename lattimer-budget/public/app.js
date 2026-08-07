@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 18;
+  var APP_VERSION = 19;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -477,7 +477,11 @@
     el('month-label').textContent = monthLabel(d.month);
 
     var banner = el('readonly-banner');
-    if (d.readOnly) {
+    if (d.month > d.currentMonth) {
+      banner.hidden = false;
+      banner.textContent = 'Planning ahead — ' + monthLabel(d.month) + ' has not started yet';
+      banner.classList.remove('grace-banner');
+    } else if (d.readOnly) {
       banner.hidden = false;
       banner.textContent = 'Past month — view only';
       banner.classList.remove('grace-banner');
@@ -493,7 +497,9 @@
       banner.classList.remove('grace-banner');
     }
 
-    el('month-next').disabled = d.month >= d.currentMonth;
+    // One month ahead stays reachable so the Plan tab can actually plan the
+    // month a scheduled bill lands in.
+    el('month-next').disabled = d.month >= shiftMonth(d.currentMonth, 1);
     var earliest = d.months.length ? d.months[d.months.length - 1] : d.currentMonth;
     el('month-prev').disabled = d.month <= earliest;
     el('fab').hidden = d.readOnly;
@@ -1121,6 +1127,18 @@
         ' more than comes in. Apply the plan below to fix it.</div>';
     }
 
+    // Why this month is tighter than the last one.
+    if (d.newThisMonth && d.newThisMonth.length) {
+      var newTotal = d.newThisMonth.reduce(function (s, c) { return s + c.budget; }, 0);
+      html += '<section class="card"><div class="section-head-inline">Starting this month</div>' +
+        '<p class="muted small" style="margin:2px 0 8px">' + money(newTotal, { cents: false }) +
+        ' of new bills begin in ' + esc(monthLabel(d.month)) + ' — that is what changed.</p>' +
+        d.newThisMonth.map(function (c) {
+          return '<div class="row small" style="padding:4px 0"><span>' + esc(c.name) + '</span>' +
+            '<b>' + money(c.budget, { cents: false }) + '</b></div>';
+        }).join('') + '</section>';
+    }
+
     // The one plan that matters: built from real spending, never over income.
     html += '<div class="section-title"><span>Your plan, from real spending</span></div>' +
       '<section class="card" id="plan-suggest"><p class="muted small" style="margin:0">Reading the last few months…</p></section>';
@@ -1191,7 +1209,7 @@
   var PLAN = { list: [], totals: null };
 
   function loadPlanSuggest() {
-    api('/budget/suggestions').then(function (out) {
+    api('/budget/suggestions?month=' + encodeURIComponent(S.month || '')).then(function (out) {
       var box = el('plan-suggest');
       if (!box) return;
       PLAN.list = out.suggestions;
@@ -2187,7 +2205,7 @@
   function openTuneup() {
     openSheet(sheetHead('Smart budget tune-up') +
       '<p class="muted small" style="margin-top:0">Looking at what you actually spent…</p>');
-    api('/budget/suggestions')
+    api('/budget/suggestions?month=' + encodeURIComponent(S.month || ''))
       .then(function (out) {
         TUNE.list = out.suggestions.map(function (s) { s.include = true; return s; });
         TUNE.totals = out.totals;
@@ -2801,7 +2819,7 @@
     });
     el('month-next').addEventListener('click', function () {
       S.month = shiftMonth(S.month, 1);
-      S.pinned = S.month < S.data.currentMonth;
+      S.pinned = S.month !== S.data.currentMonth;
       refresh();
     });
 

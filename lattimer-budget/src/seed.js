@@ -188,6 +188,18 @@ const DATA_MIGRATIONS = [
     archiveCategories: ['Bitwarden'],
   },
   {
+    // Both loans were actually paid in August out of the business account,
+    // so they belong on August's checklist, not September's. The settlement
+    // fund comes off the plan until the family knows what they will owe —
+    // money already put in still counts on the Debt tab.
+    key: '2026-08-loans-already-started',
+    startsMonths: {
+      'Truck (Credit Acceptance)': '2026-08',
+      'Dirt bike (Lendmark)': '2026-08',
+    },
+    archiveCategories: ['Settlement fund'],
+  },
+  {
     key: '2026-08-miriam-student-loans',
     category: {
       name: "Miriam's student loans",
