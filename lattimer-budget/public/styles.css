@@ -786,3 +786,7 @@ select.input {
 /* Plan page: the totals row that closes each list */
 .plan-row-total { border-top: 1px solid var(--line); background: var(--card-2); }
 .plan-row-total .cat-name { font-weight: 650; }
+
+/* Payday weekday callout in Settings */
+.pay-day-ok { color: var(--ok); font-weight: 650; }
+.pay-day-odd { color: var(--over); font-weight: 650; }

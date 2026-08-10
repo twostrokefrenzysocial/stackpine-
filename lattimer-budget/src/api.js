@@ -118,7 +118,8 @@ function createApi(db) {
       ) ORDER BY month DESC
     `),
     billPaidRows: db.prepare(`
-      SELECT category_id, SUM(amount_cents) AS paid_cents, COUNT(*) AS n
+      SELECT category_id, SUM(amount_cents) AS paid_cents, COUNT(*) AS n,
+             MAX(person) AS who, MAX(date) AS last_date
       FROM transactions WHERE month = ? AND source = 'billpay' GROUP BY category_id
     `),
     incomeEntriesForMonth: db.prepare(`
@@ -435,6 +436,9 @@ function createApi(db) {
         archived: !liveIds.has(row.category_id),
         paid: row.kind === 'fixed' ? fullyPaid : undefined,
         paidAmount: paidRow ? toDollars(paidRow.paid_cents) : undefined,
+        // Who ticked it off, so the other phone can see what was done.
+        paidBy: paidRow ? paidRow.who : undefined,
+        paidDate: paidRow ? paidRow.last_date : undefined,
       };
     });
 

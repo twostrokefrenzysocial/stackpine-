@@ -1698,7 +1698,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v22'],
+    ['/sw.js', 'lfb-v23'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1970,6 +1970,30 @@ test('the new loans are live now and come from the business account', async () =
   }
   // Only the student loans are still waiting.
   assert.deepEqual((s.upcoming || []).map((c) => c.name), ["Miriam's student loans"]);
+});
+
+test('a bill records who ticked it off, so the other phone can see', async () => {
+  const s = await state();
+  const bill = s.categories.find((c) => c.kind === 'fixed' && !c.percent && !c.autoPay && !c.paid);
+  assert.ok(bill, 'a hand-paid bill exists');
+
+  // Miriam pays it on her phone.
+  const mir = await call('/api/login', { method: 'POST', body: { person: 'Miriam', pin: '2468' }, token: null });
+  const hers = mir.body.token;
+  const paid = await fetch(base() + `/api/bills/${bill.id}/pay`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Authorization: `Bearer ${hers}` },
+    body: JSON.stringify({}),
+  }).then((r) => r.json());
+
+  // Chris's phone sees who did it and when.
+  const onChrisPhone = (await state()).categories.find((c) => c.id === bill.id);
+  assert.equal(onChrisPhone.paid, true);
+  assert.equal(onChrisPhone.paidBy, 'Miriam');
+  assert.equal(onChrisPhone.paidDate, s.today);
+  assert.equal(paid.state.categories.find((c) => c.id === bill.id).paidBy, 'Miriam');
+
+  await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
 });
 
 test('a future month tracks live settings so it can be planned', async () => {

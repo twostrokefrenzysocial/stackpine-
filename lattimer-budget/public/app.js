@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 22;
+  var APP_VERSION = 23;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -719,8 +719,16 @@
     if (iso === d.today) return "today's check";
     var days = Math.round((Date.parse(iso + 'T12:00:00Z') - Date.parse(d.today + 'T12:00:00Z')) / 86400000);
     if (days < 0) return 'the ' + monthDay(iso) + ' check';
-    if (days <= 7) return "this Friday's check (" + monthDay(iso) + ')';
-    return 'the ' + monthDay(iso) + ' check';
+    // Name the real weekday — never assume it is a Friday.
+    if (days <= 7) return 'this ' + weekdayOf(iso) + "'s check (" + monthDay(iso) + ')';
+    return 'the ' + weekdayShort(iso) + ' ' + monthDay(iso) + ' check';
+  }
+
+  /** "Fri" for a date — so a payday on the wrong day is obvious at a glance. */
+  function weekdayShort(dateStr) {
+    var p = dateStr.split('-');
+    return new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])))
+      .toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
   }
 
   /** A spending category row that opens to show this month's purchases in it. */
@@ -809,8 +817,13 @@
         esc(c.paidCount + ' of ' + c.expected + ' paydays paid' + due) + '</span>';
     } else if (c.paid && c.autoPay) {
       extra = '<span class="bill-sub">Came out on its own · ' + money(c.spent) + '</span>';
-    } else if (c.paid && Math.abs(c.spent - c.budget) >= 0.01) {
-      extra = '<span class="bill-sub">' + money(c.spent) + ' recorded of ' + money(c.budget) + '</span>';
+    } else if (c.paid) {
+      // Say who ticked it and when, so the other phone can see what was done.
+      var by = c.paidBy && c.paidBy !== 'Auto' ? 'Paid by ' + esc(c.paidBy) : 'Paid';
+      var whenPaid = c.paidDate ? ' · ' + esc(dayLabel(c.paidDate)) : '';
+      var offBudget = Math.abs(c.spent - c.budget) >= 0.01
+        ? ' · ' + money(c.spent) + ' of ' + money(c.budget) : '';
+      extra = '<span class="bill-sub">' + by + whenPaid + offBudget + '</span>';
     } else if (!c.paid && c.spent > 0 && c.cadence !== 'payday') {
       extra = '<span class="bill-sub">' + money(c.spent) + ' already recorded</span>';
     } else if (!c.paid && c.dueDay) {
@@ -1204,8 +1217,8 @@
   function nextPaydayText(src, d) {
     var cad = src.cadence === 'weekly' ? 'weekly'
       : src.cadence === 'monthly' ? 'monthly' : 'every 2 weeks';
-    if (!src.nextPayday) return cad;
-    return cad + ', next ' + monthDay(src.nextPayday);
+    if (!src.nextPayday) return cad + ' · no payday set';
+    return cad + ', next ' + weekdayShort(src.nextPayday) + ' ' + monthDay(src.nextPayday);
   }
 
   /**
@@ -1402,6 +1415,9 @@
     var html = '<div class="section-title"><span>Income</span><span>' + money(d.income.total, { cents: false }) + ' / mo</span></div>';
     html += '<section class="card">';
     d.income.sources.forEach(function (s) {
+      // Name the weekday of the payday: a date on the wrong day is otherwise
+      // impossible to spot in a date box.
+      var dayName = s.nextPayday ? weekdayOf(s.nextPayday) : null;
       html += '<div class="edit-card">' +
         '<div class="edit-card-name">' + esc(s.name) +
         '<span class="muted small"> · ' + s.per_month + '×/mo' + (s.person ? ' · ' + esc(s.person) : '') + '</span></div>' +
@@ -1409,7 +1425,9 @@
         '<label class="mini"><span>Per check</span>' +
         '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + s.amount +
         '" data-act="income-amount" data-id="' + s.id + '" aria-label="Amount for ' + esc(s.name) + '"></label>' +
-        '<label class="mini"><span>Next payday</span>' +
+        '<label class="mini"><span>Next payday' +
+        (dayName ? ' <b class="' + (dayName === 'Friday' ? 'pay-day-ok' : 'pay-day-odd') + '">' + esc(dayName) + '</b>' : '') +
+        '</span>' +
         '<input class="input" type="date" value="' + esc(s.nextPayday || '') +
         '" data-act="income-payday" data-id="' + s.id + '" aria-label="Next payday for ' + esc(s.name) + '"></label>' +
         '<label class="mini"><span>Repeats</span>' +
