@@ -1698,7 +1698,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v24'],
+    ['/sw.js', 'lfb-v25'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -2010,6 +2010,36 @@ test('everyday budgets track the pay period, not the whole month', async () => {
   assert.equal(mortgage.periodBudget, undefined);
 
   await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+});
+
+test('a removed account can be put back with its balance and history', async () => {
+  const made = await call('/api/accounts', { method: 'POST', body: { name: 'Vacation fund', balance: 480 } });
+  const id = made.body.id;
+  const groceries = byName(made.body.state.categories, 'Groceries');
+  const spend = await call('/api/transactions', {
+    method: 'POST', body: { category_id: groceries.id, amount: 30, account_id: id },
+  });
+  const bal = (st) => (st.bank.accounts.find((a) => a.id === id) || {}).balance;
+  assert.equal(bal(spend.body.state), 450);
+
+  // removed: it leaves the dashboard but is not gone
+  const gone = await call(`/api/accounts/${id}`, { method: 'DELETE' });
+  assert.equal(bal(gone.body.state), undefined, 'off the live list');
+  const removed = await call('/api/accounts/removed');
+  const row = removed.body.accounts.find((a) => a.id === id);
+  assert.ok(row, 'listed as removed');
+  assert.equal(row.name, 'Vacation fund');
+  assert.equal(row.balance, 450, 'its balance survived the removal');
+
+  // put back: same balance, same history
+  const back = await call(`/api/accounts/${id}/restore`, { method: 'POST' });
+  assert.equal(back.status, 200);
+  assert.equal(back.body.name, 'Vacation fund');
+  assert.equal(bal(back.body.state), 450);
+  assert.equal((await call('/api/accounts/removed')).body.accounts.find((a) => a.id === id), undefined);
+
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+  await call(`/api/accounts/${id}`, { method: 'DELETE' });
 });
 
 test('a bill whose account was deleted falls back instead of vanishing', async () => {

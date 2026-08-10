@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 24;
+  var APP_VERSION = 25;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -956,8 +956,9 @@
       '<div class="stack">' +
       '<button type="button" class="btn btn-primary btn-block" data-act="account-save" data-id="' + (acc ? acc.id : '') + '">' +
       (acc ? 'Save' : 'Add account') + '</button>' +
-      (acc ? '<button type="button" class="btn btn-danger btn-block" data-act="account-delete" data-id="' + acc.id + '">Remove this account</button>' : '') +
-      '</div>');
+      (acc ? '<button type="button" class="btn btn-block btn-sm" style="color:var(--muted)" data-act="account-remove-ask" data-id="' + acc.id + '">Remove this account</button>' : '') +
+      '</div>' +
+      (acc ? '<div id="acc-confirm"></div>' : ''));
     setTimeout(function () { var i = el(acc ? 'acc-balance' : 'acc-name'); if (i) i.focus(); }, 60);
   }
 
@@ -1508,7 +1509,9 @@
       html += '<p class="muted small" style="margin:0 0 10px">Add each real account (checking, savings, business…) with what it holds — every dollar you log moves the right one.</p>';
     }
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="account-open" data-id="">+ Add account</button>' +
+      '<div id="removed-accounts"></div>' +
       '</section>';
+    setTimeout(loadRemovedAccounts, 0);
 
     html += '<div class="section-title"><span>Backups</span></div><section class="card">' +
       '<p class="muted small" style="margin:0 0 10px">The whole budget is copied automatically every night ' +
@@ -1631,6 +1634,26 @@
     var arr = new Uint8Array(raw.length);
     for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
     return arr;
+  }
+
+  /** Accounts that were removed, with a one-tap way to put them back. */
+  function loadRemovedAccounts() {
+    var box = el('removed-accounts');
+    if (!box) return;
+    api('/accounts/removed').then(function (out) {
+      if (!el('removed-accounts')) return;
+      if (!out.accounts.length) { el('removed-accounts').innerHTML = ''; return; }
+      el('removed-accounts').innerHTML =
+        '<div class="section-head-inline" style="margin-top:16px">Removed accounts</div>' +
+        '<p class="muted small" style="margin:2px 0 8px">Nothing is ever deleted — put one back and its balance and history come with it.</p>' +
+        out.accounts.map(function (a) {
+          return '<div class="edit-row" style="grid-template-columns:1fr auto auto">' +
+            '<span class="edit-name">' + esc(a.name) + '</span>' +
+            '<b>' + money(a.balance) + '</b>' +
+            '<button type="button" class="btn btn-sm" data-act="account-restore" data-id="' + a.id + '">Put back</button>' +
+            '</div>';
+        }).join('');
+    }).catch(function () { /* leave it out rather than show an error here */ });
   }
 
   function refreshBackupStatus() {
@@ -2669,9 +2692,34 @@
         break;
       case 'account-open': openAccountSheet(node.dataset.id); break;
       case 'account-save': saveAccount(node.dataset.id); break;
-      case 'account-delete':
+      case 'account-remove-ask': {
+        // One tap must never lose an account — ask, and say what happens.
+        var box = el('acc-confirm');
+        var accName = (bankAccounts().filter(function (a) { return a.id === Number(id); })[0] || {}).name || 'this account';
+        if (box) {
+          box.innerHTML = '<div class="card" style="margin:12px 0 0;border-color:var(--over)">' +
+            '<p class="small" style="margin:0 0 10px">Remove <b>' + esc(accName) + '</b>? ' +
+            'Its history and balance are kept, and you can put it back from Settings — ' +
+            'but any bill paid from it will switch to your main account.</p>' +
+            '<button type="button" class="btn btn-danger btn-block btn-sm" data-act="account-delete" data-id="' + id + '">Yes, remove it</button>' +
+            '</div>';
+        }
+        break;
+      }
+      case 'account-delete': {
+        var goneName = (bankAccounts().filter(function (a) { return a.id === Number(id); })[0] || {}).name || 'Account';
         closeSheet();
-        mutate('/accounts/' + id, { method: 'DELETE' }, 'Account removed');
+        mutate('/accounts/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r) {
+            toastUndo(goneName + ' removed', function () {
+              mutate('/accounts/' + id + '/restore', { method: 'POST' }, goneName + ' is back');
+            });
+          }
+        });
+        break;
+      }
+      case 'account-restore':
+        mutate('/accounts/' + id + '/restore', { method: 'POST' }, 'Account restored ✓');
         break;
       case 'qa-move': openQuickAdd('move'); break;
       case 'plan-apply': planApplyAll(); break;

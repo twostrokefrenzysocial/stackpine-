@@ -345,32 +345,39 @@ function createApi(db) {
    * before it was set) are already inside the anchored number, so they never
    * count twice. Legacy rows without an account belong to the first one.
    */
+  /**
+   * An account's balance: its anchor plus everything logged against it since.
+   * `legacy` makes it also absorb rows with no account at all (entries from
+   * before accounts existed belong to the first one).
+   */
+  function accountBalanceCents(a, legacy) {
+    const flag = legacy ? 1 : 0;
+    const inC = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries
+       WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
+    ).get(a.id, flag, a.anchor_date, a.anchor_at).n;
+    const outC = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions
+       WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
+    ).get(a.id, flag, a.anchor_date, a.anchor_at).n;
+    const tIn = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE to_id = ? AND date >= ? AND created_at > ?`
+    ).get(a.id, a.anchor_date, a.anchor_at).n;
+    const tOut = db.prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE from_id = ? AND date >= ? AND created_at > ?`
+    ).get(a.id, a.anchor_date, a.anchor_at).n;
+    return a.anchor_cents + inC - outC + tIn - tOut;
+  }
+
   function bankState() {
     const accounts = activeAccounts();
     const firstId = accounts[0]?.id ?? -1;
-    const rows = accounts.map((a) => {
-      const legacy = a.id === firstId;
-      const inC = db.prepare(
-        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries
-         WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
-      ).get(a.id, legacy ? 1 : 0, a.anchor_date, a.anchor_at).n;
-      const outC = db.prepare(
-        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions
-         WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
-      ).get(a.id, legacy ? 1 : 0, a.anchor_date, a.anchor_at).n;
-      const tIn = db.prepare(
-        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE to_id = ? AND date >= ? AND created_at > ?`
-      ).get(a.id, a.anchor_date, a.anchor_at).n;
-      const tOut = db.prepare(
-        `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE from_id = ? AND date >= ? AND created_at > ?`
-      ).get(a.id, a.anchor_date, a.anchor_at).n;
-      return {
-        id: a.id,
-        name: a.name,
-        balance: toDollars(a.anchor_cents + inC - outC + tIn - tOut),
-        asOf: a.anchor_date,
-      };
-    });
+    const rows = accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      balance: toDollars(accountBalanceCents(a, a.id === firstId)),
+      asOf: a.anchor_date,
+    }));
     return {
       set: rows.length > 0,
       accounts: rows,
@@ -1622,6 +1629,33 @@ function createApi(db) {
     }
     broadcast('account:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
+  /**
+   * Accounts that were removed. Nothing is ever really deleted, so a removal
+   * — including an accidental one — is always undoable with its balance and
+   * history intact.
+   */
+  router.get('/accounts/removed', auth, (req, res) => {
+    const rows = db.prepare(`SELECT * FROM accounts WHERE archived = 1 ORDER BY sort_order, id`).all();
+    res.json({
+      accounts: rows.map((a) => ({
+        id: a.id,
+        name: a.name,
+        anchor: toDollars(a.anchor_cents),
+        anchorDate: a.anchor_date,
+        // What it would show if it came back, same maths as a live account.
+        balance: toDollars(accountBalanceCents(a, false)),
+      })),
+    });
+  });
+
+  router.post('/accounts/:id/restore', auth, (req, res) => {
+    const acc = db.prepare(`SELECT * FROM accounts WHERE id = ?`).get(Number(req.params.id));
+    if (!acc) throw notFound('Account not found.');
+    db.prepare(`UPDATE accounts SET archived = 0 WHERE id = ?`).run(acc.id);
+    broadcast('account:restore', req.person);
+    res.json({ ok: true, name: acc.name, state: buildState(currentMonth(), req.person) });
   });
 
   // Archive: history keeps its rows; the account leaves the pickers.
