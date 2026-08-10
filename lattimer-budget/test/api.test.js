@@ -1698,7 +1698,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v23'],
+    ['/sw.js', 'lfb-v24'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1970,6 +1970,63 @@ test('the new loans are live now and come from the business account', async () =
   }
   // Only the student loans are still waiting.
   assert.deepEqual((s.upcoming || []).map((c) => c.name), ["Miriam's student loans"]);
+});
+
+test('everyday budgets track the pay period, not the whole month', async () => {
+  const s = await state();
+  assert.ok(s.payPeriod, 'state reports the current pay period');
+  assert.equal(s.payPeriod.count, 2, 'two paychecks land this month');
+  assert.ok(s.payPeriod.start <= s.today && s.payPeriod.last >= s.today, 'today sits inside it');
+
+  const groceries = byName(s.categories, 'Groceries');
+  assert.equal(groceries.budget, 700, 'the monthly figure is still there');
+  assert.equal(groceries.periodBudget, 350, 'half of it belongs to this paycheck');
+  const before = groceries.periodSpent;
+
+  // spend inside this period and the period figure moves with it
+  const spend = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceries.id, amount: 90, date: s.today },
+  });
+  const after = byName(spend.body.state.categories, 'Groceries');
+  assert.equal(after.periodSpent, Math.round((before + 90) * 100) / 100);
+  assert.equal(after.periodRemaining, Math.round((350 - before - 90) * 100) / 100);
+  assert.ok(after.periodSpent <= after.spent, 'the period can never exceed the month');
+
+  // spending before this pay period counts to the month but not the period
+  const older = await call('/api/transactions', {
+    method: 'POST',
+    body: { category_id: groceries.id, amount: 25, date: `${s.month}-01` },
+  });
+  if (older.status === 201 && s.payPeriod.start > `${s.month}-01`) {
+    const both = byName(older.body.state.categories, 'Groceries');
+    assert.equal(both.periodSpent, after.periodSpent, 'an older purchase leaves the period alone');
+    assert.equal(both.spent, Math.round((after.spent + 25) * 100) / 100, 'but it counts to the month');
+    await call(`/api/transactions/${older.body.id}`, { method: 'DELETE' });
+  }
+
+  // a bill is judged monthly — only everyday categories get a period slice
+  const mortgage = byName(spend.body.state.categories, 'Mortgage (Rocket)');
+  assert.equal(mortgage.periodBudget, undefined);
+
+  await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+});
+
+test('a bill whose account was deleted falls back instead of vanishing', async () => {
+  const s = await state();
+  const extra = await call('/api/accounts', { method: 'POST', body: { name: 'Temp account', balance: 100 } });
+  const bill = s.categories.find((c) => c.kind === 'fixed' && !c.percent && !c.autoPay && !c.paid);
+  await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { account_id: extra.body.id } });
+
+  // the account goes away, but the bill still has to be payable somewhere real
+  await call(`/api/accounts/${extra.body.id}`, { method: 'DELETE' });
+  const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
+  assert.equal(paid.status, 200);
+  const live = paid.body.state.bank.accounts.map((a) => a.id);
+  const tx = paid.body.state.transactions.find((t) => t.category_id === bill.id);
+  assert.ok(live.includes(tx.account_id), 'the payment landed in a visible account');
+
+  await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
 });
 
 test('a bill records who ticked it off, so the other phone can see', async () => {

@@ -173,6 +173,41 @@ function createApi(db) {
   }
 
   /**
+   * The pay period a date falls in: from the paycheck that started it up to
+   * (not including) the next one. Only real paychecks — weekly or biweekly
+   * sources — define the boundaries; a monthly contract payment landing
+   * mid-period must not chop the period in two.
+   */
+  function payPeriodFor(dayIso) {
+    const checks = q.incomeSources.all()
+      .filter((s) => s.next_date && ['weekly', 'biweekly'].includes(s.cadence || 'biweekly'));
+    const dates = new Set();
+    for (const s of checks) {
+      const cad = s.cadence || 'biweekly';
+      let d = nextOccurrence(s.next_date, cad, addDays(dayIso, -60));
+      let guard = 0;
+      while (d && d <= addDays(dayIso, 60) && guard++ < 40) {
+        dates.add(d);
+        d = nextOccurrence(s.next_date, cad, addDays(d, 1));
+      }
+    }
+    const all = [...dates].sort();
+    const started = all.filter((x) => x <= dayIso);
+    const coming = all.filter((x) => x > dayIso);
+    const month = dayIso.slice(0, 7);
+    const start = started.length ? started[started.length - 1] : `${month}-01`;
+    const end = coming.length ? coming[0] : addDays(lastDayOfMonth(month), 1);
+    const inMonth = paydaysInMonth(month);
+    return {
+      start,
+      end,                                  // exclusive
+      last: addDays(end, -1),               // last day money counts to
+      count: Math.max(1, inMonth.length),   // paychecks in this month
+      index: Math.max(1, inMonth.filter((x) => x <= start).length),
+    };
+  }
+
+  /**
    * The family pays bills when a check lands, not on the due date, and the
    * big ones run every 28 days — so each payday alternates between two sets
    * of bills. Parity 0/1 is measured in fortnights from the earliest payday
@@ -250,7 +285,7 @@ function createApi(db) {
       db.prepare(`
         INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
         VALUES (?, ?, 'Auto-draft', 'Auto', ?, ?, 'billpay', ?, ?, ?)
-      `).run(c.id, amount, dueDate, month, now, now, c.account_id ?? primaryAccountId());
+      `).run(c.id, amount, dueDate, month, now, now, accountForBill(c));
     }
   }
 
@@ -286,6 +321,13 @@ function createApi(db) {
   /** The account new entries land in when none is chosen. */
   function primaryAccountId() {
     return activeAccounts()[0]?.id ?? null;
+  }
+
+  /** A bill's account, falling back to the primary if it has been archived. */
+  function accountForBill(category) {
+    if (!category.account_id) return primaryAccountId();
+    const live = db.prepare(`SELECT id FROM accounts WHERE id = ? AND archived = 0`).get(category.account_id);
+    return live ? live.id : primaryAccountId();
   }
 
   function readAccount(value) {
@@ -342,6 +384,17 @@ function createApi(db) {
 
     const spentMap = new Map(q.spentByCategory.all(month).map((r) => [r.category_id, r.spent]));
     const paidMap = new Map(q.billPaidRows.all(month).map((r) => [r.category_id, r]));
+
+    // Everyday budgets are tracked per paycheck, not per month: the family is
+    // paid biweekly and thinks in paycheck-sized chunks. A past month has no
+    // "current" period, so it falls back to the whole month.
+    const period = month === currentMonth()
+      ? payPeriodFor(today())
+      : { start: `${month}-01`, end: addDays(lastDayOfMonth(month), 1), last: lastDayOfMonth(month), count: 1, index: 1 };
+    const periodSpent = new Map(db.prepare(`
+      SELECT category_id, SUM(amount_cents) AS spent FROM transactions
+      WHERE date >= ? AND date < ? GROUP BY category_id
+    `).all(period.start, period.end).map((r) => [r.category_id, r.spent]));
     const live = q.categories.all();
     const liveIds = new Set(live.map((c) => c.id));
     // Bills that have not started yet: shown in Settings so they can be planned
@@ -431,6 +484,20 @@ function createApi(db) {
         remaining: toDollars(budget - spent),
         pct: Math.round(pct * 10) / 10,
         status: statusFor(pct),
+        // Everyday categories also carry their paycheck-sized slice: the
+        // month's budget split across the month's paychecks.
+        ...(row.kind === 'variable' ? (() => {
+          const perBudget = Math.round(budget / period.count);
+          const perSpent = periodSpent.get(row.category_id) ?? 0;
+          const perPct = perBudget > 0 ? (perSpent / perBudget) * 100 : perSpent > 0 ? 101 : 0;
+          return {
+            periodBudget: toDollars(perBudget),
+            periodSpent: toDollars(perSpent),
+            periodRemaining: toDollars(perBudget - perSpent),
+            periodPct: Math.round(perPct * 10) / 10,
+            periodStatus: statusFor(perPct),
+          };
+        })() : {}),
         // A category retired mid-month keeps showing while it still holds
         // spending, so the dashboard total always matches History.
         archived: !liveIds.has(row.category_id),
@@ -657,6 +724,14 @@ function createApi(db) {
       newThisMonth: live
         .filter((c) => c.starts_month === month)
         .map((c) => ({ name: c.name, budget: toDollars(monthlyBudgetCents(c, month)) })),
+      payPeriod: {
+        start: period.start,
+        last: period.last,
+        index: period.index,
+        count: period.count,
+        // Whether this month's spending is being tracked per paycheck at all.
+        perPaycheck: period.count > 1,
+      },
       categories,
       upcoming,
       weeks,
@@ -1022,7 +1097,7 @@ function createApi(db) {
           INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
           VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
         `).run(category.id, amount, req.person, date, month, now, now,
-          req.body?.account_id === undefined ? (category.account_id ?? primaryAccountId()) : readAccount(req.body.account_id));
+          req.body?.account_id === undefined ? accountForBill(category) : readAccount(req.body.account_id));
       } else if (existing.length) {
         db.prepare(`DELETE FROM transactions WHERE id = ?`).run(existing[0].id);
       }
@@ -1051,7 +1126,7 @@ function createApi(db) {
           INSERT INTO transactions (category_id, amount_cents, note, person, date, month, source, created_at, updated_at, account_id)
           VALUES (?, ?, 'Paid', ?, ?, ?, 'billpay', ?, ?, ?)
         `).run(category.id, amount, req.person, date, month, now, now,
-          req.body?.account_id === undefined ? (category.account_id ?? primaryAccountId()) : readAccount(req.body.account_id));
+          req.body?.account_id === undefined ? accountForBill(category) : readAccount(req.body.account_id));
       })();
     } else {
       db.prepare(`DELETE FROM transactions WHERE month = ? AND category_id = ? AND source = 'billpay'`)

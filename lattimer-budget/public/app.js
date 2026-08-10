@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 23;
+  var APP_VERSION = 24;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -702,7 +702,11 @@
       html += '</section>';
     }
 
-    html += '<div class="section-title"><span>Spending</span><span>tap one to see what\'s in it</span></div>';
+    var pp = d.payPeriod;
+    html += '<div class="section-title"><span>Spending</span><span>' +
+      (pp && pp.perPaycheck
+        ? 'this paycheck · ' + esc(monthDay(pp.start)) + '–' + esc(monthDay(pp.last))
+        : 'this month') + '</span></div>';
     if (!variable.length) {
       html += '<div class="card empty">No spending categories yet. Add them in Settings.</div>';
     } else {
@@ -734,22 +738,39 @@
   /** A spending category row that opens to show this month's purchases in it. */
   function spendingCatRow(c, d) {
     var open = Boolean(S.ui.openCats[c.id]);
+    // Everyday spending is tracked per paycheck: the bar, the percentage and
+    // the "left" figure are all this pay period, not the whole month.
+    var per = c.periodBudget !== undefined;
+    var spent = per ? c.periodSpent : c.spent;
+    var budget = per ? c.periodBudget : c.budget;
+    var pct = per ? c.periodPct : c.pct;
+    var status = per ? c.periodStatus : c.status;
+    var left = per ? c.periodRemaining : c.remaining;
+
     var html = '<div class="cat' + (open ? ' cat-open' : '') + '">' +
       '<button type="button" class="cat-btn" data-act="cat-toggle" data-id="' + c.id + '">' +
       '<div class="cat-head"><span class="cat-name"><span class="cat-chev">▶</span>' + esc(c.name) +
       (c.archived ? ' <span class="badge">closed</span>' : '') + '</span>' +
-      '<span class="cat-nums"><b>' + money(c.spent) + '</b> of ' + money(c.budget, { cents: false }) + '</span></div>' +
-      barHtml(c.status, c.pct) +
-      '<div class="cat-foot"><span>' + Math.round(c.pct) + '% used</span>' +
-      '<span class="' + (c.remaining < 0 ? 'cat-over' : '') + '">' +
-      (c.remaining < 0 ? money(-c.remaining) + ' over' : money(c.remaining) + ' left') +
+      '<span class="cat-nums"><b>' + money(spent) + '</b> of ' + money(budget, { cents: false }) + '</span></div>' +
+      barHtml(status, pct) +
+      '<div class="cat-foot"><span>' + Math.round(pct) + '% used</span>' +
+      '<span class="' + (left < 0 ? 'cat-over' : '') + '">' +
+      (left < 0 ? money(-left) + ' over' : money(left) + ' left') +
       '</span></div></button>';
 
     if (open) {
-      var txs = d.transactions.filter(function (t) { return t.category_id === c.id; });
+      var start = d.payPeriod ? d.payPeriod.start : null;
+      var txs = d.transactions.filter(function (t) {
+        return t.category_id === c.id && (!per || !start || t.date >= start);
+      });
       html += '<div class="cat-tx">';
+      if (per) {
+        html += '<div class="cat-tx-none" style="padding-bottom:2px">' +
+          'This paycheck · ' + money(c.spent) + ' of ' + money(c.budget, { cents: false }) + ' for the whole month' +
+          '</div>';
+      }
       if (!txs.length) {
-        html += '<div class="cat-tx-none">Nothing spent here yet this month.</div>';
+        html += '<div class="cat-tx-none">Nothing spent here yet' + (per ? ' this pay period' : ' this month') + '.</div>';
       } else {
         txs.forEach(function (t) {
           html += '<button type="button" class="tx" data-act="edit-tx" data-id="' + t.id + '"' +
@@ -859,15 +880,32 @@
 
   /** "payday today 💵" / "payday Friday" for the soonest upcoming check. */
   function paydayHint(d) {
-    var days = null;
-    d.income.sources.forEach(function (s) {
-      if (s.payInDays != null && (days === null || s.payInDays < days)) days = s.payInDays;
+    // Only a real paycheck counts as "payday" — a monthly contract payment
+    // landing on a Tuesday must not be announced as one.
+    var checks = d.income.sources.filter(function (s) {
+      return s.payInDays != null && (s.cadence === 'biweekly' || s.cadence === 'weekly');
     });
-    if (days === null || days > 6) return null;
-    if (days === 0) return 'payday today 💵 — tap to log';
-    if (days === 1) return 'payday tomorrow';
-    var src = d.income.sources.filter(function (s) { return s.payInDays === days; })[0];
-    return 'payday ' + weekdayOf(src.nextPayday);
+    var other = d.income.sources.filter(function (s) {
+      return s.payInDays != null && s.cadence !== 'biweekly' && s.cadence !== 'weekly' && s.amount > 0;
+    });
+    var soonest = function (list) {
+      return list.reduce(function (best, s) {
+        return best === null || s.payInDays < best.payInDays ? s : best;
+      }, null);
+    };
+    var check = soonest(checks);
+    if (check && check.payInDays <= 6) {
+      if (check.payInDays === 0) return 'payday today 💵 — tap to log';
+      if (check.payInDays === 1) return 'payday tomorrow';
+      return 'payday ' + weekdayOf(check.nextPayday);
+    }
+    var o = soonest(other);
+    if (o && o.payInDays <= 6) {
+      return o.name + (o.payInDays === 0 ? ' lands today' : o.payInDays === 1 ? ' lands tomorrow'
+        : ' lands ' + weekdayOf(o.nextPayday));
+    }
+    if (check) return 'next payday ' + weekdayShort(check.nextPayday) + ' ' + monthDay(check.nextPayday);
+    return null;
   }
 
   /** The income sources with their Log buttons — used by the sheet and Plan. */
