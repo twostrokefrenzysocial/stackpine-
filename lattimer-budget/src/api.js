@@ -323,8 +323,14 @@ function createApi(db) {
     return activeAccounts()[0]?.id ?? null;
   }
 
-  /** A bill's account, falling back to the primary if it has been archived. */
+  /**
+   * A bill's account. An external bill deliberately belongs to no tracked
+   * account — account 0 exists nowhere, so its payments count as spending
+   * without moving any balance. Otherwise fall back to the primary account
+   * if the assigned one has been removed.
+   */
   function accountForBill(category) {
+    if (category.external) return null;   // no tracked account, by design
     if (!category.account_id) return primaryAccountId();
     const live = db.prepare(`SELECT id FROM accounts WHERE id = ? AND archived = 0`).get(category.account_id);
     return live ? live.id : primaryAccountId();
@@ -347,19 +353,19 @@ function createApi(db) {
    */
   /**
    * An account's balance: its anchor plus everything logged against it since.
-   * `legacy` makes it also absorb rows with no account at all (entries from
-   * before accounts existed belong to the first one).
+   * A row with no account belongs to no tracked balance at all — that is how
+   * a bill paid from an account the family does not track stays a real cost
+   * without moving any balance here.
    */
-  function accountBalanceCents(a, legacy) {
-    const flag = legacy ? 1 : 0;
+  function accountBalanceCents(a) {
     const inC = db.prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM income_entries
-       WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
-    ).get(a.id, flag, a.anchor_date, a.anchor_at).n;
+       WHERE account_id = ? AND date >= ? AND created_at > ?`
+    ).get(a.id, a.anchor_date, a.anchor_at).n;
     const outC = db.prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transactions
-       WHERE (account_id = ? OR (? = 1 AND account_id IS NULL)) AND date >= ? AND created_at > ?`
-    ).get(a.id, flag, a.anchor_date, a.anchor_at).n;
+       WHERE account_id = ? AND date >= ? AND created_at > ?`
+    ).get(a.id, a.anchor_date, a.anchor_at).n;
     const tIn = db.prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS n FROM transfers WHERE to_id = ? AND date >= ? AND created_at > ?`
     ).get(a.id, a.anchor_date, a.anchor_at).n;
@@ -370,12 +376,10 @@ function createApi(db) {
   }
 
   function bankState() {
-    const accounts = activeAccounts();
-    const firstId = accounts[0]?.id ?? -1;
-    const rows = accounts.map((a) => ({
+    const rows = activeAccounts().map((a) => ({
       id: a.id,
       name: a.name,
-      balance: toDollars(accountBalanceCents(a, a.id === firstId)),
+      balance: toDollars(accountBalanceCents(a)),
       asOf: a.anchor_date,
     }));
     return {
@@ -483,6 +487,7 @@ function createApi(db) {
         duePayday,
         autoPay: Boolean(liveCat?.auto_pay),
         accountId: liveCat?.account_id ?? null,
+        external: Boolean(liveCat?.external),
         dueDate,
         dueIn,
         dueStatus,
@@ -1224,6 +1229,7 @@ function createApi(db) {
     }
 
     const autoPay = body.auto_pay === undefined ? category.auto_pay : (body.auto_pay ? 1 : 0);
+    const external = body.external === undefined ? category.external : (body.external ? 1 : 0);
     const billAccount = body.account_id === undefined
       ? category.account_id
       : (body.account_id === null || body.account_id === '' ? null : readAccount(body.account_id));
@@ -1232,9 +1238,9 @@ function createApi(db) {
     if (clash) throw bad('A category with that name already exists.');
 
     db.prepare(`
-      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?, due_payday = ?, auto_pay = ?, account_id = ?
+      UPDATE categories SET name = ?, budget_cents = ?, kind = ?, starts_month = ?, due_day = ?, cadence = ?, percent_income = ?, due_payday = ?, auto_pay = ?, account_id = ?, external = ?
       WHERE id = ?
-    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, duePayday, autoPay, billAccount, category.id);
+    `).run(name, budget, kind, startsMonth, dueDay, cadence, percent, duePayday, autoPay, billAccount, external, category.id);
 
     broadcast('category:edit', req.person);
     res.json({ ok: true, state: buildState(currentMonth(), req.person) });
@@ -1645,9 +1651,27 @@ function createApi(db) {
         anchor: toDollars(a.anchor_cents),
         anchorDate: a.anchor_date,
         // What it would show if it came back, same maths as a live account.
-        balance: toDollars(accountBalanceCents(a, false)),
+        balance: toDollars(accountBalanceCents(a)),
       })),
     });
+  });
+
+  /** Forget an empty removed account for good — only if nothing references it. */
+  router.delete('/accounts/:id/purge', auth, (req, res) => {
+    const acc = db.prepare(`SELECT * FROM accounts WHERE id = ? AND archived = 1`).get(Number(req.params.id));
+    if (!acc) throw notFound('No removed account with that id.');
+    const used = db.prepare(`
+      SELECT (SELECT COUNT(*) FROM transactions WHERE account_id = @id)
+           + (SELECT COUNT(*) FROM income_entries WHERE account_id = @id)
+           + (SELECT COUNT(*) FROM transfers WHERE from_id = @id OR to_id = @id)
+           + (SELECT COUNT(*) FROM categories WHERE account_id = @id) AS n
+    `).get({ id: acc.id }).n;
+    if (used > 0 || acc.anchor_cents !== 0) {
+      throw bad('That account still holds money or history — put it back instead of deleting it.');
+    }
+    db.prepare(`DELETE FROM accounts WHERE id = ?`).run(acc.id);
+    broadcast('account:purge', req.person);
+    res.json({ ok: true, name: acc.name });
   });
 
   router.post('/accounts/:id/restore', auth, (req, res) => {

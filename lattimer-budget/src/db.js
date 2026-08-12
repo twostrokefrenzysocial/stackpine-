@@ -186,6 +186,10 @@ function migrate(db) {
   addColumnIfMissing(db, 'categories', 'auto_pay', 'INTEGER NOT NULL DEFAULT 0');
   // Which account a bill is paid from (NULL = the household default).
   addColumnIfMissing(db, 'categories', 'account_id', 'INTEGER REFERENCES accounts(id)');
+  // A bill paid from an account the family does not track here (a separate
+  // account someone else manages). It is still a real monthly cost, so it
+  // counts in the budget — it just must not move any tracked balance.
+  addColumnIfMissing(db, 'categories', 'external', 'INTEGER NOT NULL DEFAULT 0');
   // Offline Quick Add: a phone-generated id so an entry queued without signal
   // is inserted exactly once, no matter how many times the sync retries.
   addColumnIfMissing(db, 'transactions', 'client_id', 'TEXT');

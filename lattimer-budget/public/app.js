@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 25;
+  var APP_VERSION = 26;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -837,7 +837,8 @@
       extra = '<span class="bill-sub' + (c.dueStatus === 'overdue' ? ' bill-late' : '') + '">' +
         esc(c.paidCount + ' of ' + c.expected + ' paydays paid' + due) + '</span>';
     } else if (c.paid && c.autoPay) {
-      extra = '<span class="bill-sub">Came out on its own · ' + money(c.spent) + '</span>';
+      extra = '<span class="bill-sub">Came out on its own · ' + money(c.spent) +
+        (c.external ? ' · not from a tracked account' : '') + '</span>';
     } else if (c.paid) {
       // Say who ticked it and when, so the other phone can see what was done.
       var by = c.paidBy && c.paidBy !== 'Auto' ? 'Paid by ' + esc(c.paidBy) : 'Paid';
@@ -1604,7 +1605,9 @@
         ? '<label class="switch"><input type="checkbox" data-act="bill-auto" data-id="' + c.id + '"' +
           (c.autoPay ? ' checked' : '') + '><span>Comes out on its own — tick it off automatically</span></label>'
         : '') +
-      (bankAccounts().length > 1
+      '<label class="switch" style="margin-top:6px"><input type="checkbox" data-act="bill-external" data-id="' + c.id + '"' +
+      (c.external ? ' checked' : '') + '><span>Paid from an account we don\'t track here</span></label>' +
+      (!c.external && bankAccounts().length > 1
         ? '<label class="mini" style="margin-top:6px"><span>Paid from</span>' +
           '<select class="input" data-act="bill-account" data-id="' + c.id + '" aria-label="Account ' + esc(c.name) + ' is paid from">' +
           bankAccounts().map(function (a) {
@@ -1647,10 +1650,13 @@
         '<div class="section-head-inline" style="margin-top:16px">Removed accounts</div>' +
         '<p class="muted small" style="margin:2px 0 8px">Nothing is ever deleted — put one back and its balance and history come with it.</p>' +
         out.accounts.map(function (a) {
-          return '<div class="edit-row" style="grid-template-columns:1fr auto auto">' +
+          return '<div class="edit-row" style="grid-template-columns:1fr auto auto auto">' +
             '<span class="edit-name">' + esc(a.name) + '</span>' +
             '<b>' + money(a.balance) + '</b>' +
             '<button type="button" class="btn btn-sm" data-act="account-restore" data-id="' + a.id + '">Put back</button>' +
+            (a.balance === 0
+              ? '<button type="button" class="icon-del" data-act="account-purge" data-id="' + a.id + '" aria-label="Forget ' + esc(a.name) + '">✕</button>'
+              : '') +
             '</div>';
         }).join('');
     }).catch(function () { /* leave it out rather than show an error here */ });
@@ -2721,6 +2727,11 @@
       case 'account-restore':
         mutate('/accounts/' + id + '/restore', { method: 'POST' }, 'Account restored ✓');
         break;
+      case 'account-purge':
+        api('/accounts/' + id + '/purge', { method: 'DELETE' })
+          .then(function (r) { toast('Forgot ' + (r.name || 'it')); render(); })
+          .catch(function (err) { toast(err.message, 'error'); });
+        break;
       case 'qa-move': openQuickAdd('move'); break;
       case 'plan-apply': planApplyAll(); break;
       case 'transfer-delete':
@@ -2863,6 +2874,9 @@
     } else if (act === 'bill-auto') {
       mutate('/categories/' + id, { method: 'PUT', body: { auto_pay: node.checked } },
         node.checked ? 'Will tick itself off on its due day' : 'Back to checking it off by hand');
+    } else if (act === 'bill-external') {
+      mutate('/categories/' + id, { method: 'PUT', body: { external: node.checked } },
+        node.checked ? 'Counts as a cost, leaves your balances alone' : 'Back to coming out of a tracked account');
     } else if (act === 'bill-account') {
       mutate('/categories/' + id, { method: 'PUT', body: { account_id: Number(node.value) } }, 'Account set');
     } else if (act === 'bill-when') {

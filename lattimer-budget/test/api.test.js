@@ -34,6 +34,7 @@ function call(pathname, opts = {}) {
 }
 
 const state = () => call('/api/state').then((r) => r.body);
+const round2 = (n) => Math.round(n * 100) / 100;
 const byName = (list, name) => list.find((c) => c.name === name);
 const monthOf = (offset) => {
   const now = new Date();
@@ -126,10 +127,13 @@ test('adding a transaction moves the category and the totals', async () => {
   assert.equal(groceries.spent, 82.47);
   assert.equal(groceries.remaining, 617.53);
   assert.equal(groceries.status, 'ok');
-  assert.equal(res.body.state.totals.spent, 82.47);
-  assert.equal(res.body.state.totals.remaining, 8055.53);
-  assert.equal(res.body.state.transactions[0].person, 'Chris');
-  assert.equal(res.body.state.transactions[0].note, 'Kroger');
+  // Measured as a delta: an auto-draft bill may legitimately have fired
+  // today, depending on the date the suite happens to run.
+  assert.equal(res.body.state.totals.spent, round2(before.totals.spent + 82.47));
+  assert.equal(res.body.state.totals.remaining, round2(before.totals.remaining - 82.47));
+  const mine = res.body.state.transactions.find((x) => x.id === txId);
+  assert.equal(mine.person, 'Chris');
+  assert.equal(mine.note, 'Kroger');
 });
 
 test('amount validation rejects zero, negatives and junk', async () => {
@@ -193,7 +197,9 @@ test('deleting a transaction removes it', async () => {
   const res = await call(`/api/transactions/${txId}`, { method: 'DELETE' });
   assert.equal(res.status, 200);
   assert.equal(byName(res.body.state.categories, 'Groceries').spent, 0);
-  assert.equal(res.body.state.transactions.length, 0);
+  // Only hand-entered rows should be gone; an auto-draft that fired today is
+  // the app's own doing and stays.
+  assert.equal(res.body.state.transactions.filter((x) => x.source === 'manual').length, 0);
 
   const missing = await call(`/api/transactions/${txId}`, { method: 'DELETE' });
   assert.equal(missing.status, 404);
@@ -1698,7 +1704,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v25'],
+    ['/sw.js', 'lfb-v26'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -2010,6 +2016,55 @@ test('everyday budgets track the pay period, not the whole month', async () => {
   assert.equal(mortgage.periodBudget, undefined);
 
   await call(`/api/transactions/${spend.body.id}`, { method: 'DELETE' });
+});
+
+test('a bill can be a real cost without touching any tracked account', async () => {
+  const s = await state();
+  const acc = s.bank.accounts[0];
+  const made = await call('/api/categories', {
+    method: 'POST', body: { name: 'Outside bill', kind: 'fixed', budget: 120 },
+  });
+  assert.equal(made.status, 201);
+  const bill = byName(made.body.state.categories, 'Outside bill');
+  const before = made.body.state.bank.accounts.find((a) => a.id === acc.id).balance;
+  const beforeBills = made.body.state.categories.filter((c) => c.kind === 'fixed').reduce((n, c) => n + c.budget, 0);
+
+  const off = await call(`/api/categories/${bill.id}`, { method: 'PUT', body: { external: true } });
+  assert.equal(byName(off.body.state.categories, bill.name).external, true);
+  // Still a cost in the plan — the budget total must not move.
+  assert.equal(
+    off.body.state.categories.filter((c) => c.kind === 'fixed').reduce((n, c) => n + c.budget, 0),
+    beforeBills,
+  );
+
+  const paid = await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: true } });
+  const after = paid.body.state.categories.find((c) => c.id === bill.id);
+  assert.equal(after.paid, true, 'it still counts as paid');
+  assert.equal(after.spent, bill.budget, 'and as spending');
+  assert.equal(
+    paid.body.state.bank.accounts.find((a) => a.id === acc.id).balance, before,
+    'but no tracked balance moved',
+  );
+  // The payment belongs to no account at all.
+  const tx = paid.body.state.transactions.find((t) => t.category_id === bill.id);
+  assert.ok(!paid.body.state.bank.accounts.some((a) => a.id === tx.account_id));
+
+  await call(`/api/bills/${bill.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/categories/${bill.id}`, { method: 'DELETE' });
+});
+
+test('an empty removed account can be forgotten, one with history cannot', async () => {
+  const made = await call('/api/accounts', { method: 'POST', body: { name: 'Scratch acct', balance: 0 } });
+  await call(`/api/accounts/${made.body.id}`, { method: 'DELETE' });
+  const purged = await call(`/api/accounts/${made.body.id}/purge`, { method: 'DELETE' });
+  assert.equal(purged.status, 200);
+  assert.equal((await call('/api/accounts/removed')).body.accounts.find((a) => a.id === made.body.id), undefined);
+
+  // one holding money refuses to be forgotten
+  const held = await call('/api/accounts', { method: 'POST', body: { name: 'Holds money', balance: 25 } });
+  await call(`/api/accounts/${held.body.id}`, { method: 'DELETE' });
+  const refused = await call(`/api/accounts/${held.body.id}/purge`, { method: 'DELETE' });
+  assert.equal(refused.status, 400);
 });
 
 test('a removed account can be put back with its balance and history', async () => {
