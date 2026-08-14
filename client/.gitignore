@@ -1,0 +1,6 @@
+# Created by the Vercel CLI
+.vercel
+
+# Local env files may hold tokens. .env.example is tracked on purpose.
+.env.local
+.env*.local
