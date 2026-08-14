@@ -326,10 +326,11 @@ export async function generateWeekPlan(weekStart) {
   };
 }
 
-// Regenerates a single meal in an existing plan.
-export async function regenerateMeal(plan, dayIndex, slot) {
-  const settings = getSettings();
-  const day = plan.days[dayIndex];
+// Everything a single meal swap needs to know: the day it sits in, what the
+// rest of that day already contributes, and the protein window left over.
+// Shared by the API path and the paste path so both ask for the same thing.
+function mealSwapContext(plan, dayIndex, slot, settings) {
+  const day = plan?.days?.[dayIndex];
   if (!day) throw new Error('That day is not in the plan.');
   const current = day.meals.find((m) => m.slot === slot);
   if (!current) throw new Error('That slot is not in the plan.');
@@ -339,12 +340,12 @@ export async function regenerateMeal(plan, dayIndex, slot) {
   const targetLow = Math.max(10, settings.protein_min - otherProtein);
   const targetHigh = Math.max(targetLow + 5, settings.protein_max - otherProtein);
 
-  if (!hasApiKey()) {
-    throw new Error('ANTHROPIC_API_KEY is not set on the server.');
-  }
+  return { day, current, others, targetLow, targetHigh };
+}
 
-  const systemPrompt = buildSystemPrompt(settings);
-  const userPrompt = [
+function buildMealUserPrompt(settings, slot, ctx) {
+  const { day, current, others, targetLow, targetHigh } = ctx;
+  return [
     `Replace one meal on ${day.day_name} ${day.date}.`,
     `Slot to replace: ${slot}. Current meal: ${current.name}.`,
     '',
@@ -360,32 +361,73 @@ export async function regenerateMeal(plan, dayIndex, slot) {
   ]
     .filter(Boolean)
     .join('\n');
+}
 
-  const messages = [{ role: 'user', content: userPrompt }];
+export function validateMeal(meal, slot, ctx) {
+  const errors = [];
+  if (!meal || typeof meal !== 'object' || Array.isArray(meal)) {
+    return ['The reply was not a single meal object.'];
+  }
+  if (meal.days) {
+    return ['That looks like a whole week, not one meal. Use the paste box on this meal only.'];
+  }
+  if (meal.slot && meal.slot !== slot) {
+    errors.push(`The reply is for the ${meal.slot} slot, but this is the ${slot} slot.`);
+  }
+  if (!meal.name || typeof meal.name !== 'string') {
+    errors.push('The meal has no name.');
+  }
+  const protein = Number(meal.protein_g);
+  if (!Number.isFinite(protein) || protein < 0) {
+    errors.push('protein_g is missing or is not a number.');
+  } else if (ctx && (protein < ctx.targetLow - 10 || protein > ctx.targetHigh + 15)) {
+    errors.push(
+      `protein_g is ${Math.round(protein)} g, outside the ${Math.round(ctx.targetLow)} to ${Math.round(ctx.targetHigh)} g this slot needs.`
+    );
+  }
+  if (!Array.isArray(meal.ingredients) || meal.ingredients.length === 0) {
+    errors.push('The meal has no ingredients, so nothing would reach the grocery list.');
+  }
+  return errors;
+}
+
+function normalizeMeal(meal, slot) {
+  return {
+    slot,
+    name: String(meal.name),
+    protein_g: Number(meal.protein_g),
+    calories: Number.isFinite(Number(meal.calories)) ? Number(meal.calories) : null,
+    notes: String(meal.notes || ''),
+    ingredients: (Array.isArray(meal.ingredients) ? meal.ingredients : [])
+      .map((ing) => ({
+        item: String(ing.item || '').trim(),
+        quantity: String(ing.quantity || '').trim(),
+        section: SECTIONS.includes(ing.section) ? ing.section : 'Other',
+      }))
+      .filter((ing) => ing.item),
+  };
+}
+
+// Regenerates a single meal in an existing plan.
+export async function regenerateMeal(plan, dayIndex, slot) {
+  const settings = getSettings();
+  const ctx = mealSwapContext(plan, dayIndex, slot, settings);
+
+  if (!hasApiKey()) {
+    throw new Error('ANTHROPIC_API_KEY is not set on the server.');
+  }
+
+  const systemPrompt = buildSystemPrompt(settings);
+  const messages = [{ role: 'user', content: buildMealUserPrompt(settings, slot, ctx) }];
   let lastError = null;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const text = await callClaude(messages, systemPrompt, 2000);
       const parsed = extractJson(text);
-      const protein = Number(parsed.protein_g);
-      if (!parsed.name || !Number.isFinite(protein) || !Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0) {
-        throw new Error('The replacement meal was missing a name, protein, or ingredients.');
-      }
-      return {
-        slot,
-        name: String(parsed.name),
-        protein_g: protein,
-        calories: Number.isFinite(Number(parsed.calories)) ? Number(parsed.calories) : null,
-        notes: String(parsed.notes || ''),
-        ingredients: parsed.ingredients
-          .map((ing) => ({
-            item: String(ing.item || '').trim(),
-            quantity: String(ing.quantity || '').trim(),
-            section: SECTIONS.includes(ing.section) ? ing.section : 'Other',
-          }))
-          .filter((ing) => ing.item),
-      };
+      const errors = validateMeal(parsed, slot, ctx);
+      if (errors.length > 0) throw new Error(errors.join(' '));
+      return normalizeMeal(parsed, slot);
     } catch (err) {
       lastError = err.message;
       if (attempt === 1) {
@@ -498,6 +540,51 @@ export class PlanImportError extends Error {
     this.name = 'PlanImportError';
     this.details = details;
   }
+}
+
+export function buildMealPastePrompt(plan, dayIndex, slot) {
+  const settings = getSettings();
+  const ctx = mealSwapContext(plan, dayIndex, slot, settings);
+  const system = buildSystemPrompt(settings);
+  const user = buildMealUserPrompt(settings, slot, ctx);
+  return [system, '', '---', '', user].join('\n');
+}
+
+// Takes the assistant's reply for one meal and returns the replacement, ready
+// to drop into the day. Same error shape as the week import.
+export function importMealText(plan, dayIndex, slot, text) {
+  const settings = getSettings();
+  const ctx = mealSwapContext(plan, dayIndex, slot, settings);
+
+  if (!text || !String(text).trim()) {
+    throw new PlanImportError('Paste the reply from the assistant first.');
+  }
+
+  let parsed;
+  try {
+    parsed = extractJson(text);
+  } catch (err) {
+    throw new PlanImportError(
+      `That does not look like the JSON meal. ${err.message} Copy the whole reply, including the outer curly braces.`
+    );
+  }
+
+  const errors = validateMeal(parsed, slot, ctx);
+  if (errors.length > 0) {
+    throw new PlanImportError('The meal came back but it does not fit this day yet.', errors.slice(0, 8));
+  }
+
+  return normalizeMeal(parsed, slot);
+}
+
+// Puts a replacement meal into the day and keeps the day total honest.
+export function applyMeal(plan, dayIndex, slot, replacement) {
+  const day = plan.days[dayIndex];
+  day.meals = day.meals.map((m) => (m.slot === slot ? replacement : m));
+  day.total_protein_g = Math.round(
+    day.meals.reduce((sum, m) => sum + (Number(m.protein_g) || 0), 0)
+  );
+  return plan;
 }
 
 export function importPlanText(weekStart, text) {

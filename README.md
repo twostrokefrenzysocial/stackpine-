@@ -209,6 +209,23 @@ set at all.
 The grocery list is rebuilt from the plan, deduped across the week by section and item, with
 repeated quantities merged. Ticked boxes survive a rebuild.
 
+### Without an API key: the paste flow
+
+If `ANTHROPIC_API_KEY` is not set, the Meals screen offers a copy and paste path instead, so any
+chat assistant you already pay for can do the work. It is the same prompt the server would have
+sent, and the reply goes through the same validation.
+
+| Scope | Get the prompt | Send the reply back |
+|---|---|---|
+| A whole week | `GET /api/meals/prompt?week_start=` | `POST /api/meals/import` |
+| One meal | `GET /api/meals/meal-prompt?week_start=&day_index=&slot=` | `POST /api/meals/meal-import` |
+
+The single meal prompt names the day, the slot, and what the rest of that day already contributes,
+and asks for a protein number that keeps the day inside your target. A rejected paste comes back as
+a 400 with `error` plus a `details` list of exactly what was wrong, which the screen shows so you
+can ask the assistant to fix that one thing. A saved week or meal is marked `pasted` or `mixed`
+rather than `ai`, and the grocery list rebuilds either way.
+
 ## Data model
 
 SQLite, created automatically on first run.

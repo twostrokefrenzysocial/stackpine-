@@ -12,6 +12,9 @@ import {
   hasApiKey,
   buildPastePrompt,
   importPlanText,
+  buildMealPastePrompt,
+  importMealText,
+  applyMeal,
   PlanImportError,
   SECTIONS,
 } from '../services/mealPlan.js';
@@ -92,16 +95,60 @@ router.post('/swap-meal', async (req, res) => {
 
   try {
     const replacement = await regenerateMeal(stored.plan, dayIndex, slot);
-    const plan = stored.plan;
-    const day = plan.days[dayIndex];
-    day.meals = day.meals.map((m) => (m.slot === slot ? replacement : m));
-    day.total_protein_g = Math.round(
-      day.meals.reduce((sum, m) => sum + (Number(m.protein_g) || 0), 0)
-    );
-    savePlan(weekStart, plan, stored.source === 'ai' ? 'ai' : 'mixed');
+    const plan = applyMeal(stored.plan, dayIndex, slot, replacement);
+    savePlan(weekStart, plan, 'mixed');
     res.json({ ok: true, week_start: weekStart, plan, replaced: replacement });
   } catch (err) {
     res.status(502).json({ error: err.message });
+  }
+});
+
+// Per meal version of the paste flow. Same two steps: copy a prompt, paste the
+// reply back. No API key involved.
+router.get('/meal-prompt', (req, res) => {
+  const weekStart = weekParam(req);
+  const stored = loadPlan(weekStart);
+  if (!stored) return res.status(404).json({ error: 'There is no plan for that week yet.' });
+
+  const dayIndex = Number(req.query.day_index);
+  const slot = String(req.query.slot || '');
+  if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) {
+    return res.status(400).json({ error: 'day_index must be 0 through 6.' });
+  }
+
+  try {
+    res.json({
+      week_start: weekStart,
+      day_index: dayIndex,
+      slot,
+      prompt: buildMealPastePrompt(stored.plan, dayIndex, slot),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/meal-import', (req, res) => {
+  const weekStart = weekParam(req);
+  const stored = loadPlan(weekStart);
+  if (!stored) return res.status(404).json({ error: 'There is no plan for that week yet.' });
+
+  const dayIndex = Number(req.body?.day_index);
+  const slot = String(req.body?.slot || '');
+  if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6) {
+    return res.status(400).json({ error: 'day_index must be 0 through 6.' });
+  }
+
+  try {
+    const replacement = importMealText(stored.plan, dayIndex, slot, req.body?.text);
+    const plan = applyMeal(stored.plan, dayIndex, slot, replacement);
+    savePlan(weekStart, plan, 'mixed');
+    res.json({ ok: true, week_start: weekStart, plan, replaced: replacement });
+  } catch (err) {
+    if (err instanceof PlanImportError) {
+      return res.status(400).json({ error: err.message, details: err.details });
+    }
+    return res.status(400).json({ error: err.message });
   }
 });
 

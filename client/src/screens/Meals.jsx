@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { Card, ErrorNote, Spinner, Toast } from '../components/ui.jsx';
 import { SLOT_LABELS, addDays, longDate, shortDate, todayISO } from '../lib/format.js';
 import PastePlan from '../components/PastePlan.jsx';
+import PasteBox from '../components/PasteBox.jsx';
 
 function mondayOf(iso) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -11,7 +12,17 @@ function mondayOf(iso) {
   return addDays(iso, day === 0 ? -6 : -(day - 1));
 }
 
-function MealRow({ meal, onSwap, swapping }) {
+function MealRow({
+  meal,
+  dayIndex,
+  weekStart,
+  apiKeyConfigured,
+  onSwap,
+  swapping,
+  pasteOpen,
+  onTogglePaste,
+  onPasted,
+}) {
   return (
     <li className="py-2.5 border-b border-white/5 last:border-0">
       <div className="flex items-start justify-between gap-3">
@@ -29,14 +40,51 @@ function MealRow({ meal, onSwap, swapping }) {
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        className="text-xs text-series mt-1.5 disabled:opacity-50"
-        onClick={onSwap}
-        disabled={swapping}
-      >
-        {swapping ? 'Swapping' : 'Swap this meal'}
-      </button>
+
+      <div className="flex items-center gap-4 mt-1.5">
+        {apiKeyConfigured && (
+          <button
+            type="button"
+            className="text-xs text-series disabled:opacity-50 min-h-[32px]"
+            onClick={onSwap}
+            disabled={swapping}
+          >
+            {swapping ? 'Swapping' : 'Swap this meal'}
+          </button>
+        )}
+        <button
+          type="button"
+          className="text-xs text-series min-h-[32px]"
+          onClick={onTogglePaste}
+        >
+          {pasteOpen
+            ? 'Cancel'
+            : apiKeyConfigured
+            ? 'Swap with ChatGPT'
+            : 'Swap this meal'}
+        </button>
+      </div>
+
+      {pasteOpen && (
+        <div className="mt-2 rounded-card border border-white/10 bg-plane p-3">
+          <PasteBox
+            steps={[
+              'Copy the prompt.',
+              'Paste it into ChatGPT and send.',
+              'Copy its whole reply and paste it below.',
+            ]}
+            loadPrompt={async () =>
+              (await api.singleMealPrompt(weekStart, dayIndex, meal.slot)).prompt
+            }
+            placeholder={`{ "slot": "${meal.slot}", "name": ... }`}
+            submitLabel="Save this meal"
+            onSubmit={async (text) => {
+              const res = await api.importSingleMeal(weekStart, dayIndex, meal.slot, text);
+              await onPasted(res);
+            }}
+          />
+        </div>
+      )}
     </li>
   );
 }
@@ -50,6 +98,7 @@ export default function Meals() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [swapping, setSwapping] = useState('');
+  const [pasteFor, setPasteFor] = useState('');
   const [toast, setToast] = useState('');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(true);
 
@@ -105,6 +154,14 @@ export default function Meals() {
     } finally {
       setSwapping('');
     }
+  }
+
+  async function acceptPastedMeal(res) {
+    setPlan(res.plan);
+    setSource('mixed');
+    setPasteFor('');
+    setGrocery(await api.grocery(weekStart));
+    setToast(`Swapped in: ${res.replaced.name}`);
   }
 
   async function toggleItem(item) {
@@ -210,7 +267,7 @@ export default function Meals() {
                 : source === 'pasted'
                 ? 'From your assistant'
                 : source === 'mixed'
-                ? 'Generated, edited'
+                ? 'Edited'
                 : 'Fallback week'}
             </p>
             <button
@@ -248,8 +305,18 @@ export default function Meals() {
                   <MealRow
                     key={meal.slot}
                     meal={meal}
+                    dayIndex={dayIndex}
+                    weekStart={weekStart}
+                    apiKeyConfigured={apiKeyConfigured}
                     swapping={swapping === `${dayIndex}-${meal.slot}`}
                     onSwap={() => swapMeal(dayIndex, meal.slot)}
+                    pasteOpen={pasteFor === `${dayIndex}-${meal.slot}`}
+                    onTogglePaste={() =>
+                      setPasteFor((cur) =>
+                        cur === `${dayIndex}-${meal.slot}` ? '' : `${dayIndex}-${meal.slot}`
+                      )
+                    }
+                    onPasted={acceptPastedMeal}
                   />
                 ))}
               </ul>

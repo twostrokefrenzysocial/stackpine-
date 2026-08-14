@@ -104,6 +104,10 @@ export const api = {
   mealPrompt: (week_start) => request(`/meals/prompt?week_start=${week_start}`),
   importMeals: (week_start, text) =>
     request('/meals/import', { method: 'POST', body: { week_start, text } }),
+  singleMealPrompt: (week_start, day_index, slot) =>
+    request(`/meals/meal-prompt?week_start=${week_start}&day_index=${day_index}&slot=${slot}`),
+  importSingleMeal: (week_start, day_index, slot, text) =>
+    request('/meals/meal-import', { method: 'POST', body: { week_start, day_index, slot, text } }),
 
   vapidKey: () => request('/push/vapid-public-key'),
   subscribePush: (subscription, label) =>
