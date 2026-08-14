@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark is the committed look for this app, not a preference. */
+:root {
+  color-scheme: dark;
+
+  --surface-1: #1a1a19;
+  --plane: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --gridline: #2c2c2a;
+  --axis: #383835;
+  --series-1: #3987e5;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Thumb reachable layout: content scrolls, the bar sits on the home indicator. */
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+}
+.safe-top {
+  padding-top: calc(env(safe-area-inset-top, 0px));
+}
+
+@layer components {
+  .card {
+    @apply bg-surface rounded-card border border-white/10 p-4;
+  }
+  .card-tight {
+    @apply bg-surface rounded-card border border-white/10 p-3;
+  }
+  .label {
+    @apply text-xs uppercase tracking-wide text-muted;
+  }
+  .btn {
+    @apply rounded-xl px-4 py-3 font-semibold text-base active:scale-[0.98] transition-transform;
+  }
+  .btn-primary {
+    @apply btn bg-series text-white;
+  }
+  .btn-ghost {
+    @apply btn bg-raised text-ink border border-white/10;
+  }
+  .btn-tap {
+    @apply rounded-xl bg-raised border border-white/10 text-ink font-semibold
+           min-h-[52px] flex items-center justify-center active:scale-[0.97] transition-transform;
+  }
+  .field {
+    @apply w-full rounded-xl bg-raised border border-white/10 px-3 py-3 text-ink
+           placeholder:text-muted outline-none focus:border-series;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+}
+
+/* Recharts overrides so the chrome stays recessive. */
+.recharts-cartesian-axis-tick text {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--gridline);
+}
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--axis);
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}

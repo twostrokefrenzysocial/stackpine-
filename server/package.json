@@ -1,0 +1,25 @@
+{
+  "name": "academy-ready-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Academy Ready API: training plan, logging, progress, meal planning, push notifications",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/seed.js",
+    "vapid": "node scripts/generate-vapid.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "better-sqlite3": "^11.5.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "node-cron": "^3.0.3",
+    "web-push": "^3.6.7"
+  }
+}
