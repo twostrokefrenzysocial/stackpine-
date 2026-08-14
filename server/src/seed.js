@@ -46,8 +46,12 @@ export function seed({ quiet = false } = {}) {
   // Scheduled blocks are derived from settings, so a settings change or a plan
   // change in the code should reach days that have not happened yet. Completed
   // and already logged days are left exactly as they were.
+  // Always reported, even in quiet mode: this rewrites the schedule, so it
+  // belongs in the deploy log.
   const refreshed = refreshFutureBlocks(today);
-  if (refreshed > 0) log(`Re-synced ${refreshed} upcoming sessions with the current settings.`);
+  if (refreshed > 0) {
+    console.log(`Re-synced ${refreshed} upcoming sessions with the current settings.`);
+  }
 
   return getSettings();
 }
