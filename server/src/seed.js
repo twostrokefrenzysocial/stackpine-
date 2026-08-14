@@ -7,7 +7,7 @@
 import 'dotenv/config';
 import { db, getSettings } from './db.js';
 import { hashPin } from './auth.js';
-import { generateWeeks, ensurePlanThrough } from './planStore.js';
+import { generateWeeks, ensurePlanThrough, refreshFutureBlocks } from './planStore.js';
 import { PLAN_START } from './plan.js';
 import { localDate } from './util/date.js';
 
@@ -40,7 +40,15 @@ export function seed({ quiet = false } = {}) {
     log(`Schedule already has ${existing} blocks. Leaving it alone.`);
   }
 
-  ensurePlanThrough(localDate(settings.timezone), 6);
+  const today = localDate(settings.timezone);
+  ensurePlanThrough(today, 6);
+
+  // Scheduled blocks are derived from settings, so a settings change or a plan
+  // change in the code should reach days that have not happened yet. Completed
+  // and already logged days are left exactly as they were.
+  const refreshed = refreshFutureBlocks(today);
+  if (refreshed > 0) log(`Re-synced ${refreshed} upcoming sessions with the current settings.`);
+
   return getSettings();
 }
 
