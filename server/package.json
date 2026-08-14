@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Academy Ready API: training plan, logging, progress, meal planning, push notifications",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node src/index.js",
