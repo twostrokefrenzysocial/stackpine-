@@ -482,3 +482,46 @@ export function listPlanWeeks() {
     .prepare('SELECT week_start, source, created_at, updated_at FROM meal_plans ORDER BY week_start DESC')
     .all();
 }
+
+// Manual path: build the exact prompt to paste into a chat assistant, and take
+// the JSON that comes back. No API key involved.
+export function buildPastePrompt(weekStart) {
+  const settings = getSettings();
+  const system = buildSystemPrompt(settings);
+  const user = buildUserPrompt(settings, weekStart, trainingContext(weekStart));
+  return [system, '', '---', '', user].join('\n');
+}
+
+export class PlanImportError extends Error {
+  constructor(message, details = []) {
+    super(message);
+    this.name = 'PlanImportError';
+    this.details = details;
+  }
+}
+
+export function importPlanText(weekStart, text) {
+  const settings = getSettings();
+  if (!text || !String(text).trim()) {
+    throw new PlanImportError('Paste the reply from the assistant first.');
+  }
+
+  let parsed;
+  try {
+    parsed = extractJson(text);
+  } catch (err) {
+    throw new PlanImportError(
+      `That does not look like the JSON week. ${err.message} Copy the whole reply, including the outer curly braces.`
+    );
+  }
+
+  const errors = validatePlan(parsed, weekStart, settings);
+  if (errors.length > 0) {
+    throw new PlanImportError(
+      'The week came back but it does not match your plan yet.',
+      errors.slice(0, 8)
+    );
+  }
+
+  return normalizePlan(parsed, weekStart, settings);
+}

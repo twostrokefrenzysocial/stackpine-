@@ -49,7 +49,11 @@ export async function request(path, { method = 'GET', body, signal } = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed with ${res.status}`);
+    const err = new Error(data?.error || `Request failed with ${res.status}`);
+    err.status = res.status;
+    // Some endpoints return a list of specific problems alongside the message.
+    if (Array.isArray(data?.details)) err.details = data.details;
+    throw err;
   }
   return data;
 }
@@ -97,6 +101,9 @@ export const api = {
   resetGrocery: (week_start) =>
     request('/meals/grocery/reset', { method: 'POST', body: { week_start } }),
   mealWeeks: () => request('/meals/weeks'),
+  mealPrompt: (week_start) => request(`/meals/prompt?week_start=${week_start}`),
+  importMeals: (week_start, text) =>
+    request('/meals/import', { method: 'POST', body: { week_start, text } }),
 
   vapidKey: () => request('/push/vapid-public-key'),
   subscribePush: (subscription, label) =>

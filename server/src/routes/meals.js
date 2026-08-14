@@ -10,6 +10,9 @@ import {
   listPlanWeeks,
   rebuildGrocery,
   hasApiKey,
+  buildPastePrompt,
+  importPlanText,
+  PlanImportError,
   SECTIONS,
 } from '../services/mealPlan.js';
 
@@ -35,6 +38,28 @@ router.get('/plan', (req, res) => {
     updated_at: stored ? stored.updated_at : null,
     api_key_configured: hasApiKey(),
   });
+});
+
+// Returns the prompt to paste into ChatGPT, Claude, or anything else. This is
+// the free path: it uses whatever assistant subscription you already have.
+router.get('/prompt', (req, res) => {
+  const weekStart = weekParam(req);
+  res.json({ week_start: weekStart, prompt: buildPastePrompt(weekStart) });
+});
+
+// Takes the assistant's reply and saves it as the week.
+router.post('/import', (req, res) => {
+  const weekStart = weekParam(req);
+  try {
+    const plan = importPlanText(weekStart, req.body?.text);
+    savePlan(weekStart, plan, 'pasted');
+    res.json({ ok: true, week_start: weekStart, plan, source: 'pasted' });
+  } catch (err) {
+    if (err instanceof PlanImportError) {
+      return res.status(400).json({ error: err.message, details: err.details });
+    }
+    return res.status(400).json({ error: err.message });
+  }
 });
 
 router.post('/generate', async (req, res) => {

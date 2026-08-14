@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Card, ErrorNote, Spinner, Toast } from '../components/ui.jsx';
 import { SLOT_LABELS, addDays, longDate, shortDate, todayISO } from '../lib/format.js';
+import PastePlan from '../components/PastePlan.jsx';
 
 function mondayOf(iso) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -166,29 +167,51 @@ export default function Meals() {
         </button>
       </div>
 
-      {!apiKeyConfigured && (
-        <p className="text-xs text-warning px-1">
-          The server has no Anthropic API key set, so generation uses the built in fallback week.
-        </p>
-      )}
-
       {!plan ? (
-        <Card>
-          <p className="text-sm text-muted">No plan for this week yet.</p>
-          <button
-            type="button"
-            className="btn-primary w-full mt-3 disabled:opacity-50"
-            disabled={busy}
-            onClick={() => generate(false)}
-          >
-            {busy ? 'Building the week' : 'Generate this week'}
-          </button>
-        </Card>
+        <>
+          <Card>
+            <p className="text-sm text-muted">No plan for this week yet.</p>
+            <button
+              type="button"
+              className="btn-primary w-full mt-3 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => generate(false)}
+            >
+              {busy
+                ? 'Building the week'
+                : apiKeyConfigured
+                ? 'Generate this week'
+                : 'Use the built in week'}
+            </button>
+            {!apiKeyConfigured && (
+              <p className="text-xs text-muted mt-2">
+                No API key on the server, so this uses the same seven day rotation every time. For a
+                fresh week, use the option below.
+              </p>
+            )}
+          </Card>
+          <PastePlan
+            weekStart={weekStart}
+            onSaved={async (saved, src) => {
+              setPlan(saved);
+              setSource(src);
+              setGrocery(await api.grocery(weekStart));
+              setToast('Week saved from the assistant.');
+              setTab('plan');
+            }}
+          />
+        </>
       ) : tab === 'plan' ? (
         <>
           <div className="flex items-center justify-between px-1">
             <p className="text-xs text-muted">
-              {source === 'ai' ? 'Generated' : source === 'mixed' ? 'Generated, edited' : 'Fallback week'}
+              {source === 'ai'
+                ? 'Generated'
+                : source === 'pasted'
+                ? 'From your assistant'
+                : source === 'mixed'
+                ? 'Generated, edited'
+                : 'Fallback week'}
             </p>
             <button
               type="button"
@@ -201,6 +224,16 @@ export default function Meals() {
           </div>
 
           {plan.notes && <p className="text-xs text-ink-2 px-1">{plan.notes}</p>}
+
+          <PastePlan
+            weekStart={weekStart}
+            onSaved={async (saved, src) => {
+              setPlan(saved);
+              setSource(src);
+              setGrocery(await api.grocery(weekStart));
+              setToast('Week replaced from the assistant.');
+            }}
+          />
 
           {plan.days.map((day, dayIndex) => (
             <Card
