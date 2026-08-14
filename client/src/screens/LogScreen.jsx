@@ -287,6 +287,7 @@ function CalisthenicsForm({ block, onSubmit, busy, inclineLevels }) {
 function StrengthForm({ block, onSubmit, busy }) {
   const existing = block.log || {};
   const exercises = block.details.exercises || [];
+  const bodyweight = block.details.equipment === 'none';
   const [entries, setEntries] = useState(() => {
     if (Array.isArray(existing.sets) && existing.sets.length) return existing.sets;
     return exercises.map((ex) => ({
@@ -314,11 +315,19 @@ function StrengthForm({ block, onSubmit, busy }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-muted">3 sets of 8 to 12 on each. Log weight and reps per set.</p>
+      <p className="text-xs text-muted">
+        3 sets of 8 to 12 on each.{' '}
+        {bodyweight
+          ? `${block.details.level || ''} bodyweight work. Log reps, and only add a weight if you loaded a backpack.`.trim()
+          : 'Log weight and reps per set.'}
+      </p>
 
       {entries.map((entry, exIndex) => (
         <div key={entry.exercise}>
           <p className="label mb-1.5">{entry.exercise}</p>
+          {exercises[exIndex]?.cue && (
+            <p className="text-xs text-muted mb-2 -mt-1">{exercises[exIndex].cue}</p>
+          )}
           <div className="space-y-2">
             {entry.sets.map((set, setIndex) => (
               <div key={setIndex} className="flex items-center gap-2">
@@ -326,7 +335,7 @@ function StrengthForm({ block, onSubmit, busy }) {
                 <input
                   type="number"
                   inputMode="decimal"
-                  placeholder="lbs"
+                  placeholder={bodyweight ? 'added lbs' : 'lbs'}
                   className="field tabular-nums"
                   value={set.weight ?? ''}
                   onChange={(e) => setCell(exIndex, setIndex, 'weight', e.target.value)}

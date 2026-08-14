@@ -26,6 +26,7 @@ export function generateWeeks(fromWeek, toWeek) {
   const opts = {
     inclineKey: settings?.pushup_incline || 'counter',
     phaseOverride: settings?.phase_override || null,
+    equipment: settings?.equipment || 'none',
   };
 
   const run = db.transaction(() => {
@@ -58,6 +59,7 @@ export function refreshFutureBlocks(fromDateISO) {
   const opts = {
     inclineKey: settings?.pushup_incline || 'counter',
     phaseOverride: settings?.phase_override || null,
+    equipment: settings?.equipment || 'none',
   };
 
   const rows = db

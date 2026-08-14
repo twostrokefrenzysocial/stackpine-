@@ -275,23 +275,49 @@ function addDaysISO(iso, n) {
   return dt.toISOString().slice(0, 10);
 }
 
-export function fallbackWeek(weekStart) {
+export function fallbackWeek(weekStart, settings = null) {
+  const chosen = Array.isArray(settings?.meal_slots) && settings.meal_slots.length
+    ? settings.meal_slots
+    : ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'];
+  const proteinMin = Number(settings?.protein_min) || 150;
+  const proteinMax = Number(settings?.protein_max) || 180;
+  const target = (proteinMin + proteinMax) / 2;
+
   const days = [];
   for (let i = 0; i < 7; i += 1) {
-    const breakfast = { slot: 'breakfast', ...BREAKFASTS[i] };
-    const lunch = { slot: 'lunch', ...LUNCHES[i] };
-    const dinner = { slot: 'dinner', ...DINNERS[i] };
     const [s1, s2] = SNACK_PAIRS[i];
-    const snack1 = { slot: 'snack1', ...s1 };
-    const snack2 = { slot: 'snack2', ...s2 };
-    const meals = [breakfast, snack1, lunch, snack2, dinner].map((m) => ({
-      slot: m.slot,
-      name: m.name,
-      protein_g: m.protein_g,
-      calories: m.calories || null,
-      notes: m.family_friendly ? 'Family friendly. Cook the full pan and take your portion.' : '',
-      ingredients: m.ingredients,
-    }));
+    const bySlot = {
+      breakfast: BREAKFASTS[i],
+      snack1: s1,
+      lunch: LUNCHES[i],
+      snack2: s2,
+      dinner: DINNERS[i],
+    };
+
+    const picked = ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner']
+      .filter((slot) => chosen.includes(slot))
+      .map((slot) => ({ slot, ...bySlot[slot] }));
+
+    // Dropping a meal drops its protein with it. Scale the remaining portions
+    // so the day still lands on target rather than quietly coming up short.
+    const base = picked.reduce((sum, m) => sum + m.protein_g, 0);
+    const scale = base > 0 && base < proteinMin ? Math.min(1.6, target / base) : 1;
+    const scaled = scale > 1.02;
+
+    const meals = picked.map((m) => {
+      const notes = [];
+      if (m.family_friendly) notes.push('Family friendly. Cook the full pan and take your portion.');
+      if (scaled) notes.push('Larger portion to cover the meals you skip.');
+      return {
+        slot: m.slot,
+        name: m.name,
+        protein_g: Math.round(m.protein_g * scale),
+        calories: m.calories ? Math.round(m.calories * scale) : null,
+        notes: notes.join(' '),
+        ingredients: m.ingredients,
+      };
+    });
+
     days.push({
       date: addDaysISO(weekStart, i),
       day_name: DAY_NAMES[i],
@@ -300,10 +326,16 @@ export function fallbackWeek(weekStart) {
     });
   }
 
+  const skipsBreakfast = !chosen.includes('breakfast');
   return {
     week_start: weekStart,
     days,
-    notes:
-      'Fallback week. Protein first at every meal, water on every run day, and the dinners are built to feed the whole table.',
+    notes: [
+      'Fallback week.',
+      skipsBreakfast
+        ? 'No breakfast, so the remaining meals carry more protein each.'
+        : 'Protein first at every meal.',
+      'Water on every run day, and the dinners are built to feed the whole table.',
+    ].join(' '),
   };
 }

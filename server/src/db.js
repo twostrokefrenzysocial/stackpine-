@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS settings (
   meal_exclusions TEXT NOT NULL DEFAULT '',
   household_size INTEGER NOT NULL DEFAULT 3,
   pushup_incline TEXT NOT NULL DEFAULT 'counter',
+  equipment TEXT NOT NULL DEFAULT 'none',
+  meal_slots TEXT NOT NULL DEFAULT '["breakfast","snack1","lunch","snack2","dinner"]',
   phase_override INTEGER,
   on_glp1 INTEGER NOT NULL DEFAULT 1,
   notify_enabled INTEGER NOT NULL DEFAULT 1,
@@ -176,8 +178,42 @@ CREATE TABLE IF NOT EXISTS notification_log (
 );
 `);
 
+// Additive migrations. Each entry is applied only if the column is missing, so
+// an existing database on a mounted volume upgrades in place without losing
+// anything.
+const MIGRATIONS = [
+  ['settings', 'equipment', "TEXT NOT NULL DEFAULT 'none'"],
+  [
+    'settings',
+    'meal_slots',
+    `TEXT NOT NULL DEFAULT '["breakfast","snack1","lunch","snack2","dinner"]'`,
+  ],
+];
+
+function runMigrations() {
+  for (const [table, column, definition] of MIGRATIONS) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (columns.some((c) => c.name === column)) continue;
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`Migration: added ${table}.${column}`);
+  }
+}
+
+runMigrations();
+
 export function getSettings() {
-  return db.prepare('SELECT * FROM settings WHERE id = 1').get();
+  const row = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+  if (!row) return row;
+  let slots;
+  try {
+    slots = JSON.parse(row.meal_slots);
+  } catch {
+    slots = null;
+  }
+  if (!Array.isArray(slots) || slots.length === 0) {
+    slots = ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'];
+  }
+  return { ...row, meal_slots: slots };
 }
 
 export function touchSettings() {

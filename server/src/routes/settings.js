@@ -3,6 +3,7 @@ import { db, getSettings } from '../db.js';
 import { localDate } from '../util/date.js';
 import { refreshFutureBlocks, ensurePlanThrough } from '../planStore.js';
 import { INCLINE_LEVELS } from '../plan.js';
+import { ALL_SLOTS } from '../services/mealPlan.js';
 
 const router = Router();
 
@@ -21,6 +22,8 @@ const EDITABLE = [
   'meal_exclusions',
   'household_size',
   'pushup_incline',
+  'equipment',
+  'meal_slots',
   'phase_override',
   'on_glp1',
   'notify_enabled',
@@ -51,6 +54,7 @@ router.get('/', (req, res) => {
   res.json({
     settings: publicSettings(),
     incline_levels: INCLINE_LEVELS,
+    all_meal_slots: ALL_SLOTS,
   });
 });
 
@@ -69,6 +73,16 @@ router.put('/', (req, res) => {
     }
     if (key === 'pushup_incline' && !INCLINE_LEVELS.some((l) => l.key === value)) {
       return res.status(400).json({ error: 'That incline level is not one of the four.' });
+    }
+    if (key === 'equipment' && !['none', 'gym'].includes(value)) {
+      return res.status(400).json({ error: "Equipment must be 'none' or 'gym'." });
+    }
+    if (key === 'meal_slots') {
+      const list = Array.isArray(value) ? value.filter((v) => ALL_SLOTS.includes(v)) : [];
+      if (list.length === 0) {
+        return res.status(400).json({ error: 'Pick at least one meal you actually eat.' });
+      }
+      value = JSON.stringify(ALL_SLOTS.filter((s) => list.includes(s)));
     }
     if (key === 'phase_override') {
       value = value === null || value === '' ? null : Number(value);
@@ -117,7 +131,8 @@ router.put('/', (req, res) => {
   let refreshed = 0;
   if (
     before.pushup_incline !== after.pushup_incline ||
-    before.phase_override !== after.phase_override
+    before.phase_override !== after.phase_override ||
+    before.equipment !== after.equipment
   ) {
     refreshed = refreshFutureBlocks(localDate(after.timezone));
   }

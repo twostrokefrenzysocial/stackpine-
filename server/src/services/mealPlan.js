@@ -9,7 +9,21 @@ import { fallbackWeek } from './mealFallback.js';
 
 const MODEL = 'claude-sonnet-4-6';
 
-export const SLOTS = ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'];
+export const ALL_SLOTS = ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'];
+export const SLOT_LABELS = {
+  breakfast: 'breakfast',
+  snack1: 'a morning snack',
+  lunch: 'lunch',
+  snack2: 'an afternoon snack',
+  dinner: 'dinner',
+};
+
+// Which eating occasions he actually uses. Ordered as the day runs.
+export function slotsFor(settings) {
+  const chosen = Array.isArray(settings?.meal_slots) ? settings.meal_slots : ALL_SLOTS;
+  const ordered = ALL_SLOTS.filter((s) => chosen.includes(s));
+  return ordered.length ? ordered : ALL_SLOTS;
+}
 export const SECTIONS = [
   'Produce',
   'Meat and Seafood',
@@ -39,7 +53,7 @@ const SCHEMA_TEXT = `{
       "day_name": "Monday",
       "meals": [
         {
-          "slot": "breakfast | snack1 | lunch | snack2 | dinner",
+          "slot": "SLOT_OPTIONS",
           "name": "short meal name",
           "protein_g": 40,
           "calories": 450,
@@ -56,6 +70,7 @@ const SCHEMA_TEXT = `{
 }`;
 
 function buildSystemPrompt(settings) {
+  const slots = slotsFor(settings);
   return [
     'You are a practical nutrition planner building one week of meals for a single adult male.',
     '',
@@ -68,7 +83,12 @@ function buildSystemPrompt(settings) {
     '',
     'Hard rules:',
     `- Daily protein total must land between ${settings.protein_min} and ${settings.protein_max} grams. Protein first at every meal.`,
-    '- Five eating occasions per day: breakfast, snack1, lunch, snack2, dinner. Exactly five, in that order.',
+    `- He eats ${slots.length} times a day: ${slots.map((s) => SLOT_LABELS[s]).join(', ')}. Use exactly these slot keys, in this order: ${slots.join(', ')}. Do not add any other slot.`,
+    ...(slots.includes('breakfast')
+      ? []
+      : [
+          '- He does not eat breakfast. Do not suggest one, do not mention skipping it, and do not treat the first meal of the day as a breakfast. Spread the protein across the meals he does eat, which means each one carries more than it otherwise would.',
+        ]),
     '- Emphasize chicken, lean beef, eggs, Greek yogurt, cottage cheese, protein shakes, fish, vegetables, fruit, and fiber for digestion.',
     '- Budget conscious. Normal grocery store ingredients only. Simple cooking, nothing that needs specialty equipment or a long ingredient list.',
     `- Household of ${settings.household_size}. Dinners that the whole family can eat are a plus. The protein and calorie numbers are for his portion only.`,
@@ -85,6 +105,7 @@ function buildSystemPrompt(settings) {
 }
 
 function buildUserPrompt(settings, weekStart, trainingDays) {
+  const slots = slotsFor(settings);
   const prefs = settings.meal_preferences?.trim();
   const excl = settings.meal_exclusions?.trim();
   const lines = [
@@ -96,7 +117,10 @@ function buildUserPrompt(settings, weekStart, trainingDays) {
   ];
   if (prefs) lines.push(`Preferences he saved: ${prefs}`, '');
   if (excl) lines.push(`Do not use these at all: ${excl}`, '');
-  lines.push('Return JSON in exactly this shape:', SCHEMA_TEXT);
+  lines.push(
+    'Return JSON in exactly this shape:',
+    SCHEMA_TEXT.replace('SLOT_OPTIONS', slots.join(' | '))
+  );
   return lines.join('\n');
 }
 
@@ -134,6 +158,7 @@ function extractJson(text) {
 
 export function validatePlan(plan, weekStart, settings) {
   const errors = [];
+  const slots = slotsFor(settings);
   if (!plan || typeof plan !== 'object') return ['Response was not an object.'];
   if (!Array.isArray(plan.days) || plan.days.length !== 7) {
     errors.push(`Expected exactly 7 days, received ${Array.isArray(plan.days) ? plan.days.length : 'none'}.`);
@@ -145,13 +170,20 @@ export function validatePlan(plan, weekStart, settings) {
     if (day.date !== expectedDate) {
       errors.push(`Day ${index + 1} should have date ${expectedDate}, received ${day.date}.`);
     }
-    if (!Array.isArray(day.meals) || day.meals.length !== 5) {
-      errors.push(`Day ${index + 1} needs exactly 5 meals.`);
+    if (!Array.isArray(day.meals) || day.meals.length !== slots.length) {
+      errors.push(
+        `Day ${index + 1} needs exactly ${slots.length} meals, one per slot: ${slots.join(', ')}.`
+      );
       return;
     }
-    const slots = day.meals.map((m) => m.slot);
-    for (const slot of SLOTS) {
-      if (!slots.includes(slot)) errors.push(`Day ${index + 1} is missing the ${slot} slot.`);
+    const given = day.meals.map((m) => m.slot);
+    for (const slot of slots) {
+      if (!given.includes(slot)) errors.push(`Day ${index + 1} is missing the ${slot} slot.`);
+    }
+    for (const slot of given) {
+      if (!slots.includes(slot)) {
+        errors.push(`Day ${index + 1} has a ${slot} slot, which he does not eat.`);
+      }
     }
     let total = 0;
     day.meals.forEach((meal, mi) => {
@@ -181,11 +213,12 @@ export function validatePlan(plan, weekStart, settings) {
   return errors;
 }
 
-function normalizePlan(plan, weekStart) {
+function normalizePlan(plan, weekStart, settings) {
+  const slots = slotsFor(settings);
   const days = plan.days.map((day, index) => {
     const date = addDays(weekStart, index);
     const bySlot = new Map(day.meals.map((m) => [m.slot, m]));
-    const meals = SLOTS.map((slot) => {
+    const meals = slots.map((slot) => {
       const m = bySlot.get(slot) || {};
       return {
         slot,
@@ -242,7 +275,11 @@ export async function generateWeekPlan(weekStart) {
   const userPrompt = buildUserPrompt(settings, weekStart, trainingContext(weekStart));
 
   if (!hasApiKey()) {
-    return { plan: fallbackWeek(weekStart), source: 'fallback', reason: 'No API key configured.' };
+    return {
+      plan: fallbackWeek(weekStart, settings),
+      source: 'fallback',
+      reason: 'No API key configured.',
+    };
   }
 
   const messages = [{ role: 'user', content: userPrompt }];
@@ -254,7 +291,7 @@ export async function generateWeekPlan(weekStart) {
       const parsed = extractJson(text);
       const errors = validatePlan(parsed, weekStart, settings);
       if (errors.length === 0) {
-        return { plan: normalizePlan(parsed, weekStart), source: 'ai' };
+        return { plan: normalizePlan(parsed, weekStart, settings), source: 'ai' };
       }
       lastError = errors.join(' ');
       if (attempt === 1) {
@@ -283,7 +320,7 @@ export async function generateWeekPlan(weekStart) {
   }
 
   return {
-    plan: fallbackWeek(weekStart),
+    plan: fallbackWeek(weekStart, settings),
     source: 'fallback',
     reason: lastError || 'Generation failed twice.',
   };

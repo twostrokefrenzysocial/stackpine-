@@ -89,6 +89,45 @@ export const STRENGTH_EXERCISES = [
   { key: 'carry', name: 'Farmer carries' },
 ];
 
+// No gym, no weights. Progression comes from harder variations rather than
+// added load, so the levels step up with the training weeks.
+const BODYWEIGHT_LEVELS = [
+  {
+    upTo: 4,
+    label: 'Level 1',
+    exercises: [
+      { key: 'squat', name: 'Bodyweight squat', cue: 'Sit back, knees tracking over the toes, full depth you can control.' },
+      { key: 'row', name: 'Table row', cue: 'Lie under a sturdy table, grip the edge, pull your chest to it. Walk your feet out to make it harder.' },
+      { key: 'push', name: 'Incline pike push-up', cue: 'Hands on a counter, hips high, lower the crown of your head toward your hands.' },
+      { key: 'hinge', name: 'Glute bridge', cue: 'Heels close, drive through the heels, squeeze at the top for a second.' },
+    ],
+  },
+  {
+    upTo: 12,
+    label: 'Level 2',
+    exercises: [
+      { key: 'squat', name: 'Split squat', cue: 'Long stance, back knee toward the floor, most of the weight on the front leg.' },
+      { key: 'row', name: 'Table row, feet walked out', cue: 'The flatter your body, the harder it gets.' },
+      { key: 'push', name: 'Pike push-up', cue: 'Hands on the floor, hips high, elbows tracking forward.' },
+      { key: 'hinge', name: 'Single leg glute bridge', cue: 'One foot planted, other knee pulled in. Keep the hips level.' },
+    ],
+  },
+  {
+    upTo: Infinity,
+    label: 'Level 3',
+    exercises: [
+      { key: 'squat', name: 'Bulgarian split squat', cue: 'Rear foot on a chair or couch. Slow down, control the bottom.' },
+      { key: 'row', name: 'Low table row', cue: 'Feet fully extended, body almost flat. Pause at the top of each rep.' },
+      { key: 'push', name: 'Feet elevated pike push-up', cue: 'Feet on a chair, close to a vertical press.' },
+      { key: 'hinge', name: 'Feet elevated single leg glute bridge', cue: 'Foot on a chair, one leg, full range.' },
+    ],
+  },
+];
+
+export function bodyweightLevelFor(weekNumber) {
+  return BODYWEIGHT_LEVELS.find((l) => weekNumber <= l.upTo) || BODYWEIGHT_LEVELS[0];
+}
+
 const PHASE2_JOG_LADDER = [3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 20];
 
 function runBlock(weekNumber, phase, runIndex, isTrial) {
@@ -237,16 +276,46 @@ function pushupsSitupsBlock(isTestDay, inclineKey) {
   };
 }
 
-function strengthBlock() {
+function strengthBlock(weekNumber, equipment) {
+  const note =
+    'This is the muscle preservation work. On a GLP-1 it matters more than the running does. Take the sets close to hard but leave a rep or two in reserve.';
+
+  if (equipment === 'none') {
+    const level = bodyweightLevelFor(weekNumber);
+    const exercises = [
+      ...level.exercises,
+      {
+        key: 'carry',
+        name: 'Loaded carry, optional',
+        cue: 'Load a backpack with books or water bottles and walk for 40 seconds. Skip it if you have nothing to load.',
+        optional: true,
+      },
+    ];
+    return {
+      title: 'Strength, no equipment',
+      summary: `${level.exercises.map((e) => e.name).join(', ')}. 3 x 8 to 12 each.`,
+      details: {
+        kind: 'strength',
+        equipment: 'none',
+        level: level.label,
+        sets: 3,
+        rep_range: '8 to 12',
+        exercises,
+        note: `${note} No weights needed: when a movement gets easy, move to the next variation rather than adding reps forever. The app steps you up automatically as the weeks go on.`,
+      },
+    };
+  }
+
   return {
     title: 'Strength',
     summary: 'Squat or leg press, dumbbell row, dumbbell bench, farmer carries. 3 x 8 to 12 each.',
     details: {
       kind: 'strength',
+      equipment: 'gym',
       sets: 3,
       rep_range: '8 to 12',
       exercises: STRENGTH_EXERCISES,
-      note: 'This is the muscle preservation work. On a GLP-1 it matters more than the running does. Take the sets close to hard but leave a rep or two in reserve.',
+      note,
     },
   };
 }
@@ -269,6 +338,7 @@ export function blocksForDate(dateISO, opts = {}) {
   const phase = phaseForWeek(weekNumber, opts.phaseOverride);
   const dow = dayOfWeek(dateISO);
   const inclineKey = opts.inclineKey || 'counter';
+  const equipment = opts.equipment || 'none';
   const template = WEEK_TEMPLATE[dow] || [];
   const trialWeek = isTimeTrialWeek(weekNumber);
 
@@ -282,7 +352,7 @@ export function blocksForDate(dateISO, opts = {}) {
     } else if (block === 'pushups_situps') {
       built = pushupsSitupsBlock(dow === 6, inclineKey);
     } else if (block === 'strength') {
-      built = strengthBlock();
+      built = strengthBlock(weekNumber, equipment);
     } else {
       built = restBlock();
     }

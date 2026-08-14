@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, clearToken, setToken } from '../lib/api.js';
 import { Card, ErrorNote, Field, Spinner, Toast } from '../components/ui.jsx';
+import { SLOT_LABELS } from '../lib/format.js';
 import {
   currentSubscription,
   disablePush,
@@ -24,6 +25,7 @@ const DOWS = [
 export default function Settings({ onSignedOut }) {
   const [settings, setSettings] = useState(null);
   const [inclineLevels, setInclineLevels] = useState([]);
+  const [allSlots, setAllSlots] = useState([]);
   const [draft, setDraft] = useState({});
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -38,6 +40,7 @@ export default function Settings({ onSignedOut }) {
       setSettings(res.settings);
       setDraft(res.settings);
       setInclineLevels(res.incline_levels);
+      setAllSlots(res.all_meal_slots || []);
       if (pushSupported()) setPushOn(Boolean(await currentSubscription()));
     } catch (err) {
       setError(err.message);
@@ -208,6 +211,34 @@ export default function Settings({ onSignedOut }) {
       </Card>
 
       <Card title="Meal preferences">
+        <div className="mb-4">
+          <p className="label mb-1.5">Meals you actually eat</p>
+          <p className="text-xs text-muted mb-2">
+            Unchecked meals are never planned. The protein target is spread across whatever is left.
+          </p>
+          <div className="space-y-1">
+            {allSlots.map((slot) => {
+              const chosen = (draft.meal_slots || []).includes(slot);
+              return (
+                <label key={slot} className="flex items-center gap-3 py-2 min-h-[44px]">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-[color:var(--series-1)]"
+                    checked={chosen}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...(draft.meal_slots || []), slot]
+                        : (draft.meal_slots || []).filter((x) => x !== slot);
+                      set('meal_slots', allSlots.filter((x) => next.includes(x)));
+                    }}
+                  />
+                  <span className="text-sm">{SLOT_LABELS[slot] || slot}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         <Field label="Preferences" hint="Foods you want to see more of, cooking style, time limits.">
           <textarea
             className="field min-h-[80px]"
@@ -234,6 +265,7 @@ export default function Settings({ onSignedOut }) {
             save({
               meal_preferences: draft.meal_preferences,
               meal_exclusions: draft.meal_exclusions,
+              meal_slots: draft.meal_slots,
             })
           }
         >
@@ -242,6 +274,21 @@ export default function Settings({ onSignedOut }) {
       </Card>
 
       <Card title="Plan">
+        <Field
+          label="Equipment"
+          hint="With no equipment the strength days become bodyweight work that gets harder as the weeks go on."
+        >
+          <select
+            className="field"
+            value={draft.equipment}
+            onChange={(e) => set('equipment', e.target.value)}
+          >
+            <option value="none">No equipment, bodyweight only</option>
+            <option value="gym">Gym or dumbbells available</option>
+          </select>
+        </Field>
+
+        <div className="mt-3" />
         <Field
           label="Push-up incline"
           hint="The app advances this on its own when all five sets hit 15. Override it here if you moved sooner."
@@ -283,7 +330,11 @@ export default function Settings({ onSignedOut }) {
           className="btn-primary w-full mt-3 disabled:opacity-50"
           disabled={busy}
           onClick={() =>
-            save({ pushup_incline: draft.pushup_incline, phase_override: draft.phase_override })
+            save({
+              equipment: draft.equipment,
+              pushup_incline: draft.pushup_incline,
+              phase_override: draft.phase_override,
+            })
           }
         >
           Save plan settings
