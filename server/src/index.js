@@ -40,8 +40,17 @@ app.use(
   })
 );
 
+// Unauthenticated on purpose: platform health checks hit this. The commit is
+// reported so you can tell which build is actually running without needing a
+// platform API token. Railway sets RAILWAY_GIT_COMMIT_SHA on every deploy.
 app.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'academy-ready', time: new Date().toISOString() });
+  const commit = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || null;
+  res.json({
+    ok: true,
+    service: 'academy-ready',
+    commit: commit ? commit.slice(0, 7) : null,
+    time: new Date().toISOString(),
+  });
 });
 
 app.get('/api/standards', (req, res) => {
