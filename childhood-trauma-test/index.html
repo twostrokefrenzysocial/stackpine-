@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Childhood Trauma Test (ACE Quiz) | Stackpine</title>
+<meta name="description" content="Take the 10-question ACE (Adverse Childhood Experiences) quiz — the research-backed childhood trauma test. Private, free, and nothing you answer ever leaves your device.">
+<link rel="canonical" href="https://stackpine.org/childhood-trauma-test/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stackpine">
+<meta property="og:title" content="Childhood Trauma Test — the 10-question ACE Quiz">
+<meta property="og:description" content="Answer 10 yes-or-no questions about your childhood and get your ACE score. Private and free — your answers never leave your device.">
+<meta property="og:url" content="https://stackpine.org/childhood-trauma-test/">
+<meta property="og:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" type="image/png" href="../logo.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --navy:#2B3A5C;
+  --navy-deep:#1E2A45;
+  --navy-ink:#182236;
+  --pine:#3A7D44;
+  --pine-dark:#2E6537;
+  --slate:#4A5D7E;
+  --slate-lt:#7A8BA6;
+  --sage:#6FA07A;
+  --sage-lt:#A8C3AE;
+  --ice:#EDF1F5;
+  --white:#FFFFFF;
+  --text:#33415E;
+  --text-soft:#5C6B88;
+  --radius:14px;
+  --shadow-sm:0 2px 8px rgba(43,58,92,.08);
+  --shadow-md:0 8px 28px rgba(43,58,92,.14);
+  --shadow-lg:0 18px 48px rgba(30,42,69,.22);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color:var(--text);
+  background:var(--navy-ink);
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+}
+h1,h2,h3{color:var(--navy);line-height:1.25;font-weight:700}
+a{color:var(--pine)}
+
+/* soft background glow, same family as the homepage hero */
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-glow::before{
+  content:"";position:absolute;width:70vmax;height:70vmax;left:-20vmax;top:-30vmax;
+  background:radial-gradient(circle,rgba(111,160,122,.22),transparent 60%);
+}
+.bg-glow::after{
+  content:"";position:absolute;width:60vmax;height:60vmax;right:-25vmax;bottom:-25vmax;
+  background:radial-gradient(circle,rgba(74,93,126,.35),transparent 60%);
+}
+
+.wrap{
+  position:relative;z-index:1;
+  width:min(680px,92%);margin:0 auto;
+  flex:1;display:flex;flex-direction:column;
+  padding:1.4rem 0 2.5rem;
+}
+
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.6rem}
+.brand{display:flex;align-items:center;gap:.6rem;text-decoration:none}
+.brand .logo-crop{position:relative;overflow:hidden;border-radius:8px;background:#fff;width:96px;height:30px;box-shadow:0 2px 10px rgba(24,34,54,.35)}
+.brand .logo-crop img{position:absolute;width:121px;height:121px;max-width:none;left:-13px;top:-46px;display:block}
+.top-note{color:rgba(255,255,255,.75);font-size:.8rem;font-weight:500;text-align:right}
+
+.card{
+  background:var(--white);border-radius:20px;box-shadow:var(--shadow-lg);
+  padding:clamp(1.6rem,4vw,2.6rem);
+  animation:rise .45s ease both;
+}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.eyebrow{
+  display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--pine);background:rgba(58,125,68,.1);
+  padding:.35em 1em;border-radius:999px;margin-bottom:1rem;
+}
+.card h1{font-size:clamp(1.5rem,4.5vw,2.1rem);margin-bottom:.8rem}
+.card p{color:var(--text-soft);margin-bottom:1rem}
+.card ul{color:var(--text-soft);margin:0 0 1rem 1.2rem}
+.card li{margin-bottom:.4rem}
+
+.note{
+  background:var(--ice);border-left:4px solid var(--sage);border-radius:8px;
+  padding:.9rem 1.1rem;font-size:.9rem;color:var(--text-soft);margin-bottom:1.2rem;
+}
+.note strong{color:var(--navy)}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  font-family:inherit;font-weight:600;font-size:1rem;
+  padding:.85em 1.9em;border-radius:999px;border:2px solid transparent;
+  cursor:pointer;text-decoration:none;line-height:1.2;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease,border-color .18s ease;
+}
+.btn:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
+.btn-primary{background:var(--pine);color:#fff;box-shadow:0 6px 18px rgba(58,125,68,.35)}
+.btn-primary:hover{background:var(--pine-dark);transform:translateY(-2px);box-shadow:0 10px 24px rgba(58,125,68,.42)}
+.btn-navy{background:var(--navy);color:#fff;box-shadow:0 6px 18px rgba(43,58,92,.3)}
+.btn-navy:hover{background:var(--navy-deep);transform:translateY(-2px)}
+.btn-outline{background:#fff;color:var(--navy);border-color:var(--ice)}
+.btn-outline:hover{border-color:var(--slate-lt);transform:translateY(-2px)}
+.btn-big{width:100%;font-size:1.1rem;padding:1em 1.9em}
+
+/* ---------- quiz screens ---------- */
+.screen{display:none}
+.screen.active{display:block}
+
+.progress-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.progress-label{font-size:.8rem;font-weight:600;color:var(--slate-lt);letter-spacing:.06em;text-transform:uppercase}
+.progress-track{height:8px;background:var(--ice);border-radius:999px;overflow:hidden;margin-bottom:1.6rem}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--sage),var(--pine));border-radius:999px;transition:width .35s ease}
+
+.q-frame{margin-bottom:1.6rem;animation:rise .3s ease both}
+.q-category{
+  display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--slate);background:var(--ice);padding:.3em .9em;border-radius:999px;margin-bottom:.9rem;
+}
+.q-lead{font-size:.9rem;font-weight:600;color:var(--slate-lt);margin-bottom:.35rem}
+.q-text{font-size:clamp(1.15rem,3.4vw,1.45rem);font-weight:600;color:var(--navy);line-height:1.45}
+
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1rem}
+.answers .btn{font-size:1.15rem;padding:1em}
+.q-foot{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.link-quiet{
+  background:none;border:0;font-family:inherit;font-size:.85rem;font-weight:500;
+  color:var(--slate-lt);cursor:pointer;text-decoration:underline;padding:.4rem;border-radius:6px;
+}
+.link-quiet:hover{color:var(--slate)}
+.link-quiet:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+
+/* ---------- results ---------- */
+.score-hero{text-align:center;margin-bottom:1.4rem}
+.score-ring{
+  width:150px;height:150px;border-radius:50%;margin:0 auto 1rem;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:
+    radial-gradient(closest-side,#fff 82%,transparent 83% 100%),
+    conic-gradient(var(--pine) calc(var(--pct)*1%),var(--ice) 0);
+  animation:rise .5s ease both;
+}
+.score-num{font-size:3rem;font-weight:800;color:var(--navy);line-height:1}
+.score-of{font-size:.85rem;font-weight:600;color:var(--slate-lt)}
+.score-band{font-size:1.15rem;font-weight:700;color:var(--navy)}
+.result-body p{margin-bottom:1rem}
+.resources{background:var(--ice);border-radius:var(--radius);padding:1.2rem 1.3rem;margin:1.3rem 0}
+.resources h3{font-size:1rem;margin-bottom:.7rem}
+.resources ul{list-style:none;margin:0}
+.resources li{margin-bottom:.55rem;font-size:.92rem;color:var(--text-soft)}
+.resources li strong{color:var(--navy)}
+.actions{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:1.4rem}
+.actions .btn{flex:1 1 180px}
+
+.fineprint{font-size:.78rem;color:var(--slate-lt);margin-top:1.4rem;line-height:1.55}
+
+footer{
+  position:relative;z-index:1;text-align:center;padding:1.2rem 0 1.8rem;
+  color:rgba(255,255,255,.6);font-size:.82rem;
+}
+footer a{color:var(--sage-lt);text-decoration:none;font-weight:500}
+footer a:hover{color:#fff}
+
+@media (max-width:520px){
+  .answers{grid-template-columns:1fr}
+  .top-note{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<div class="wrap">
+  <div class="top">
+    <a class="brand" href="/" aria-label="Stackpine home">
+      <span class="logo-crop"><img src="../logo.png" alt="Stackpine logo"></span>
+    </a>
+    <div class="top-note">Private &amp; anonymous — nothing you answer leaves your device</div>
+  </div>
+
+  <!-- ============ INTRO ============ -->
+  <section class="card screen active" id="screen-intro" aria-labelledby="intro-title">
+    <span class="eyebrow">10 questions · about 2 minutes</span>
+    <h1 id="intro-title">The Childhood Trauma Test</h1>
+    <p>This is the <strong>ACE quiz</strong> — the Adverse Childhood Experiences questionnaire from the landmark CDC-Kaiser study, the same 10 questions behind the "childhood trauma test" videos you've seen online. Each question asks about something that may have happened <strong>before your 18th birthday</strong>. Answer yes or no, and you'll get your ACE score at the end with a plain-English explanation of what it does (and doesn't) mean.</p>
+    <div class="note">
+      <strong>Before you start:</strong> some questions mention abuse, neglect, and household struggles, and they may stir up hard memories. Go at your own pace — you can skip any question or stop at any time. Your answers are never sent, stored, or shared; the quiz runs entirely in your browser.
+    </div>
+    <button class="btn btn-primary btn-big" id="btn-start">Start the test</button>
+    <p class="fineprint">This quiz is for self-reflection and education only. It is not a medical or psychological diagnosis, and a score — high or low — doesn't define you or predict your future.</p>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="card screen" id="screen-quiz" aria-live="polite">
+    <div class="progress-row">
+      <span class="progress-label" id="progress-label">Question 1 of 10</span>
+      <span class="progress-label">ACE Quiz</span>
+    </div>
+    <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="q-frame" id="q-frame">
+      <span class="q-category" id="q-category"></span>
+      <p class="q-lead">Before your 18th birthday…</p>
+      <p class="q-text" id="q-text"></p>
+    </div>
+
+    <div class="answers">
+      <button class="btn btn-primary" id="btn-yes">Yes</button>
+      <button class="btn btn-navy" id="btn-no">No</button>
+    </div>
+    <div class="q-foot">
+      <button class="link-quiet" id="btn-back">&larr; Back</button>
+      <button class="link-quiet" id="btn-skip">Prefer not to answer</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="card screen" id="screen-results" aria-labelledby="results-title">
+    <div class="score-hero">
+      <span class="eyebrow">Your result</span>
+      <div class="score-ring" id="score-ring" style="--pct:0">
+        <span class="score-num" id="score-num">0</span>
+        <span class="score-of">out of 10</span>
+      </div>
+      <h2 class="score-band" id="score-band">Your ACE score</h2>
+    </div>
+
+    <div class="result-body">
+      <p id="score-text"></p>
+      <p id="skip-text" hidden></p>
+      <p><strong>Your score is not your story.</strong> The ACE study measures risk across large populations — it can't predict any one person's life. Many people with high scores are healthy and thriving, and supportive relationships, community, counseling, and positive experiences measurably counteract early adversity at any age. If this quiz brought things up for you, talking to someone is a sign of strength, not weakness.</p>
+    </div>
+
+    <div class="resources">
+      <h3>If you want support</h3>
+      <ul>
+        <li><strong>988 Suicide &amp; Crisis Lifeline</strong> — call or text <strong>988</strong> (US, free, 24/7)</li>
+        <li><strong>SAMHSA National Helpline</strong> — 1-800-662-4357, free and confidential, 24/7</li>
+        <li><strong>Childhelp National Child Abuse Hotline</strong> — 1-800-422-4453 (call or text)</li>
+        <li><strong>Find a therapist or treatment near you</strong> — <a href="https://findtreatment.gov" rel="noopener">findtreatment.gov</a></li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-share">Share this test</button>
+      <button class="btn btn-outline" id="btn-retake">Take it again</button>
+    </div>
+
+    <p class="fineprint">The ACE questionnaire comes from the CDC-Kaiser Permanente Adverse Childhood Experiences Study (1995–1997). This page is for education and self-reflection only — it is not a diagnostic tool and is not a substitute for advice from a qualified mental-health professional. Only your final screen is shown here; individual answers are never stored or transmitted.</p>
+  </section>
+</div>
+
+<footer>
+  Built by <a href="/">Stackpine</a> — custom software &amp; websites for small businesses
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var QUESTIONS = [
+    {cat:"Emotional abuse", text:"Did a parent or other adult in the household often swear at you, insult you, put you down, or humiliate you — or act in a way that made you afraid you might be physically hurt?"},
+    {cat:"Physical abuse", text:"Did a parent or other adult in the household often push, grab, slap, or throw something at you — or ever hit you so hard that you had marks or were injured?"},
+    {cat:"Sexual abuse", text:"Did an adult or a person at least 5 years older than you ever touch you sexually, have you touch them sexually, or attempt or have sexual contact with you?"},
+    {cat:"Emotional neglect", text:"Did you often feel that no one in your family loved you or thought you were important or special — or that your family didn't look out for each other, feel close, or support each other?"},
+    {cat:"Physical neglect", text:"Did you often feel that you didn't have enough to eat, had to wear dirty clothes, and had no one to protect you — or that your parents were too drunk or high to take care of you or take you to the doctor if you needed it?"},
+    {cat:"Household change", text:"Were your parents ever separated or divorced?"},
+    {cat:"Violence at home", text:"Was your mother, stepmother, or another adult in your home often pushed, grabbed, slapped, or had things thrown at them — or ever repeatedly hit or threatened with a weapon?"},
+    {cat:"Substance use at home", text:"Did you live with anyone who was a problem drinker or alcoholic, or who used street drugs?"},
+    {cat:"Mental illness at home", text:"Was a household member depressed or mentally ill, or did a household member attempt suicide?"},
+    {cat:"Incarceration", text:"Did a household member go to prison?"}
+  ];
+
+  // answers[i]: "yes" | "no" | "skip" | undefined
+  var answers = [];
+  var current = 0;
+
+  var screens = {
+    intro: document.getElementById("screen-intro"),
+    quiz: document.getElementById("screen-quiz"),
+    results: document.getElementById("screen-results")
+  };
+  var qFrame = document.getElementById("q-frame");
+  var qCategory = document.getElementById("q-category");
+  var qText = document.getElementById("q-text");
+  var progressLabel = document.getElementById("progress-label");
+  var progressBar = document.getElementById("progress-bar");
+  var progressFill = document.getElementById("progress-fill");
+  var btnBack = document.getElementById("btn-back");
+
+  function show(name){
+    Object.keys(screens).forEach(function(k){
+      screens[k].classList.toggle("active", k === name);
+    });
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function renderQuestion(){
+    var q = QUESTIONS[current];
+    qCategory.textContent = q.cat;
+    qText.textContent = q.text;
+    progressLabel.textContent = "Question " + (current + 1) + " of " + QUESTIONS.length;
+    progressBar.setAttribute("aria-valuenow", String(current));
+    progressFill.style.width = (current / QUESTIONS.length * 100) + "%";
+    btnBack.style.visibility = current === 0 ? "hidden" : "visible";
+    // restart the little entrance animation
+    qFrame.style.animation = "none";
+    void qFrame.offsetWidth;
+    qFrame.style.animation = "";
+  }
+
+  function answer(value){
+    answers[current] = value;
+    if (current < QUESTIONS.length - 1) {
+      current++;
+      renderQuestion();
+    } else {
+      showResults();
+    }
+  }
+
+  function showResults(){
+    var score = 0, skipped = 0;
+    answers.forEach(function(a){
+      if (a === "yes") score++;
+      if (a === "skip") skipped++;
+    });
+
+    document.getElementById("score-num").textContent = String(score);
+    document.getElementById("score-ring").style.setProperty("--pct", String(score * 10));
+
+    var band, text;
+    if (score === 0) {
+      band = "ACE score: 0 — no adverse experiences reported";
+      text = "You didn't report any of the ten adverse childhood experiences. That's genuinely good news — and if hard things happened to you that these ten questions don't cover, they still matter and are still worth talking about.";
+    } else if (score <= 3) {
+      band = "ACE score: " + score + " — some early adversity";
+      text = "You reported " + score + " of the ten adverse childhood experiences. ACE scores in this range are very common — most adults have at least one. Early adversity can echo into adulthood in stress, relationships, and health, but it responds well to support, and one caring relationship can make a huge difference.";
+    } else {
+      band = "ACE score: " + score + " — significant early adversity";
+      text = "You reported " + score + " of the ten adverse childhood experiences. In the original study, scores of 4 or more were linked with higher risks to long-term health and wellbeing — which is exactly why knowing your score is useful. Risk is not destiny: understanding what you carried out of childhood is the first step in setting it down, and support genuinely changes outcomes.";
+    }
+
+    document.getElementById("score-band").textContent = band;
+    document.getElementById("score-text").textContent = text;
+
+    var skipEl = document.getElementById("skip-text");
+    if (skipped > 0) {
+      skipEl.hidden = false;
+      skipEl.textContent = "You chose not to answer " + skipped + (skipped === 1 ? " question" : " questions") + ", so your actual score may be higher. Skipping is completely okay — some things take time before we're ready to look at them.";
+    } else {
+      skipEl.hidden = true;
+    }
+
+    show("results");
+  }
+
+  document.getElementById("btn-start").addEventListener("click", function(){
+    answers = [];
+    current = 0;
+    renderQuestion();
+    show("quiz");
+  });
+
+  document.getElementById("btn-yes").addEventListener("click", function(){ answer("yes"); });
+  document.getElementById("btn-no").addEventListener("click", function(){ answer("no"); });
+  document.getElementById("btn-skip").addEventListener("click", function(){ answer("skip"); });
+
+  btnBack.addEventListener("click", function(){
+    if (current > 0) {
+      current--;
+      renderQuestion();
+    }
+  });
+
+  document.getElementById("btn-retake").addEventListener("click", function(){
+    answers = [];
+    current = 0;
+    renderQuestion();
+    show("quiz");
+  });
+
+  document.getElementById("btn-share").addEventListener("click", function(){
+    var shareData = {
+      title: "Childhood Trauma Test (ACE Quiz)",
+      text: "Take the 10-question ACE quiz — the research-backed childhood trauma test. Private and free.",
+      url: "https://stackpine.org/childhood-trauma-test/"
+    };
+    if (navigator.share) {
+      navigator.share(shareData).catch(function(){});
+    } else {
+      navigator.clipboard.writeText(shareData.url).then(function(){
+        var btn = document.getElementById("btn-share");
+        var old = btn.textContent;
+        btn.textContent = "Link copied!";
+        setTimeout(function(){ btn.textContent = old; }, 2000);
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>
