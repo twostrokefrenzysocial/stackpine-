@@ -168,7 +168,11 @@ section{position:relative}
 .builds-hero{
   background:linear-gradient(150deg,var(--navy-ink) 0%,var(--navy-deep) 55%,var(--navy) 100%);
   padding:calc(var(--nav-h) + 4rem) 0 3.6rem;
+  overflow:hidden;
 }
+.builds-hero .net-bg{position:absolute;inset:0;pointer-events:none}
+.builds-hero .net-bg svg{width:100%;height:100%}
+.builds-hero .container{position:relative;z-index:1}
 .builds-hero .hero-eyebrow{
   display:inline-flex;align-items:center;gap:.5em;
   color:var(--sage-lt);font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;
@@ -192,8 +196,9 @@ section{position:relative}
 @media (max-width:900px){.stat-strip{grid-template-columns:1fr 1fr}}
 @media (max-width:440px){.stat-strip{grid-template-columns:1fr}}
 
-/* ---------- filter bar ---------- */
-.filter-bar{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-bottom:2.6rem}
+/* ---------- filter bar + list tools ---------- */
+.grid-tools{display:flex;flex-direction:column;align-items:center;gap:1rem;margin-bottom:2.4rem}
+.filter-bar{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center}
 .filter-pill{
   font-family:inherit;font-weight:600;font-size:.9rem;cursor:pointer;
   padding:.55em 1.4em;border-radius:999px;border:2px solid var(--slate-lt);
@@ -203,34 +208,34 @@ section{position:relative}
 .filter-pill:hover{border-color:var(--pine);color:var(--pine);transform:translateY(-1px)}
 .filter-pill:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
 .filter-pill[aria-pressed=true]{background:var(--pine);border-color:var(--pine);color:#fff}
+.expand-toggle{
+  font-family:inherit;font-weight:600;font-size:.84rem;cursor:pointer;
+  display:inline-flex;align-items:center;gap:.5em;
+  padding:.45em 1.2em;border-radius:999px;border:2px solid var(--sage-lt);
+  background:transparent;color:var(--pine);
+  transition:background .18s ease,color .18s ease,border-color .18s ease;
+}
+.expand-toggle:hover{background:var(--pine);border-color:var(--pine);color:#fff}
+.expand-toggle:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.expand-toggle svg{transition:transform .3s ease}
+.expand-toggle.all-open svg{transform:rotate(180deg)}
 
-/* ---------- project grid ---------- */
-.build-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.6rem}
+/* ---------- project list: skimmable, expandable accordion cards ---------- */
+.build-grid{display:grid;gap:.9rem;max-width:880px;margin:0 auto}
 .build-card{
   background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);
-  display:flex;flex-direction:column;overflow:hidden;
-  transition:box-shadow .25s ease,transform .25s ease;
+  border:1px solid transparent;overflow:hidden;
+  transition:box-shadow .25s ease,border-color .25s ease;
 }
-.build-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px)}
-.build-card.expanded{grid-column:1/-1;transform:none}
+.build-card:hover{box-shadow:var(--shadow-md)}
+.build-card.expanded{box-shadow:var(--shadow-md);border-color:var(--sage-lt)}
 .build-card[hidden]{display:none}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.build-card.card-in{animation:cardIn .4s cubic-bezier(.2,.7,.3,1) both}
 
-/* image slot: styled placeholder until real screenshots are supplied */
-.card-shot{
-  position:relative;height:140px;flex:0 0 auto;
-  background:linear-gradient(150deg,var(--navy),var(--slate));
-  display:flex;align-items:center;justify-content:center;
-}
-.card-shot .shot-dots{position:absolute;top:12px;left:14px;display:flex;gap:5px}
-.card-shot .shot-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.28)}
-.card-shot .shot-label{
-  color:rgba(255,255,255,.55);font-size:.72rem;font-weight:600;
-  letter-spacing:.12em;text-transform:uppercase;
-}
-.card-shot img{width:100%;height:100%;object-fit:cover}
-
-.card-body{padding:1.4rem 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.65rem;flex:1}
-.card-tags{display:flex;gap:.45rem;flex-wrap:wrap}
+.card-head{padding:1.15rem 1.4rem 1.25rem}
+.build-card.expandable .card-head{cursor:pointer}
+.card-tags{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.55rem}
 .badge{
   display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;
   letter-spacing:.08em;text-transform:uppercase;
@@ -240,14 +245,32 @@ section{position:relative}
 .badge-independent{background:var(--ice);color:var(--navy)}
 .badge-demo{background:var(--pine);color:#fff}
 .badge-status{background:#FBF3DD;color:#8A6D1D}
-.build-card h3{font-size:1.12rem}
-.card-subtitle{font-size:.8rem;font-weight:600;color:var(--slate-lt);letter-spacing:.04em;text-transform:uppercase;margin-top:-.4rem}
-.card-summary{font-size:.95rem;color:var(--text-soft);flex:1}
-.card-attrib{font-size:.78rem;font-style:italic;color:var(--text-soft)}
-.card-actions{margin-top:.4rem}
+.card-title{font-size:1.12rem;line-height:1.3}
+.card-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:none;border:0;padding:0;cursor:pointer;text-align:left;
+  font:inherit;font-weight:700;color:var(--navy);
+}
+.card-toggle:focus-visible{outline:3px solid var(--sage);outline-offset:3px;border-radius:6px}
+.build-card.expandable .card-head:hover .card-toggle{color:var(--pine)}
+.card-chevron{
+  flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+  background:var(--ice);color:var(--navy);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:transform .35s ease,background .2s ease,color .2s ease;
+}
+.build-card.expandable .card-head:hover .card-chevron{background:#E2EEE5;color:var(--pine)}
+.build-card.expanded .card-chevron{transform:rotate(180deg);background:var(--pine);color:#fff}
+.card-subtitle{display:block;font-size:.8rem;font-weight:600;color:var(--slate-lt);letter-spacing:.04em;text-transform:uppercase;margin-top:.15rem}
+.card-summary{font-size:.95rem;color:var(--text-soft);margin-top:.45rem}
+.card-attrib{font-size:.78rem;font-style:italic;color:var(--text-soft);margin-top:.5rem}
 
-/* ---------- expanded detail ---------- */
-.card-detail{border-top:1px solid var(--ice);padding:1.6rem 1.5rem 1.8rem;display:grid;gap:1.3rem}
+/* animated expand/collapse */
+.card-detail-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.2,.7,.3,1)}
+.build-card.expanded .card-detail-wrap{grid-template-rows:1fr}
+.card-detail{overflow:hidden;min-height:0;visibility:hidden;transition:visibility .45s}
+.build-card.expanded .card-detail{visibility:visible}
+.card-detail-inner{border-top:1px solid var(--ice);margin:0 1.4rem;padding:1.4rem 0 1.6rem;display:grid;gap:1.3rem}
 .detail-block h4{
   font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   color:var(--pine);margin-bottom:.4rem;
@@ -427,10 +450,11 @@ section{position:relative}
   .btn{min-height:46px}
   .btn-sm{min-height:44px}
   .filter-pill{min-height:44px}
+  .expand-toggle{min-height:44px}
   .chat-chip{min-height:44px}
   .scorer-pick{min-height:44px}
-  .card-body{padding:1.2rem 1.2rem 1.3rem}
-  .card-detail{padding:1.3rem 1.2rem 1.5rem}
+  .card-head{padding:1rem 1.1rem 1.1rem}
+  .card-detail-inner{margin:0 1.1rem;padding:1.2rem 0 1.4rem}
   .footer-inner{flex-direction:column;text-align:center}
   .footer-links{justify-content:center;gap:.4rem 1.4rem}
   .footer-links a{display:inline-block;padding:.5rem .3rem}
@@ -475,6 +499,24 @@ html.static-mode .reveal{opacity:1!important;transform:none!important}
 
 <!-- ==================== HERO STAT BAND ==================== -->
 <section class="builds-hero" id="top">
+  <div class="net-bg" aria-hidden="true">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+      <g stroke="#7A8BA6" stroke-width="1" opacity=".25">
+        <line x1="80" y1="120" x2="300" y2="60"/><line x1="300" y1="60" x2="520" y2="180"/>
+        <line x1="520" y1="180" x2="760" y2="90"/><line x1="760" y1="90" x2="1020" y2="160"/>
+        <line x1="160" y1="420" x2="380" y2="520"/><line x1="380" y1="520" x2="640" y2="440"/>
+        <line x1="640" y1="440" x2="900" y2="540"/><line x1="900" y1="540" x2="1120" y2="430"/>
+        <line x1="80" y1="120" x2="160" y2="420"/><line x1="1020" y1="160" x2="1120" y2="430"/>
+        <line x1="520" y1="180" x2="640" y2="440"/>
+      </g>
+      <g fill="#A8C3AE" opacity=".35">
+        <circle cx="80" cy="120" r="4"/><circle cx="300" cy="60" r="3"/><circle cx="520" cy="180" r="4"/>
+        <circle cx="760" cy="90" r="3"/><circle cx="1020" cy="160" r="4"/><circle cx="160" cy="420" r="3"/>
+        <circle cx="380" cy="520" r="4"/><circle cx="640" cy="440" r="3"/><circle cx="900" cy="540" r="4"/>
+        <circle cx="1120" cy="430" r="3"/>
+      </g>
+    </svg>
+  </div>
   <div class="container">
     <span class="hero-eyebrow" id="heroEyebrow"></span>
     <h1 id="heroHeadline"></h1>
@@ -487,11 +529,17 @@ html.static-mode .reveal{opacity:1!important;transform:none!important}
 <!-- ==================== FILTERS + PROJECT GRID ==================== -->
 <section class="section" id="projects">
   <div class="container">
-    <div class="filter-bar" id="filterBar" role="group" aria-label="Filter projects">
-      <button class="filter-pill" data-filter="all" aria-pressed="true">All</button>
-      <button class="filter-pill" data-filter="nonprofit" aria-pressed="false">Nonprofit</button>
-      <button class="filter-pill" data-filter="independent" aria-pressed="false">Independent</button>
-      <button class="filter-pill" data-filter="demos" aria-pressed="false">Live Demos</button>
+    <div class="grid-tools">
+      <div class="filter-bar" id="filterBar" role="group" aria-label="Filter projects">
+        <button class="filter-pill" data-filter="all" aria-pressed="true">All</button>
+        <button class="filter-pill" data-filter="nonprofit" aria-pressed="false">Nonprofit</button>
+        <button class="filter-pill" data-filter="independent" aria-pressed="false">Independent</button>
+        <button class="filter-pill" data-filter="demos" aria-pressed="false">Live Demos</button>
+      </div>
+      <button class="expand-toggle" id="expandToggle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <span id="expandToggleLabel">Expand all</span>
+      </button>
     </div>
     <div class="build-grid" id="buildGrid" aria-live="polite"></div>
   </div>
@@ -600,13 +648,37 @@ document.getElementById("heroIntro").textContent = DATA.hero.intro;
 const statStrip = document.getElementById("statStrip");
 DATA.stats.forEach(s => {
   const box = el("div", "stat");
-  const num = el("span", "stat-num", s.num);
+  const num = el("span", "stat-num");
+  const value = el("span", null, s.num);
+  num.appendChild(value);
   if (s.suffix) num.appendChild(el("span", "stat-suffix", s.suffix));
   box.appendChild(num);
   box.appendChild(el("span", "stat-label", s.label));
   statStrip.appendChild(box);
+  countUp(value, s.num);
 });
 document.getElementById("statFine").textContent = DATA.statsFinePrint;
+
+/* count-up animation for the hero stats; lands exactly on the real figure */
+function countUp(node, finalText){
+  if (reduceMotion) { node.textContent = finalText; return; }
+  const prefix = finalText.startsWith("$") ? "$" : "";
+  const target = parseFloat(finalText.replace(/[$,]/g, ""));
+  const decimals = (finalText.split(".")[1] || "").length;
+  if (isNaN(target)) { node.textContent = finalText; return; }
+  const dur = 1300, t0 = performance.now();
+  function fmt(v){
+    return prefix + v.toLocaleString("en-US", {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+  }
+  function tick(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    node.textContent = fmt(target * eased);
+    if (p < 1) requestAnimationFrame(tick);
+    else node.textContent = finalText;
+  }
+  requestAnimationFrame(tick);
+}
 
 /* ---------- beyond software + CTA ---------- */
 document.getElementById("beyondHeading").textContent = DATA.beyondSoftware.heading;
@@ -630,105 +702,150 @@ DATA.projects.forEach(p => {
   card.dataset.category = p.category;
   card.dataset.interactive = INTERACTIVE_DEMOS.includes(p.demo) ? "1" : "0";
 
-  const shot = el("div", "card-shot");
-  shot.setAttribute("aria-hidden", "true");
-  const dots = el("span", "shot-dots");
-  for (let i = 0; i < 3; i++) dots.appendChild(el("i"));
-  shot.appendChild(dots);
-  shot.appendChild(el("span", "shot-label", "Screenshot coming soon"));
-  card.appendChild(shot);
-
-  const body = el("div", "card-body");
+  const head = el("div", "card-head");
   const tags = el("div", "card-tags");
   tags.appendChild(el("span", "badge badge-" + p.category,
     p.category === "nonprofit" ? "Nonprofit build" : "Independent build"));
   if (INTERACTIVE_DEMOS.includes(p.demo)) tags.appendChild(el("span", "badge badge-demo", "Interactive demo"));
   if (p.status) tags.appendChild(el("span", "badge badge-status", p.status));
-  body.appendChild(tags);
-  body.appendChild(el("h3", null, p.name));
-  if (p.subtitle && p.subtitle !== p.status) body.appendChild(el("span", "card-subtitle", p.subtitle));
-  body.appendChild(el("p", "card-summary", p.summary));
-  body.appendChild(el("p", "card-attrib", DATA.attribution[p.category]));
+  head.appendChild(tags);
 
-  if (!p.oneLineOnly) {
-    const actions = el("div", "card-actions");
-    const btn = el("button", "btn btn-primary btn-sm",
-      INTERACTIVE_DEMOS.includes(p.demo) ? "Interactive Demo" : "Details");
-    btn.setAttribute("aria-expanded", "false");
-    btn.setAttribute("aria-controls", "detail-" + p.id);
-    actions.appendChild(btn);
-    body.appendChild(actions);
-    card.appendChild(body);
+  const title = el("h3", "card-title");
+  head.appendChild(title);
+  if (p.subtitle && p.subtitle !== p.status) head.appendChild(el("span", "card-subtitle", p.subtitle));
+  head.appendChild(el("p", "card-summary", p.summary));
+  head.appendChild(el("p", "card-attrib", DATA.attribution[p.category]));
+  card.appendChild(head);
 
-    const detail = el("div", "card-detail");
-    detail.id = "detail-" + p.id;
-    detail.hidden = true;
-
-    const prob = el("div", "detail-block");
-    prob.appendChild(el("h4", null, "The problem"));
-    prob.appendChild(el("p", null, p.problem));
-    detail.appendChild(prob);
-
-    const what = el("div", "detail-block");
-    what.appendChild(el("h4", null, "What it does"));
-    what.appendChild(el("p", null, p.what));
-    detail.appendChild(what);
-
-    const stack = el("div", "detail-block");
-    stack.appendChild(el("h4", null, "Stack"));
-    if (p.stack) {
-      const badges = el("div", "stack-badges");
-      p.stack.forEach(s => badges.appendChild(el("span", "stack-badge", s)));
-      stack.appendChild(badges);
-    } else if (p.stackTodo) {
-      stack.appendChild(el("p", "todo-note", p.stackTodo));
-    }
-    detail.appendChild(stack);
-
-    if (p.impact) detail.appendChild(el("p", "impact-line", p.impact));
-
-    if (p.demo) {
-      const demoHost = el("div", "demo-host");
-      demoHost.dataset.demo = p.demo;
-      detail.appendChild(demoHost);
-    }
-
-    card.appendChild(detail);
-
-    btn.addEventListener("click", () => {
-      const open = detail.hidden;
-      detail.hidden = !open;
-      card.classList.toggle("expanded", open);
-      btn.setAttribute("aria-expanded", String(open));
-      btn.textContent = open ? "Close" :
-        (INTERACTIVE_DEMOS.includes(p.demo) ? "Interactive Demo" : "Details");
-      if (open && p.demo && !initializedDemos.has(p.id)) {
-        initializedDemos.add(p.id);
-        initDemo(p.demo, detail.querySelector(".demo-host"));
-      }
-      if (open) card.scrollIntoView({behavior: reduceMotion ? "auto" : "smooth", block: "nearest"});
-    });
-  } else {
-    card.appendChild(body);
+  if (p.oneLineOnly) {
+    title.textContent = p.name;
+    grid.appendChild(card);
+    return;
   }
+
+  card.classList.add("expandable");
+
+  const toggle = el("button", "card-toggle");
+  toggle.appendChild(document.createTextNode(p.name));
+  const chev = el("span", "card-chevron");
+  chev.setAttribute("aria-hidden", "true");
+  chev.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  toggle.appendChild(chev);
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.setAttribute("aria-controls", "detail-" + p.id);
+  title.appendChild(toggle);
+
+  const wrap = el("div", "card-detail-wrap");
+  wrap.id = "detail-" + p.id;
+  const detail = el("div", "card-detail");
+  const inner = el("div", "card-detail-inner");
+
+  const prob = el("div", "detail-block");
+  prob.appendChild(el("h4", null, "The problem"));
+  prob.appendChild(el("p", null, p.problem));
+  inner.appendChild(prob);
+
+  const what = el("div", "detail-block");
+  what.appendChild(el("h4", null, "What it does"));
+  what.appendChild(el("p", null, p.what));
+  inner.appendChild(what);
+
+  const stack = el("div", "detail-block");
+  stack.appendChild(el("h4", null, "Stack"));
+  if (p.stack) {
+    const badges = el("div", "stack-badges");
+    p.stack.forEach(s => badges.appendChild(el("span", "stack-badge", s)));
+    stack.appendChild(badges);
+  } else if (p.stackTodo) {
+    stack.appendChild(el("p", "todo-note", p.stackTodo));
+  }
+  inner.appendChild(stack);
+
+  if (p.impact) inner.appendChild(el("p", "impact-line", p.impact));
+
+  if (p.demo) {
+    const demoHost = el("div", "demo-host");
+    demoHost.dataset.demo = p.demo;
+    inner.appendChild(demoHost);
+  }
+
+  detail.appendChild(inner);
+  wrap.appendChild(detail);
+  card.appendChild(wrap);
+
+  card._setOpen = open => {
+    card.classList.toggle("expanded", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open && p.demo && !initializedDemos.has(p.id)) {
+      initializedDemos.add(p.id);
+      initDemo(p.demo, detail.querySelector(".demo-host"));
+    }
+  };
+
+  toggle.addEventListener("click", e => {
+    e.stopPropagation();
+    card._setOpen(!card.classList.contains("expanded"));
+  });
+  /* the whole header is a click target; the button stays the accessible control */
+  head.addEventListener("click", e => {
+    if (e.target.closest(".card-toggle")) return;
+    toggle.click();
+  });
 
   grid.appendChild(card);
 });
 
-/* ---------- filtering ---------- */
+/* stagger the cards in on first load */
+if (!reduceMotion) {
+  [...grid.children].forEach((c, i) => {
+    c.style.animationDelay = (i * 45) + "ms";
+    c.classList.add("card-in");
+  });
+}
+
+/* ---------- filtering (with a re-entry animation) ---------- */
 const filterBar = document.getElementById("filterBar");
 filterBar.addEventListener("click", e => {
   const pill = e.target.closest(".filter-pill");
   if (!pill) return;
   filterBar.querySelectorAll(".filter-pill").forEach(b => b.setAttribute("aria-pressed", String(b === pill)));
   const f = pill.dataset.filter;
+  let i = 0;
   grid.querySelectorAll(".build-card").forEach(card => {
     const show = f === "all"
       || (f === "demos" && card.dataset.interactive === "1")
       || card.dataset.category === f;
+    card.classList.remove("card-in");
     card.hidden = !show;
+    if (show && !reduceMotion) {
+      void card.offsetWidth;
+      card.style.animationDelay = (i * 45) + "ms";
+      card.classList.add("card-in");
+      i++;
+    }
   });
+  syncExpandToggle();
 });
+
+/* ---------- expand all / collapse all ---------- */
+const expandToggle = document.getElementById("expandToggle");
+const expandToggleLabel = document.getElementById("expandToggleLabel");
+function visibleExpandables(){
+  return [...grid.querySelectorAll(".build-card.expandable:not([hidden])")];
+}
+function syncExpandToggle(){
+  const cards = visibleExpandables();
+  const allOpen = cards.length > 0 && cards.every(c => c.classList.contains("expanded"));
+  expandToggle.classList.toggle("all-open", allOpen);
+  expandToggleLabel.textContent = allOpen ? "Collapse all" : "Expand all";
+}
+expandToggle.addEventListener("click", () => {
+  const cards = visibleExpandables();
+  const open = !(cards.length > 0 && cards.every(c => c.classList.contains("expanded")));
+  cards.forEach(c => c._setOpen(open));
+  syncExpandToggle();
+});
+grid.addEventListener("click", () => syncExpandToggle());
 
 /* ============================================================
    DEMOS. Each one is a self-contained simulation: canned data
