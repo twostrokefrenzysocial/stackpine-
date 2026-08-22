@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 26;
+  var APP_VERSION = 27;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -1365,12 +1365,13 @@
   // ------------------------------------------------------------ render: debt
 
   function viewDebt(d) {
-    // Ramsey debt snowball: smallest balance first — the lawsuit outranks all.
+    // Ramsey debt snowball: smallest balance first. An urgent one can still
+    // jump the queue by carrying "urgent" in its note.
     var open = d.debts.filter(function (x) { return !x.settled; })
       .sort(function (a, b) {
-        var la = /lawsuit/i.test(a.label) ? 1 : 0;
-        var lb = /lawsuit/i.test(b.label) ? 1 : 0;
-        return (lb - la) || (a.balance - b.balance);
+        var ua = /urgent|lawsuit/i.test(a.label) ? 1 : 0;
+        var ub = /urgent|lawsuit/i.test(b.label) ? 1 : 0;
+        return (ub - ua) || (a.balance - b.balance);
       });
     var settled = d.debts.filter(function (x) { return x.settled; });
     var targetTotal = d.debts.reduce(function (s, x) { return s + x.target; }, 0);
@@ -1393,10 +1394,11 @@
       '<div class="cat-foot"><span>' + money(clearedTotal, { cents: false }) + ' of ' + money(targetTotal, { cents: false }) + ' in settlement targets</span></div>' +
       '</section>';
 
-    html += '<div class="section-title"><span>Settlement targets</span><span>snowball order</span></div>';
+    html += '<div class="section-title"><span>What you owe</span><span>snowball order — smallest first</span></div>';
     html += '<section class="card card-tight">';
-    if (!open.length) html += '<div class="empty">Every target is settled. 🎉</div>';
+    if (!open.length) html += '<div class="empty">Every debt is cleared. 🎉</div>';
     open.forEach(function (x) { html += debtHtml(x); });
+    html += '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="add-debt">+ Add a debt</button></div>';
     html += '</section>';
 
     if (settled.length) {
@@ -2092,6 +2094,20 @@
       '<button type="button" class="btn btn-primary btn-block" data-act="settle-save" data-id="' + debt.id + '">Record settlement</button>');
   }
 
+  /** Add a debt — a loan pays in full, a collection can settle for less. */
+  function openAddDebt() {
+    openSheet(sheetHead('Add a debt') +
+      '<label class="field"><span>Name</span><input class="input" id="debt-name" maxlength="60" placeholder="Car loan, hospital bill…"></label>' +
+      '<label class="field"><span>Balance owed</span>' +
+      '<input class="input" id="debt-balance" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>' +
+      '<label class="field"><span>Payoff amount</span>' +
+      '<input class="input" id="debt-target" type="number" inputmode="decimal" step="0.01" min="0" placeholder="same as the balance unless you can settle for less"></label>' +
+      '<label class="field"><span>Note</span>' +
+      '<input class="input" id="debt-label" maxlength="80" placeholder="say &quot;urgent&quot; to put it first"></label>' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="debt-add-save">Add debt</button>');
+    setTimeout(function () { var i = el('debt-name'); if (i) i.focus(); }, 60);
+  }
+
   function openEditDebt(id) {
     var debt = S.data.debts.filter(function (x) { return x.id === Number(id); })[0];
     if (!debt) return;
@@ -2103,7 +2119,10 @@
       '<input class="input" id="debt-target" type="number" inputmode="decimal" step="0.01" min="0" value="' + debt.target + '"></label>' +
       '<label class="field"><span>Note / flag</span>' +
       '<input class="input" id="debt-label" maxlength="80" value="' + esc(debt.label) + '"></label>' +
-      '<button type="button" class="btn btn-primary btn-block" data-act="debt-save" data-id="' + debt.id + '">Save</button>');
+      '<div class="stack">' +
+      '<button type="button" class="btn btn-primary btn-block" data-act="debt-save" data-id="' + debt.id + '">Save</button>' +
+      '<button type="button" class="btn btn-danger btn-block" data-act="debt-delete" data-id="' + debt.id + '">Remove this debt</button>' +
+      '</div>');
   }
 
   function openDeposit() {
@@ -2471,6 +2490,36 @@
         if (confirm('Reopen this debt?')) mutate('/debts/' + id + '/unsettle', { method: 'POST' }, 'Reopened');
         break;
       case 'edit-debt': openEditDebt(id); break;
+      case 'add-debt': openAddDebt(); break;
+      case 'debt-add-save': {
+        var newName = $('#debt-name').value.trim();
+        var newBal = Number($('#debt-balance').value);
+        if (!newName) { toast('Give it a name', 'error'); break; }
+        if (!(newBal > 0)) { toast('Enter what is owed', 'error'); break; }
+        var tgt = Number($('#debt-target').value);
+        closeSheet();
+        mutate('/debts', { method: 'POST', body: {
+          name: newName, balance: newBal,
+          target: tgt > 0 ? tgt : newBal,
+          label: $('#debt-label').value,
+        } }, newName + ' added');
+        break;
+      }
+      case 'debt-delete': {
+        var deadDebt = S.data.debts.filter(function (x) { return x.id === Number(id); })[0];
+        closeSheet();
+        mutate('/debts/' + id, { method: 'DELETE' }).then(function (r) {
+          if (r && deadDebt) {
+            toastUndo(deadDebt.name + ' removed', function () {
+              mutate('/debts', { method: 'POST', body: {
+                name: deadDebt.name, balance: deadDebt.balance,
+                target: deadDebt.target, label: deadDebt.label,
+              } }, 'Restored');
+            });
+          }
+        });
+        break;
+      }
       case 'debt-save': {
         var debtBody = {
           name: $('#debt-name').value,

@@ -1392,6 +1392,34 @@ function createApi(db) {
 
   // ---------------------------------------------------------------- debts + settlement fund
 
+  router.post('/debts', auth, (req, res) => {
+    const body = req.body || {};
+    const name = readName(body.name);
+    const balance = readAmount(body.balance ?? 0, { allowNegative: true });
+    // A loan is paid in full, so its payoff defaults to the balance; a
+    // collection can be settled for less, hence a separate target.
+    const target = body.target === undefined ? balance : readAmount(body.target, { allowNegative: true });
+    if (balance < 0 || target < 0) throw bad('Amounts cannot be negative.');
+    if (db.prepare(`SELECT 1 FROM debts WHERE name = ?`).get(name)) {
+      throw bad('A debt with that name already exists.');
+    }
+    const label = String(body.label ?? '').slice(0, 80);
+    const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM debts`).get().n;
+    const id = db.prepare(`
+      INSERT INTO debts (name, balance_cents, target_cents, label, sort_order) VALUES (?, ?, ?, ?, ?)
+    `).run(name, balance, target, label, order).lastInsertRowid;
+    broadcast('debt:add', req.person);
+    res.status(201).json({ id, state: buildState(currentMonth(), req.person) });
+  });
+
+  router.delete('/debts/:id', auth, (req, res) => {
+    const debt = q.debtById.get(Number(req.params.id));
+    if (!debt) throw notFound('Debt not found.');
+    db.prepare(`DELETE FROM debts WHERE id = ?`).run(debt.id);
+    broadcast('debt:remove', req.person);
+    res.json({ ok: true, state: buildState(currentMonth(), req.person) });
+  });
+
   router.put('/debts/:id', auth, (req, res) => {
     const debt = q.debtById.get(Number(req.params.id));
     if (!debt) throw notFound('Debt not found.');

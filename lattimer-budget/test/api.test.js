@@ -1704,7 +1704,7 @@ test('the PWA shell is served', async () => {
   for (const [pathname, needle] of [
     ['/', 'Lattimer Family Budget'],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v26'],
+    ['/sw.js', 'lfb-v27'],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -1919,36 +1919,51 @@ test('recategorizing an imported row teaches the importer for next time', async 
 
 test('auto-drafts tick themselves off on the day they come out', async () => {
   const s = await state();
-  const disney = byName(s.categories, 'Disney+');
-  assert.equal(disney.autoPay, true, 'seeded as an auto-draft');
-  assert.equal(disney.paid, false, 'the 20th has not arrived in the test month');
-
-  // Move its due day to today: the next read pays it, at its budgeted amount.
+  // Own bill with a due day still ahead, so the result never depends on what
+  // day of the month the suite happens to run.
   const dayToday = Number(s.today.slice(8, 10));
-  const hit = await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { due_day: dayToday } });
-  const paid = byName(hit.body.state.categories, 'Disney+');
+  const ahead = Math.min(28, dayToday + 1);
+  const made = await call('/api/categories', {
+    method: 'POST', body: { name: 'Streaming test', kind: 'fixed', budget: 14, due_day: ahead },
+  });
+  assert.equal(made.status, 201);
+  const id = made.body.id;
+
+  let bill = byName(made.body.state.categories, 'Streaming test');
+  assert.equal(bill.autoPay, false, 'a new bill is hand-paid until told otherwise');
+
+  const armed = await call(`/api/categories/${id}`, { method: 'PUT', body: { auto_pay: true } });
+  bill = byName(armed.body.state.categories, 'Streaming test');
+  assert.equal(bill.autoPay, true);
+  if (ahead > dayToday) {
+    assert.equal(bill.paid, false, 'its day has not arrived, so nothing is charged');
+  }
+
+  // Move the due day to today: the next read pays it at its budgeted amount.
+  const hit = await call(`/api/categories/${id}`, { method: 'PUT', body: { due_day: dayToday } });
+  const paid = byName(hit.body.state.categories, 'Streaming test');
   assert.equal(paid.paid, true, 'its day arrived, so it is ticked off');
   assert.equal(paid.spent, 14);
-  const tx = hit.body.state.transactions.find((t) => t.category_id === disney.id);
+  const tx = hit.body.state.transactions.find((x) => x.category_id === id);
   assert.equal(tx.source, 'billpay');
   assert.equal(tx.person, 'Auto');
   assert.equal(tx.date, s.today);
 
   // Idempotent: reading again does not pay it twice.
-  const again = await state();
-  assert.equal(byName(again.categories, 'Disney+').spent, 14);
+  assert.equal(byName((await state()).categories, 'Streaming test').spent, 14);
 
   // Turning auto-pay off leaves the payment alone but stops future ones.
-  const off = await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { auto_pay: false } });
-  assert.equal(byName(off.body.state.categories, 'Disney+').autoPay, false);
+  const off = await call(`/api/categories/${id}`, { method: 'PUT', body: { auto_pay: false } });
+  assert.equal(byName(off.body.state.categories, 'Streaming test').autoPay, false);
+  assert.equal(byName(off.body.state.categories, 'Streaming test').spent, 14);
 
-  // A bill that is not an auto-draft is never touched.
-  const gas = byName(s.categories, 'Natural gas');
+  // A bill that is not an auto-draft is never charged on its own.
+  const gas = byName(off.body.state.categories, 'Natural gas');
   assert.equal(gas.autoPay, false);
-  assert.equal(byName(again.categories, 'Natural gas').paid, false);
+  assert.equal(gas.paid, false);
 
   await call(`/api/transactions/${tx.id}`, { method: 'DELETE' });
-  await call(`/api/categories/${disney.id}`, { method: 'PUT', body: { due_day: 20, auto_pay: true } });
+  await call(`/api/categories/${id}`, { method: 'DELETE' });
 });
 
 test('a bill remembers which account pays it', async () => {
@@ -2190,4 +2205,32 @@ test('a backup can be downloaded from the phone', async () => {
   assert.equal(res.status, 200);
   const buf = Buffer.from(await res.arrayBuffer());
   assert.equal(buf.subarray(0, 15).toString(), 'SQLite format 3');
+});
+
+test('debts can be added, ordered smallest first, and removed', async () => {
+  const before = (await state()).debts.length;
+  const loan = await call('/api/debts', {
+    method: 'POST', body: { name: 'Test loan', balance: 9000, label: 'loan payoff' },
+  });
+  assert.equal(loan.status, 201);
+  const added = loan.body.state.debts.find((d) => d.name === 'Test loan');
+  assert.equal(added.balance, 9000);
+  assert.equal(added.target, 9000, 'a loan pays in full unless a target is given');
+
+  // a collection can settle for less than the balance
+  const coll = await call('/api/debts', {
+    method: 'POST', body: { name: 'Test collection', balance: 2000, target: 900 },
+  });
+  assert.equal(coll.body.state.debts.find((d) => d.name === 'Test collection').target, 900);
+  assert.equal(coll.body.state.debts.length, before + 2);
+
+  // duplicate names are refused
+  const dup = await call('/api/debts', { method: 'POST', body: { name: 'Test loan', balance: 1 } });
+  assert.equal(dup.status, 400);
+
+  const gone = await call(`/api/debts/${loan.body.id}`, { method: 'DELETE' });
+  assert.equal(gone.status, 200);
+  assert.equal(gone.body.state.debts.find((d) => d.name === 'Test loan'), undefined);
+  await call(`/api/debts/${coll.body.id}`, { method: 'DELETE' });
+  assert.equal((await state()).debts.length, before);
 });
