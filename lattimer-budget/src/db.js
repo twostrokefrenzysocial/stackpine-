@@ -347,6 +347,33 @@ function applyDataMigrations(db) {
             spec.nextDate || null, spec.cadence || null);
         }
       }
+      if (migration.renameDebts) {
+        for (const [from, to] of Object.entries(migration.renameDebts)) {
+          // Skip when the new name is already taken, so a rename never
+          // collides with a debt the family added by hand.
+          if (db.prepare(`SELECT 1 FROM debts WHERE name = ?`).get(to)) continue;
+          db.prepare(`UPDATE debts SET name = ? WHERE name = ?`).run(to, from);
+        }
+      }
+      if (migration.debts) {
+        for (const spec of migration.debts) {
+          const balance = Math.round(spec.balance * 100);
+          const target = Math.round(spec.target * 100);
+          const row = db.prepare(`SELECT id, settled FROM debts WHERE name = ?`).get(spec.name);
+          if (row) {
+            // A debt they already settled is history — leave it alone.
+            if (row.settled) continue;
+            db.prepare(`UPDATE debts SET balance_cents = ?, target_cents = ?, label = ? WHERE id = ?`)
+              .run(balance, target, spec.label || '', row.id);
+          } else {
+            const order = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM debts`).get().n;
+            db.prepare(`
+              INSERT INTO debts (name, balance_cents, target_cents, label, sort_order)
+              VALUES (?, ?, ?, ?, ?)
+            `).run(spec.name, balance, target, spec.label || '', order);
+          }
+        }
+      }
       if (migration.archiveCategories) {
         for (const name of migration.archiveCategories) {
           db.prepare(`UPDATE categories SET archived = 1 WHERE name = ?`).run(name);

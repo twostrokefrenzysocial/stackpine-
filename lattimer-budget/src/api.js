@@ -30,6 +30,11 @@ const { parseStatement, merchantKey, keywordGuess, importHash } = require('./imp
 const { extractLines, parsePdfLines } = require('./pdf');
 const { runBackup, listBackups, snapshotForDownload } = require('./backup');
 const APP_REV = require('./version');
+
+// A debt whose note says it is urgent, in litigation, or still growing gets
+// settled ahead of the pure smallest-balance snowball order. The client uses
+// the same rule so both views agree on what to pay first.
+const JUMPS_QUEUE = /urgent|lawsuit|growing/i;
 const fs = require('fs');
 
 class HttpError extends Error {
@@ -2107,10 +2112,11 @@ function createApi(db) {
     const savingsC = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS n FROM savings_entries`).get().n;
     const debts = q.debts.all();
     const open = debts.filter((d) => !d.settled);
-    // Snowball order: the lawsuit gets settled first, then smallest balance.
+    // Snowball order: anything urgent or still compounding jumps the queue,
+    // then smallest balance first.
     const snowball = open
       .slice()
-      .sort((a, b) => (/lawsuit/i.test(b.label) ? 1 : 0) - (/lawsuit/i.test(a.label) ? 1 : 0) || a.balance_cents - b.balance_cents)
+      .sort((a, b) => (JUMPS_QUEUE.test(b.label) ? 1 : 0) - (JUMPS_QUEUE.test(a.label) ? 1 : 0) || a.balance_cents - b.balance_cents)
       .map((d) => ({ name: d.name, balance: toDollars(d.balance_cents), target: toDollars(d.target_cents), label: d.label }));
 
     const past3 = q.months.all().map((r) => r.month).filter((m) => m < cur).slice(0, 3);

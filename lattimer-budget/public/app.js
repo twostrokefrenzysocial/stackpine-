@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 27;
+  var APP_VERSION = 28;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
 
@@ -1365,12 +1365,13 @@
   // ------------------------------------------------------------ render: debt
 
   function viewDebt(d) {
-    // Ramsey debt snowball: smallest balance first. An urgent one can still
-    // jump the queue by carrying "urgent" in its note.
+    // Ramsey debt snowball: smallest balance first. A debt jumps the queue by
+    // carrying "urgent", "lawsuit" or "growing" in its note — a balance that
+    // compounds while you ignore it costs more than the momentum is worth.
     var open = d.debts.filter(function (x) { return !x.settled; })
       .sort(function (a, b) {
-        var ua = /urgent|lawsuit/i.test(a.label) ? 1 : 0;
-        var ub = /urgent|lawsuit/i.test(b.label) ? 1 : 0;
+        var ua = /urgent|lawsuit|growing/i.test(a.label) ? 1 : 0;
+        var ub = /urgent|lawsuit|growing/i.test(b.label) ? 1 : 0;
         return (ub - ua) || (a.balance - b.balance);
       });
     var settled = d.debts.filter(function (x) { return x.settled; });
@@ -1391,10 +1392,10 @@
     html += '<section class="card">' +
       '<div class="row"><b>Debts cleared</b><span class="muted small">' + settled.length + ' of ' + d.debts.length + '</span></div>' +
       barHtml('ok', clearedPct) +
-      '<div class="cat-foot"><span>' + money(clearedTotal, { cents: false }) + ' of ' + money(targetTotal, { cents: false }) + ' in settlement targets</span></div>' +
+      '<div class="cat-foot"><span>' + money(clearedTotal, { cents: false }) + ' of ' + money(targetTotal, { cents: false }) + ' to be debt-free</span></div>' +
       '</section>';
 
-    html += '<div class="section-title"><span>What you owe</span><span>snowball order — smallest first</span></div>';
+    html += '<div class="section-title"><span>What you owe</span><span>snowball order</span></div>';
     html += '<section class="card card-tight">';
     if (!open.length) html += '<div class="empty">Every debt is cleared. 🎉</div>';
     open.forEach(function (x) { html += debtHtml(x); });

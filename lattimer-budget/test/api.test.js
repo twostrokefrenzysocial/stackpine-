@@ -91,10 +91,11 @@ test('seed data loads once with the expected shape', async () => {
   assert.equal(s.totals.income, 8138);
   assert.equal(byName(s.categories, 'Mortgage (Rocket)').budget, 1004);
   assert.equal(byName(s.categories, 'Groceries').budget, 700);
-  assert.equal(s.debts.length, 5);
-  assert.equal(s.debts[0].name, 'LVNV Funding #1');
-  assert.equal(s.debts[0].target, 500);
-  assert.equal(s.debts[0].label, 'ACTIVE LAWSUIT - settle first');
+  assert.equal(s.debts.length, 9, 'six collections plus the medical bill and the two vehicle loans');
+  assert.equal(byName(s.debts, 'LVNV - Apple Card').balance, 5070, 'the Apple Card was sold to LVNV');
+  assert.equal(byName(s.debts, 'GENFED Financial CU').balance, 3487);
+  assert.equal(byName(s.debts, 'Truck (Credit Acceptance)').balance, 11278);
+  assert.equal(byName(s.debts, 'Dirt bike (Lendmark)').balance, 6703);
   assert.equal(s.person, 'Chris');
   assert.equal(s.readOnly, false);
 });
@@ -1016,7 +1017,7 @@ test('the settlement fund tracks bills, deposits and settlements', async () => {
 
 test('debt details can be edited', async () => {
   const s = await state();
-  const debt = s.debts.find((d) => d.name === 'Midland Credit');
+  const debt = s.debts.find((d) => d.name === 'Midland - Citibank');
   const res = await call(`/api/debts/${debt.id}`, {
     method: 'PUT',
     body: { balance: 1700, target: 800, label: 'Called 7/12' },
@@ -1632,8 +1633,8 @@ test('the Ramsey coach reports baby steps and percentage bands', async () => {
   assert.equal(res.body.steps.length, 7);
   assert.ok(res.body.currentStep >= 1);
   const step2 = res.body.steps.find((x) => x.n === 2);
-  assert.equal(step2.snowball.length, 5, 'all settlement debts in the snowball');
-  assert.match(step2.snowball[0].label, /LAWSUIT/i, 'the lawsuit outranks the snowball order');
+  assert.equal(step2.snowball.length, 9, 'every open debt is in the snowball');
+  assert.equal(step2.snowball[0].name, 'GENFED Financial CU', 'a compounding balance outranks the snowball order');
   const balances = step2.snowball.slice(1).map((d) => d.balance);
   assert.deepEqual(balances, balances.slice().sort((a, b) => a - b), 'then smallest balance first');
 
@@ -1701,10 +1702,14 @@ test('SSE refuses an unauthenticated listener', async () => {
 // ---------------------------------------------------------------- static shell
 
 test('the PWA shell is served', async () => {
+  // The worker's cache name and the asset stamps must track src/version.js, or
+  // phones cache a new build under an old key and never see the update.
+  const rev = require('../src/version');
   for (const [pathname, needle] of [
-    ['/', 'Lattimer Family Budget'],
+    ['/', `/app.js?v=${rev}`],
     ['/manifest.json', '"short_name": "Family Budget"'],
-    ['/sw.js', 'lfb-v27'],
+    ['/sw.js', `lfb-v${rev}`],
+    ['/sw.js', `/styles.css?v=${rev}`],
     ['/app.js', 'quickAddSave'],
     ['/styles.css', '--ink'],
   ]) {
@@ -2205,6 +2210,59 @@ test('a backup can be downloaded from the phone', async () => {
   assert.equal(res.status, 200);
   const buf = Buffer.from(await res.arrayBuffer());
   assert.equal(buf.subarray(0, 15).toString(), 'SQLite format 3');
+});
+
+test('an old database picks up the real debt balances from the credit reports', () => {
+  // Rebuild what the live database looked like before the reports came in:
+  // the five original collections under their old names, plus the two vehicle
+  // loans carrying the balances Chris guessed at.
+  const legacyPath = path.join(tmpDir, 'legacy.db');
+  const legacy = open(legacyPath);
+  legacy.prepare('DELETE FROM debts').run();
+  const insert = legacy.prepare(
+    'INSERT INTO debts (name, balance_cents, target_cents, label, sort_order) VALUES (?, ?, ?, ?, ?)'
+  );
+  [
+    ['LVNV Funding #1', 97100, 50000, 'Case dismissed - check before paying'],
+    ['WebBank/OneMain', 82900, 41500, ''],
+    ['Emergency Medicine Physicians', 100600, 50000, ''],
+    ['Midland Credit', 168400, 84000, ''],
+    ['LVNV Funding #2', 441000, 220500, ''],
+    ['Truck (Credit Acceptance)', 1000000, 1000000, 'loan payoff'],
+    ['Dirt bike (Lendmark)', 1300000, 1300000, 'loan payoff'],
+  ].forEach((row, i) => insert.run(row[0], row[1], row[2], row[3], i));
+  // One they have already dealt with must survive the migration untouched.
+  legacy.prepare("UPDATE debts SET settled = 1, settled_cents = 41500 WHERE name = 'WebBank/OneMain'").run();
+  legacy.prepare("DELETE FROM meta WHERE key = '2026-09-real-debt-balances'").run();
+  legacy.close();
+
+  const migrated = open(legacyPath);
+  const rows = migrated.prepare('SELECT * FROM debts').all();
+  const find = (name) => rows.find((r) => r.name === name);
+
+  assert.equal(rows.length, 9, 'GENFED and the Apple Card collection were added');
+  assert.equal(find('LVNV Funding #1'), undefined, 'renamed to name the original creditor');
+  assert.equal(find('LVNV - Credit One').balance_cents, 97100);
+  assert.equal(find('LVNV - Capital One').balance_cents, 441000);
+  assert.equal(find('Midland - Citibank').balance_cents, 168400);
+  assert.equal(find('EMP Cuyahoga Falls').balance_cents, 100600);
+
+  assert.equal(find('LVNV - Apple Card').balance_cents, 507000, 'the charged-off Apple Card, now owned by LVNV');
+  assert.equal(find('GENFED Financial CU').balance_cents, 348700);
+  assert.match(find('GENFED Financial CU').label, /growing/i, 'so it jumps the snowball queue');
+
+  assert.equal(find('Truck (Credit Acceptance)').balance_cents, 1127800, 'the real payoff, not the guess');
+  assert.equal(find('Dirt bike (Lendmark)').balance_cents, 670300);
+
+  const settled = find('WebBank/OneMain');
+  assert.equal(settled.settled, 1);
+  assert.equal(settled.balance_cents, 82900, 'a settled debt is history and stays as it was');
+
+  // Running it a second time changes nothing.
+  migrated.close();
+  const again = open(legacyPath);
+  assert.equal(again.prepare('SELECT COUNT(*) AS n FROM debts').get().n, 9);
+  again.close();
 });
 
 test('debts can be added, ordered smallest first, and removed', async () => {

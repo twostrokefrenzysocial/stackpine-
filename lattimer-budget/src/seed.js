@@ -42,12 +42,21 @@ const VARIABLE = [
   ['Household & misc', 125],
 ];
 
+// Balances read off the TransUnion and Experian reports pulled August 2026.
+// Settlement targets are half of face for the debt buyers (LVNV, Midland,
+// OneMain), who bought these for pennies and settle there routinely, and 70%
+// for GENFED, which is the original creditor and will hold out for more. The
+// two vehicle loans are current and never late, so their target is the payoff.
 const DEBTS = [
-  { name: 'LVNV Funding #1', balance: 971, target: 500, label: 'ACTIVE LAWSUIT - settle first' },
   { name: 'WebBank/OneMain', balance: 829, target: 415, label: '' },
-  { name: 'Emergency Medicine Physicians', balance: 1006, target: 500, label: '' },
-  { name: 'Midland Credit', balance: 1684, target: 840, label: '' },
-  { name: 'LVNV Funding #2', balance: 4410, target: 2205, label: '' },
+  { name: 'LVNV - Credit One', balance: 971, target: 486, label: 'Under dispute - wait it out' },
+  { name: 'EMP Cuyahoga Falls', balance: 1006, target: 503, label: 'Ask for charity care first' },
+  { name: 'Midland - Citibank', balance: 1684, target: 842, label: '' },
+  { name: 'GENFED Financial CU', balance: 3487, target: 2441, label: 'Growing ~$50/mo - pay first' },
+  { name: 'LVNV - Capital One', balance: 4410, target: 2205, label: 'Under dispute - wait it out' },
+  { name: 'LVNV - Apple Card', balance: 5070, target: 2535, label: 'Under dispute - wait it out' },
+  { name: 'Dirt bike (Lendmark)', balance: 6703, target: 6703, label: '' },
+  { name: 'Truck (Credit Acceptance)', balance: 11278, target: 11278, label: '' },
 ];
 
 // The settlement fund bill feeds the Debt Payoff tab's fund balance.
@@ -220,6 +229,21 @@ const DATA_MIGRATIONS = [
       'Household & misc': 75,
     },
     archiveCategories: ['Vehicle parts & maintenance'],
+  },
+  {
+    // Real balances, straight off the TransUnion and Experian reports. The
+    // vehicle loans were guesses and both were wrong; the Apple Card turned
+    // out to have been charged off and sold to LVNV; and GENFED - a charged-off
+    // credit union loan that never made it into the app - has been quietly
+    // compounding at about $50 a month since Jan 2025.
+    key: '2026-09-real-debt-balances',
+    renameDebts: {
+      'LVNV Funding #1': 'LVNV - Credit One',
+      'LVNV Funding #2': 'LVNV - Capital One',
+      'Midland Credit': 'Midland - Citibank',
+      'Emergency Medicine Physicians': 'EMP Cuyahoga Falls',
+    },
+    debts: DEBTS,
   },
   {
     key: '2026-08-miriam-student-loans',
