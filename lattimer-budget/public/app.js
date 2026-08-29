@@ -4,9 +4,15 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 28;
+  var APP_VERSION = 29;
 
-  var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab' };
+  var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab', theme: 'lfb.theme' };
+
+  // Colors for the report donuts. Order matters: the biggest category gets the
+  // first color, so the chart reads the same way the legend does.
+  var CHART_COLORS = ['#00a8c6', '#2e9e4f', '#f2c230', '#f26d21', '#8a63d2', '#3f7ad9',
+    '#e0447c', '#8ed14b', '#69c9f2', '#b04ecf', '#f2a057', '#5fd4a5'];
+  var CHART_OTHER = '#8a8a92';
 
   var S = {
     token: null,
@@ -986,6 +992,71 @@
 
   // ------------------------------------------------------------ render: history
 
+  // Group rows into donut segments: biggest first, anything past the top nine
+  // folded into "Everything else" so the chart stays readable.
+  function chartSegments(rows) {
+    var byKey = {};
+    rows.forEach(function (r) {
+      var key = r.title;
+      if (!byKey[key]) byKey[key] = { name: r.title, amount: 0, catId: r.catId || null };
+      byKey[key].amount += r.amount;
+    });
+    var segs = Object.keys(byKey).map(function (k) { return byKey[k]; })
+      .filter(function (sg) { return sg.amount > 0; })
+      .sort(function (a, b) { return b.amount - a.amount; });
+    if (segs.length > 10) {
+      var rest = segs.slice(9);
+      segs = segs.slice(0, 9);
+      segs.push({
+        name: 'Everything else',
+        amount: rest.reduce(function (t, sg) { return t + sg.amount; }, 0),
+        catId: null,
+        other: true,
+      });
+    }
+    segs.forEach(function (sg, i) { sg.color = sg.other ? CHART_OTHER : CHART_COLORS[i % CHART_COLORS.length]; });
+    return segs;
+  }
+
+  function chartCard(label, segs, tappable) {
+    var total = segs.reduce(function (t, sg) { return t + sg.amount; }, 0);
+    if (!segs.length || total <= 0) return '';
+
+    var C = 2 * Math.PI * 42;
+    var offset = 0;
+    var arcs = segs.map(function (sg) {
+      var span = sg.amount / total * C;
+      var len = segs.length > 1 ? Math.max(span - 2.5, 0.6) : span; // small gap between slices
+      var arc = '<circle r="42" cx="60" cy="60" fill="none" stroke="' + sg.color + '" stroke-width="13"' +
+        ' stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '"' +
+        ' stroke-dashoffset="' + (-offset).toFixed(2) + '"></circle>';
+      offset += span;
+      return arc;
+    }).join('');
+
+    var legend = segs.map(function (sg) {
+      var pct = (sg.amount / total * 100).toFixed(1) + '%';
+      var canTap = tappable && sg.catId;
+      return '<button type="button" class="legend-row"' +
+        (canTap ? ' data-act="legend-cat" data-id="' + sg.catId + '"' : ' disabled') + '>' +
+        '<span class="legend-dot" style="background:' + sg.color + '"></span>' +
+        '<span class="legend-name">' + esc(sg.name) + '</span>' +
+        '<span class="legend-nums"><b>' + money(sg.amount) + '</b><span>' + pct + '</span></span>' +
+        '</button>';
+    }).join('');
+
+    return '<section class="card">' +
+      '<div class="report-head"><b>' + esc(label) + '</b><span>' + esc(monthLabel(S.data.month)) + '</span></div>' +
+      '<div class="donut-wrap"><svg viewBox="0 0 120 120" role="img" aria-label="' + esc(label) + '">' +
+      '<g transform="rotate(-90 60 60)">' + arcs + '</g>' +
+      '<text class="donut-total" x="60" y="58" text-anchor="middle">' + money(total, { cents: false }) + '</text>' +
+      '<text class="donut-cap" x="60" y="70" text-anchor="middle">Total</text>' +
+      '</svg></div>' +
+      '<div class="legend">' + legend + '</div>' +
+      (tappable ? '<p class="muted small" style="margin:8px 0 0">Tap a category to see just those transactions.</p>' : '') +
+      '</section>';
+  }
+
   function viewHistory(d) {
     var showOut = S.filters.type !== 'in';
     var showIn = S.filters.type !== 'out';
@@ -1003,7 +1074,7 @@
       d.transactions.forEach(function (t) {
         if (S.filters.category && String(t.category_id) !== S.filters.category) return;
         var r = { kind: 'out', id: t.id, date: t.date, person: t.person, amount: t.amount, src: t.source,
-          title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) };
+          catId: t.category_id, title: t.category, meta: t.note || (t.source === 'billpay' ? 'Bill paid' : t.person) };
         if (matches(r)) allRows.push(r);
       });
     }
@@ -1054,6 +1125,19 @@
       '<div><span>Net</span><b class="' + (net < 0 ? 'cat-over' : 'week-in') + '">' +
       (net < 0 ? '−' : '+') + money(Math.abs(net), { cents: false }) + '</b></div>' +
       '</div>';
+
+    // Where the money went, Monarch-style: a donut with the total in the middle
+    // and every category's share. Hidden while drilled into a single category —
+    // the list below is the drill-down.
+    if (!S.filters.category) {
+      if (S.filters.type === 'in') {
+        html += chartCard('Income by source',
+          chartSegments(rows.filter(function (r) { return r.kind === 'in'; })), false);
+      } else {
+        html += chartCard('Spending by category',
+          chartSegments(rows.filter(function (r) { return r.kind === 'out'; })), true);
+      }
+    }
 
     html += '<section class="card">' +
       '<div class="row" style="margin-bottom:10px"><div class="chips">' +
@@ -1547,6 +1631,17 @@
     html += '<div class="section-title"><span>Spending budgets</span></div><section class="card">';
     variable.forEach(function (c) { html += categoryRow(c); });
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="variable">+ Add category</button></section>';
+
+    var themeNow = localStorage.getItem(LS.theme) || 'auto';
+    html += '<div class="section-title"><span>Appearance</span></div><section class="card">' +
+      '<div class="seg3">' +
+      [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(function (t) {
+        return '<button type="button" class="btn btn-sm" data-act="set-theme" data-theme="' + t[0] + '"' +
+          ' aria-pressed="' + (themeNow === t[0]) + '">' + t[1] + '</button>';
+      }).join('') +
+      '</div>' +
+      '<p class="muted small" style="margin:10px 0 0">Auto follows this phone\'s light/dark setting.</p>' +
+      '</section>';
 
     html += '<div class="section-title"><span>App</span></div><section class="card stack">' +
       '<div class="row"><span class="muted small">Signed in as</span><b>' + esc(d.person) + '</b></div>' +
@@ -2439,6 +2534,19 @@
     switch (act) {
       case 'close-sheet': closeSheet(); break;
 
+      case 'set-theme': {
+        localStorage.setItem(LS.theme, node.dataset.theme);
+        applyTheme();
+        render();
+        break;
+      }
+
+      case 'legend-cat': {
+        S.filters.category = id;
+        render();
+        break;
+      }
+
       case 'toast-undo': {
         var fn = undoFn;
         undoFn = null;
@@ -3033,6 +3141,19 @@
 
   // ------------------------------------------------------------ boot
 
+  function applyTheme() {
+    var choice = localStorage.getItem(LS.theme) || 'auto';
+    var root = document.documentElement;
+    if (choice === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', choice);
+    // The address bar / status area follows: media-scoped when auto, pinned when forced.
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) {
+      var wantsDark = choice === 'dark' || (choice === 'auto' && (metas[i].media || '').indexOf('dark') !== -1);
+      metas[i].setAttribute('content', wantsDark ? '#0A0A0B' : '#F5F5F7');
+    }
+  }
+
   function boot() {
     showApp();
     S.month = null;
@@ -3044,6 +3165,7 @@
   }
 
   function init() {
+    applyTheme();
     S.token = localStorage.getItem(LS.token);
     S.person = localStorage.getItem(LS.person);
     S.tab = localStorage.getItem(LS.tab) || 'dashboard';

@@ -26,25 +26,45 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
+/* Dark theme. Applies when the phone is dark (unless Light is forced in
+   Settings) and whenever Dark is forced there. Both blocks must stay in step. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a0a0b;
-    --card: #161619;
-    --card-2: #1f1f23;
-    --line: #29292e;
-    --text: #f4f4f6;
-    --muted: #97979f;
-    --ink: #f4f4f6;
-    --ink-contrast: #101013;
-    --shadow: none;
-    --shadow-lg: 0 -12px 40px rgba(0, 0, 0, .6);
-    --ok: #3ecf94;
-    --warn: #e3a94e;
-    --over: #f26a60;
-    --ok-bg: rgba(62, 207, 148, .13);
-    --warn-bg: rgba(227, 169, 78, .14);
-    --over-bg: rgba(242, 106, 96, .13);
+  :root:not([data-theme="light"]) {
+  --bg: #0a0a0b;
+  --card: #161619;
+  --card-2: #1f1f23;
+  --line: #29292e;
+  --text: #f4f4f6;
+  --muted: #97979f;
+  --ink: #f4f4f6;
+  --ink-contrast: #101013;
+  --shadow: none;
+  --shadow-lg: 0 -12px 40px rgba(0, 0, 0, .6);
+  --ok: #3ecf94;
+  --warn: #e3a94e;
+  --over: #f26a60;
+  --ok-bg: rgba(62, 207, 148, .13);
+  --warn-bg: rgba(227, 169, 78, .14);
+  --over-bg: rgba(242, 106, 96, .13);
   }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0a0b;
+  --card: #161619;
+  --card-2: #1f1f23;
+  --line: #29292e;
+  --text: #f4f4f6;
+  --muted: #97979f;
+  --ink: #f4f4f6;
+  --ink-contrast: #101013;
+  --shadow: none;
+  --shadow-lg: 0 -12px 40px rgba(0, 0, 0, .6);
+  --ok: #3ecf94;
+  --warn: #e3a94e;
+  --over: #f26a60;
+  --ok-bg: rgba(62, 207, 148, .13);
+  --warn-bg: rgba(227, 169, 78, .14);
+  --over-bg: rgba(242, 106, 96, .13);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -790,3 +810,71 @@ select.input {
 /* Payday weekday callout in Settings */
 .pay-day-ok { color: var(--ok); font-weight: 650; }
 .pay-day-odd { color: var(--over); font-weight: 650; }
+
+/* ---------------------------------------------------------- reports (donut) */
+.report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.report-head b { font-size: 15px; }
+.report-head span { font-size: 12px; color: var(--muted); }
+
+.donut-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+.donut-wrap svg { width: 210px; height: 210px; }
+.donut-total {
+  font: 700 13.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  fill: var(--text);
+}
+.donut-cap {
+  font: 400 6.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  fill: var(--muted);
+}
+
+.legend { margin-top: 6px; }
+.legend-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.legend-row:last-child { border-bottom: 0; }
+.legend-row[disabled] { cursor: default; }
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  justify-self: center;
+}
+.legend-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-nums { text-align: right; white-space: nowrap; }
+.legend-nums b { font-variant-numeric: tabular-nums; }
+.legend-nums span {
+  display: inline-block;
+  min-width: 52px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* theme picker in Settings */
+.seg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.seg3 .btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--ink-contrast);
+  border-color: var(--ink);
+}

@@ -1925,9 +1925,11 @@ test('recategorizing an imported row teaches the importer for next time', async 
 test('auto-drafts tick themselves off on the day they come out', async () => {
   const s = await state();
   // Own bill with a due day still ahead, so the result never depends on what
-  // day of the month the suite happens to run.
+  // day of the month the suite happens to run. Past the 28th "tomorrow" may
+  // not exist in the month, so the bill is due today and arming it pays it
+  // right away — dated today either way, which is all the test asserts.
   const dayToday = Number(s.today.slice(8, 10));
-  const ahead = Math.min(28, dayToday + 1);
+  const ahead = dayToday >= 28 ? dayToday : dayToday + 1;
   const made = await call('/api/categories', {
     method: 'POST', body: { name: 'Streaming test', kind: 'fixed', budget: 14, due_day: ahead },
   });
@@ -1978,12 +1980,19 @@ test('a bill remembers which account pays it', async () => {
   assert.ok(liza, "Liza's account exists");
   assert.equal(daycare.accountId, liza.id, 'daycare is paid from Liza\'s account');
 
-  const before = s.bank.accounts.find((a) => a.id === liza.id).balance;
+  // Daycare auto-drafts on the 29th, so late in the month it may already be
+  // paid when the suite runs. Hold the auto-pay off and start from unpaid so
+  // the before/after delta is exactly one payment.
+  await call(`/api/categories/${daycare.id}`, { method: 'PUT', body: { auto_pay: false } });
+  await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: false } });
+
+  const before = (await state()).bank.accounts.find((a) => a.id === liza.id).balance;
   const paid = await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: true } });
   const after = paid.body.state.bank.accounts.find((a) => a.id === liza.id).balance;
   assert.equal(Math.round((before - after) * 100) / 100, daycare.budget, 'it came out of the right account');
 
   await call(`/api/bills/${daycare.id}/pay`, { method: 'POST', body: { paid: false } });
+  await call(`/api/categories/${daycare.id}`, { method: 'PUT', body: { auto_pay: true } });
 });
 
 test('the new loans are live now and come from the business account', async () => {
