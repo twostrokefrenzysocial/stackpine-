@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 29;
+  var APP_VERSION = 30;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab', theme: 'lfb.theme' };
 
@@ -21,7 +21,7 @@
     data: null,
     tab: 'dashboard',
     filters: { category: '', person: '', type: '', search: '' },
-    ui: { paidOpen: false, openCats: {} },
+    ui: { paidOpen: false, openCats: {}, bankOpen: false, autoOpen: false, planAutoOpen: false, debtOpen: false, edit: {} },
     pinned: false,
     sse: null,
     pollTimer: null,
@@ -518,7 +518,6 @@
     if (S.tab === 'dashboard') view.innerHTML = viewDashboard(d);
     else if (S.tab === 'history') view.innerHTML = viewHistory(d);
     else if (S.tab === 'plan') view.innerHTML = viewPlan(d);
-    else if (S.tab === 'debt') view.innerHTML = viewDebt(d);
     else view.innerHTML = viewSettings(d);
   }
 
@@ -533,12 +532,8 @@
   }
 
   function viewDashboard(d) {
-    // Unpaid bills stay on top (already due-date sorted by the server);
-    // paid ones sink so what still needs doing is always first.
-    var fixed = d.categories.filter(function (c) { return c.kind === 'fixed'; })
-      .sort(function (a, b) { return (a.paid ? 1 : 0) - (b.paid ? 1 : 0); });
+    var fixed = d.categories.filter(function (c) { return c.kind === 'fixed'; });
     var variable = d.categories.filter(function (c) { return c.kind === 'variable'; });
-    var billsLeft = fixed.reduce(function (sum, c) { return c.paid ? sum : sum + c.budget; }, 0);
 
     var html = '';
 
@@ -554,34 +549,43 @@
         ' saved on this phone — will sync when there\'s signal.</div>';
     }
 
-    // What's in the bank — every account, one honest number each.
+    // ---- the one number: what is genuinely free for everyday spending ----
+    var per = variable.length && variable[0].periodBudget !== undefined;
+    var safeBudget = variable.reduce(function (s2, c) { return s2 + (per ? c.periodBudget : c.budget); }, 0);
+    var safeSpent = variable.reduce(function (s2, c) { return s2 + (per ? c.periodSpent : c.spent); }, 0);
+    var safe = safeBudget - safeSpent;
+    var pp = d.payPeriod;
+    var until = per && pp && pp.perPaycheck ? 'until ' + monthDay(pp.last) : 'this month';
+
+    html += '<section class="card hero">' +
+      '<div class="hero-cap">Safe to spend</div>' +
+      '<div class="hero-big' + (safe < 0 ? ' hero-neg' : '') + '">' +
+      (safe < 0 ? '−' : '') + money(Math.abs(safe)) + '</div>' +
+      '<div class="hero-sub">for everyday spending ' + esc(until) +
+      ' · ' + money(safeSpent, { cents: false }) + ' of ' + money(safeBudget, { cents: false }) + ' used</div>';
+
+    // The bank, one quiet line — tap to see each account and move money.
     if (d.bank && d.bank.set) {
-      html += '<section class="card bank">' +
-        '<div class="bank-cap">In the bank</div>' +
-        '<div class="bank-big' + (d.bank.total < 0 ? ' bank-neg' : '') + '">' + money(d.bank.total) + '</div>' +
-        '<div class="bank-accounts">' +
-        d.bank.accounts.map(function (a) {
-          return '<button type="button" class="bank-acc" data-act="account-open" data-id="' + a.id + '" title="Tap to fix or rename">' +
-            '<span>' + esc(a.name) + '</span><b' + (a.balance < 0 ? ' class="cat-over"' : '') + '>' + money(a.balance) + '</b></button>';
-        }).join('') +
-        '</div>' +
-        '<div class="bank-sub">' +
-        '<span class="bank-in"><b class="bank-in">+' + money(d.totals.received, { cents: false }) + '</b> in</span>' +
-        '<span><b>−' + money(d.totals.spent, { cents: false }) + '</b> out this month</span>' +
-        '</div>' +
-        (d.readOnly ? '' :
-          '<div class="chips" style="margin-top:10px">' +
-          (d.bank.accounts.length > 1 ? '<button type="button" class="chip" data-act="qa-move">⇄ Move money</button>' : '') +
-          '<button type="button" class="chip" data-act="account-open" data-id="">+ Account</button>' +
-          '</div>') +
-        '</section>';
+      html += '<button type="button" class="hero-bank" data-act="toggle-bank">' +
+        '<span>' + (S.ui.bankOpen ? '▾' : '▸') + ' In the bank</span>' +
+        '<b' + (d.bank.total < 0 ? ' class="cat-over"' : '') + '>' + money(d.bank.total) + '</b></button>';
+      if (S.ui.bankOpen) {
+        html += '<div class="bank-accounts">' +
+          d.bank.accounts.map(function (a) {
+            return '<button type="button" class="bank-acc" data-act="account-open" data-id="' + a.id + '" title="Tap to fix or rename">' +
+              '<span>' + esc(a.name) + '</span><b' + (a.balance < 0 ? ' class="cat-over"' : '') + '>' + money(a.balance) + '</b></button>';
+          }).join('') + '</div>' +
+          (d.readOnly ? '' :
+            '<div class="chips" style="margin-top:10px">' +
+            (d.bank.accounts.length > 1 ? '<button type="button" class="chip" data-act="qa-move">⇄ Move money</button>' : '') +
+            '<button type="button" class="chip" data-act="account-open" data-id="">+ Account</button>' +
+            '</div>');
+      }
     } else {
-      html += '<section class="card bank">' +
-        '<div class="bank-cap">In the bank</div>' +
-        '<p class="small muted" style="margin:6px 0 10px">Add your accounts (checking, savings…) with what\'s really in them — every dollar you log moves the right one.</p>' +
-        '<button type="button" class="btn btn-block bank-set-btn" data-act="account-open" data-id="">Add an account</button>' +
-        '</section>';
+      html += '<button type="button" class="hero-bank" data-act="account-open" data-id="">' +
+        '<span>▸ In the bank</span><b class="muted">add your accounts</b></button>';
     }
+    html += '</section>';
 
     // Paychecks: one row, one job — log the money when it lands.
     var hint = paydayHint(d);
@@ -613,8 +617,6 @@
         html += '<button type="button" class="btn btn-sm btn-primary btn-block" style="margin-top:8px" data-act="tuneup-open">' +
           rv.suggestionCount + ' budget change' + (rv.suggestionCount === 1 ? '' : 's') + ' suggested — review &amp; accept</button>';
       }
-      // The save-it nudge only fires on real tracked income; a "leftover"
-      // computed from the plan alone is hypothetical money.
       if (rv.leftover > 0 && rv.leftoverBasis === 'received') {
         html += '<div class="row small" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">' +
           '<span><b class="week-in">' + money(rv.leftover, { cents: false }) + '</b> came in and never got spent</span>' +
@@ -630,7 +632,7 @@
     // the detail lives on the Plan tab.
     var upcoming = d.upcoming || [];
     if (upcoming.length) {
-      var projected = d.totals.budgeted + upcoming.reduce(function (s, c) { return s + c.budget; }, 0);
+      var projected = d.totals.budgeted + upcoming.reduce(function (s2, c) { return s2 + c.budget; }, 0);
       var over = projected - d.totals.income;
       if (over > 0) {
         html += '<div class="card due-alert">Starting ' + esc(monthLabel(upcoming[0].startsMonth)) +
@@ -638,47 +640,32 @@
       }
     }
 
-    var overdue = fixed.filter(function (c) { return c.dueStatus === 'overdue'; });
-    var dueSoon = fixed.filter(function (c) { return c.dueStatus === 'today' || c.dueStatus === 'soon'; });
-    if (overdue.length || dueSoon.length) {
-      html += '<section class="card due-alert">' +
-        '<div class="row"><span>' +
-        (overdue.length ? '<b>' + overdue.length + ' overdue</b>' : '') +
-        (overdue.length && dueSoon.length ? ' · ' : '') +
-        (dueSoon.length ? dueSoon.length + ' due within 3 days' : '') +
-        '</span><b>' +
-        money(overdue.concat(dueSoon).reduce(function (s, c) { return s + c.budget; }, 0), { cents: false }) +
-        '</b></div></section>';
-    }
-
-    var unpaidBills = fixed.filter(function (c) { return !c.paid; });
+    // ---- bills: only what actually needs a human ----
+    // Auto-drafts pay themselves and paid bills are done; neither earns a row
+    // on the home screen. What's left is grouped by the paycheck that pays it.
+    var handPaid = fixed.filter(function (c) { return !c.paid && !c.autoPay; });
+    var autoLeft = fixed.filter(function (c) { return !c.paid && c.autoPay; });
     var paidBills = fixed.filter(function (c) { return c.paid; });
+    var billsLeft = handPaid.reduce(function (s2, c) { return s2 + c.budget; }, 0);
 
-    html += '<div class="section-title"><span>Bills to pay</span><span>' +
-      (unpaidBills.length ? money(billsLeft, { cents: false }) + ' left' : 'all paid 🎉') + '</span></div>';
+    html += '<div class="section-title"><span>Bills that need you</span><span>' +
+      (handPaid.length ? money(billsLeft, { cents: false }) + ' left' : 'none 🎉') + '</span></div>';
 
     if (!fixed.length) {
-      html += '<div class="card empty">No fixed bills yet. Add them in Settings.</div>';
+      html += '<div class="card empty">No bills yet. Set up the plan on the Plan tab.</div>';
     } else {
       html += '<section class="card card-tight">';
-      // The family pays bills the day a check lands, so the list is grouped
-      // by paycheck: this Friday's batch first, then the next one.
       var groups = [];
       var byDate = {};
-      unpaidBills.forEach(function (c) {
-        // Anything that pays itself needs no attention; what's left is
-        // grouped by the paycheck it comes out of.
+      handPaid.forEach(function (c) {
         var onPayday = (c.duePayday !== null && c.duePayday !== undefined) || c.cadence === 'payday';
-        var key = c.autoPay ? 'auto'
-          : onPayday && c.dueDate ? c.dueDate
+        var key = onPayday && c.dueDate ? c.dueDate
           : c.dueDate ? 'watch'
           : 'none';
         if (!byDate[key]) { byDate[key] = []; groups.push(key); }
         byDate[key].push(c);
       });
-      var rank = function (g) {
-        return g === 'none' ? 3 : g === 'auto' ? 2 : g === 'watch' ? 1 : 0;
-      };
+      var rank = function (g) { return g === 'none' ? 3 : g === 'watch' ? 1 : 0; };
       groups.sort(function (a, b) {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
         return a < b ? -1 : a > b ? 1 : 0;
@@ -686,20 +673,26 @@
       var multiGroup = groups.length > 1;
       groups.forEach(function (key) {
         if (multiGroup) {
-          var total = byDate[key].reduce(function (s, c) { return s + c.budget; }, 0);
+          var total = byDate[key].reduce(function (s2, c) { return s2 + c.budget; }, 0);
           var head = key === 'none' ? 'No date set'
-            : key === 'auto' ? '🔒 Pays itself — nothing to do'
             : key === 'watch' ? 'Keep an eye on these'
             : '✓ Pay with ' + esc(payLabel(key, d));
-          html += '<div class="pay-head' + (key === 'auto' ? ' pay-head-auto' : '') + '"><span>' + head + '</span>' +
+          html += '<div class="pay-head"><span>' + head + '</span>' +
             '<span>' + money(total, { cents: false }) + '</span></div>';
         }
         byDate[key].forEach(function (c) { html += billChecklistRow(c, d); });
       });
-      if (!unpaidBills.length) {
-        html += '<div class="empty" style="padding:16px">Every bill is paid this month.</div>';
+      if (!handPaid.length) {
+        html += '<div class="empty" style="padding:16px">Nothing needs you — the rest pays itself.</div>';
       }
-      // Paid bills fold away so the list shrinks as the month gets done.
+      // Auto-drafts fold into one quiet line; they tick themselves off.
+      if (autoLeft.length) {
+        var autoTotal = autoLeft.reduce(function (s2, c) { return s2 + c.budget; }, 0);
+        html += '<button type="button" class="bill-expander" data-act="toggle-auto">' +
+          (S.ui.autoOpen ? '▾' : '▸') + ' 🔒 ' + autoLeft.length + ' pay themselves · ' +
+          money(autoTotal, { cents: false }) + '</button>';
+        if (S.ui.autoOpen) autoLeft.forEach(function (c) { html += billChecklistRow(c, d); });
+      }
       if (paidBills.length) {
         html += '<button type="button" class="bill-expander" data-act="toggle-paid">' +
           (S.ui.paidOpen ? '▾' : '▸') + ' ' + paidBills.length + ' paid ✓</button>';
@@ -708,13 +701,12 @@
       html += '</section>';
     }
 
-    var pp = d.payPeriod;
     html += '<div class="section-title"><span>Spending</span><span>' +
       (pp && pp.perPaycheck
         ? 'this paycheck · ' + esc(monthDay(pp.start)) + '–' + esc(monthDay(pp.last))
         : 'this month') + '</span></div>';
     if (!variable.length) {
-      html += '<div class="card empty">No spending categories yet. Add them in Settings.</div>';
+      html += '<div class="card empty">No spending categories yet. Add them on the Plan tab.</div>';
     } else {
       html += '<section class="card card-tight">';
       variable.forEach(function (c) { html += spendingCatRow(c, d); });
@@ -1237,6 +1229,39 @@
 
   // ------------------------------------------------------------ render: plan
 
+  /** The income sources, editable in place — used by the Plan tab's Edit mode. */
+  function incomeEditorHtml(d) {
+    var html = '';
+    d.income.sources.forEach(function (s) {
+      // Name the weekday of the payday: a date on the wrong day is otherwise
+      // impossible to spot in a date box.
+      var dayName = s.nextPayday ? weekdayOf(s.nextPayday) : null;
+      html += '<div class="edit-card">' +
+        '<div class="edit-card-name">' + esc(s.name) +
+        '<span class="muted small"> · ' + s.per_month + '×/mo' + (s.person ? ' · ' + esc(s.person) : '') + '</span></div>' +
+        '<div class="edit-card-controls edit-card-3">' +
+        '<label class="mini"><span>Per check</span>' +
+        '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + s.amount +
+        '" data-act="income-amount" data-id="' + s.id + '" aria-label="Amount for ' + esc(s.name) + '"></label>' +
+        '<label class="mini"><span>Next payday' +
+        (dayName ? ' <b class="' + (dayName === 'Friday' ? 'pay-day-ok' : 'pay-day-odd') + '">' + esc(dayName) + '</b>' : '') +
+        '</span>' +
+        '<input class="input" type="date" value="' + esc(s.nextPayday || '') +
+        '" data-act="income-payday" data-id="' + s.id + '" aria-label="Next payday for ' + esc(s.name) + '"></label>' +
+        '<label class="mini"><span>Repeats</span>' +
+        '<select class="input" data-act="income-cadence" data-id="' + s.id + '" aria-label="Pay cadence for ' + esc(s.name) + '">' +
+        ['biweekly', 'weekly', 'monthly'].map(function (c) {
+          return '<option value="' + c + '"' + ((s.cadence || 'biweekly') === c ? ' selected' : '') + '>' +
+            (c === 'biweekly' ? 'every 2 weeks' : c) + '</option>';
+        }).join('') + '</select></label>' +
+        '<button type="button" class="icon-del" data-act="del-income" data-id="' + s.id + '" aria-label="Delete income source">✕</button>' +
+        '</div></div>';
+    });
+    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
+    html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
+    return html;
+  }
+
   function viewPlan(d) {
     var fixed = activeCats(d, 'fixed');
     var variable = activeCats(d, 'variable');
@@ -1246,8 +1271,16 @@
     var leftover = d.totals.income - billsTotal - everydayTotal - target;
     var short = leftover < 0;
 
-    // One page, read top to bottom: what comes in, what goes out, what is
-    // left — then a single button that balances it.
+    // Every number the family plans with lives on this one tab — readable at
+    // a glance, editable in place behind each section's Edit.
+    var planHead = function (label, sum, key) {
+      return '<div class="section-title"><span>' + label + '</span><span>' + sum +
+        (d.readOnly || !key ? '' :
+          ' <button type="button" class="link-btn" data-act="plan-edit" data-key="' + key + '">' +
+          (S.ui.edit[key] ? 'Done' : 'Edit') + '</button>') +
+        '</span></div>';
+    };
+
     var html = '<section class="card summary">' +
       '<div class="summary-cap">' + esc(monthLabel(d.month)) + '</div>' +
       '<div class="plan-math">' +
@@ -1263,57 +1296,82 @@
     html += '<section class="card" id="plan-suggest"><p class="muted small" style="margin:0">Working out a plan…</p></section>';
     setTimeout(loadPlanSuggest, 0);
 
-    // ---- money in: what each paycheck brings, and when
-    html += '<div class="section-title"><span>Money in</span><span>' +
-      money(d.totals.income, { cents: false }) + ' / mo</span></div><section class="card card-tight">';
-    d.income.sources.forEach(function (s2) {
-      var when = s2.nextPayday ? nextPaydayText(s2, d) : (s2.per_month + '× a month');
-      html += '<div class="cat"><div class="cat-head">' +
-        '<span class="cat-name">' + esc(s2.name) +
-        '<span class="muted small" style="display:block;font-weight:400">' +
-        money(s2.amount, { cents: false }) + ' × ' + s2.per_month + ' · ' + esc(when) + '</span></span>' +
-        '<span class="cat-nums"><b>' + money(s2.monthly, { cents: false }) + '</b></span></div></div>';
-    });
-    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total coming in</span>' +
-      '<span class="cat-nums"><b>' + money(d.totals.income, { cents: false }) + '</b></span></div></div>' +
-      '<div class="card-foot-btn"><button type="button" class="btn btn-block btn-sm" data-act="add-income">+ Add income source</button></div>' +
-      '</section>';
+    // ---- money in ----
+    html += planHead('Money in', money(d.totals.income, { cents: false }) + ' / mo', 'income');
+    if (S.ui.edit.income) {
+      html += '<section class="card">' + incomeEditorHtml(d) + '</section>';
+    } else {
+      html += '<section class="card card-tight">';
+      d.income.sources.forEach(function (s2) {
+        var when = s2.nextPayday ? nextPaydayText(s2, d) : (s2.per_month + '× a month');
+        html += '<div class="cat"><div class="cat-head">' +
+          '<span class="cat-name">' + esc(s2.name) +
+          '<span class="muted small" style="display:block;font-weight:400">' +
+          money(s2.amount, { cents: false }) + ' × ' + s2.per_month + ' · ' + esc(when) + '</span></span>' +
+          '<span class="cat-nums"><b>' + money(s2.monthly, { cents: false }) + '</b></span></div></div>';
+      });
+      html += '</section>';
+    }
 
-    // ---- every bill, in one list
-    html += '<div class="section-title"><span>Bills</span><span>' + money(billsTotal, { cents: false }) + ' / mo</span></div>' +
-      '<section class="card card-tight">';
-    fixed.forEach(function (c) {
-      var note = c.percent ? c.percent + '% of what comes in'
-        : c.cadence === 'payday' ? money(c.perPay, { cents: false }) + ' every payday'
-        : c.duePayday !== null && c.duePayday !== undefined ? 'with the ' + (c.dueDate ? monthDay(c.dueDate) : '') + ' check'
-        : c.dueDay ? 'the ' + ordinal(c.dueDay)
-        : 'no date set';
-      html += '<div class="cat"><div class="cat-head">' +
-        '<span class="cat-name">' + esc(c.name) +
-        (c.autoPay ? ' <span class="badge badge-auto">auto</span>' : '') +
-        '<span class="muted small" style="display:block;font-weight:400">' + esc(note) + '</span></span>' +
-        '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
-    });
-    (d.upcoming || []).forEach(function (c) {
-      html += '<div class="cat" style="opacity:.55"><div class="cat-head">' +
-        '<span class="cat-name">' + esc(c.name) +
-        '<span class="muted small" style="display:block;font-weight:400">starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
-        '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
-    });
-    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total bills</span>' +
-      '<span class="cat-nums"><b>' + money(billsTotal, { cents: false }) + '</b></span></div></div></section>';
+    // ---- bills: what you pay, with the self-paying ones folded away ----
+    html += planHead('Bills', money(billsTotal, { cents: false }) + ' / mo', 'bills');
+    if (S.ui.edit.bills) {
+      html += '<section class="card">';
+      fixed.forEach(function (c) { html += billRow(c); });
+      (d.upcoming || []).filter(function (c) { return c.kind === 'fixed'; })
+        .forEach(function (c) { html += billRow(c); });
+      html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="fixed">+ Add a bill</button>' +
+        '</section>';
+    } else {
+      var manual = fixed.filter(function (c) { return !c.autoPay; });
+      var autos = fixed.filter(function (c) { return c.autoPay; });
+      var planBillRow = function (c) {
+        var note = c.percent ? c.percent + '% of what comes in'
+          : c.cadence === 'payday' ? money(c.perPay, { cents: false }) + ' every payday'
+          : c.duePayday !== null && c.duePayday !== undefined ? 'with the ' + (c.dueDate ? monthDay(c.dueDate) : '') + ' check'
+          : c.dueDay ? 'the ' + ordinal(c.dueDay)
+          : 'no date set';
+        return '<div class="cat"><div class="cat-head">' +
+          '<span class="cat-name">' + esc(c.name) +
+          '<span class="muted small" style="display:block;font-weight:400">' + esc(note) + '</span></span>' +
+          '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
+      };
+      html += '<section class="card card-tight">';
+      manual.forEach(function (c) { html += planBillRow(c); });
+      if (autos.length) {
+        var autoTotal = autos.reduce(function (s2, c) { return s2 + c.budget; }, 0);
+        html += '<button type="button" class="bill-expander" data-act="toggle-plan-auto">' +
+          (S.ui.planAutoOpen ? '▾' : '▸') + ' 🔒 ' + autos.length + ' automatic · ' +
+          money(autoTotal, { cents: false }) + '</button>';
+        if (S.ui.planAutoOpen) autos.forEach(function (c) { html += planBillRow(c); });
+      }
+      (d.upcoming || []).forEach(function (c) {
+        html += '<div class="cat" style="opacity:.55"><div class="cat-head">' +
+          '<span class="cat-name">' + esc(c.name) +
+          '<span class="muted small" style="display:block;font-weight:400">starts ' + esc(monthLabel(c.startsMonth)) + '</span></span>' +
+          '<span class="cat-nums">' + money(c.budget, { cents: false }) + '</span></div></div>';
+      });
+      html += '</section>';
+    }
 
-    // ---- everyday budgets
-    html += '<div class="section-title"><span>Everyday spending</span><span>' +
-      money(everydayTotal, { cents: false }) + ' / mo</span></div><section class="card card-tight">';
-    variable.forEach(function (c) {
-      html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) + '</span>' +
-        '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
-    });
-    html += '<div class="cat plan-row-total"><div class="cat-head"><span class="cat-name">Total everyday</span>' +
-      '<span class="cat-nums"><b>' + money(everydayTotal, { cents: false }) + '</b></span></div></div></section>';
+    // ---- everyday budgets ----
+    html += planHead('Everyday spending', money(everydayTotal, { cents: false }) + ' / mo', 'cats');
+    if (S.ui.edit.cats) {
+      html += '<section class="card">';
+      variable.forEach(function (c) { html += categoryRow(c); });
+      html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="variable">+ Add category</button>' +
+        '<button type="button" class="btn btn-block btn-sm" style="margin-top:8px" data-act="tuneup-open">Compare to what you actually spend</button>' +
+        '</section>';
+    } else {
+      html += '<section class="card card-tight">';
+      variable.forEach(function (c) {
+        html += '<div class="cat"><div class="cat-head"><span class="cat-name">' + esc(c.name) + '</span>' +
+          '<span class="cat-nums"><b>' + money(c.budget, { cents: false }) + '</b></span></div></div>';
+      });
+      html += '</section>';
+    }
 
-    // ---- savings, kept to one line unless there is something to show
+    // ---- savings ----
     html += '<div class="section-title"><span>Savings</span><span>' + money(d.savings.balance) + ' put away</span></div>' +
       '<section class="card"><div class="row">' +
       '<span class="small muted">' + (target > 0
@@ -1322,7 +1380,12 @@
       '<span class="stack" style="grid-auto-flow:column;gap:6px">' +
       '<button type="button" class="btn btn-sm btn-in" data-act="save-add">+ Add</button>' +
       '<button type="button" class="btn btn-sm" data-act="save-out">Take out</button>' +
-      '</span></div>';
+      '</span></div>' +
+      '<div class="edit-row" style="grid-template-columns:1fr 118px;margin-top:8px">' +
+      '<span class="edit-name small muted">Goal: put away each month</span>' +
+      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (d.savings.target || 0) +
+      '" data-act="savings-target" aria-label="Monthly savings goal">' +
+      '</div>';
     if (d.savings.goals.length) {
       d.savings.goals.forEach(function (g) {
         html += '<div class="goal" data-act="goal-edit" data-id="' + g.id + '" role="button" tabindex="0">' +
@@ -1333,6 +1396,15 @@
     }
     html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:10px" data-act="goal-add">+ Add a savings goal</button>' +
       '</section>';
+
+    // ---- debt payoff, folded until wanted ----
+    var openDebts = d.debts.filter(function (x) { return !x.settled; });
+    var owed = openDebts.reduce(function (s2, x) { return s2 + x.balance; }, 0);
+    html += '<div class="section-title"><span>Debt payoff</span></div>' +
+      '<section class="card card-tight"><button type="button" class="bill-expander" style="border:0" data-act="toggle-debt">' +
+      (S.ui.debtOpen ? '▾' : '▸') + ' ' + openDebts.length + ' debt' + (openDebts.length === 1 ? '' : 's') +
+      ' · ' + money(owed, { cents: false }) + ' to go</button></section>';
+    if (S.ui.debtOpen) html += viewDebt(d);
 
     return html;
   }
@@ -1536,39 +1608,8 @@
   // ------------------------------------------------------------ render: settings
 
   function viewSettings(d) {
-    var fixed = activeCats(d, 'fixed');
-    var variable = activeCats(d, 'variable');
+    var html = '';
 
-    var html = '<div class="section-title"><span>Income</span><span>' + money(d.income.total, { cents: false }) + ' / mo</span></div>';
-    html += '<section class="card">';
-    d.income.sources.forEach(function (s) {
-      // Name the weekday of the payday: a date on the wrong day is otherwise
-      // impossible to spot in a date box.
-      var dayName = s.nextPayday ? weekdayOf(s.nextPayday) : null;
-      html += '<div class="edit-card">' +
-        '<div class="edit-card-name">' + esc(s.name) +
-        '<span class="muted small"> · ' + s.per_month + '×/mo' + (s.person ? ' · ' + esc(s.person) : '') + '</span></div>' +
-        '<div class="edit-card-controls edit-card-3">' +
-        '<label class="mini"><span>Per check</span>' +
-        '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + s.amount +
-        '" data-act="income-amount" data-id="' + s.id + '" aria-label="Amount for ' + esc(s.name) + '"></label>' +
-        '<label class="mini"><span>Next payday' +
-        (dayName ? ' <b class="' + (dayName === 'Friday' ? 'pay-day-ok' : 'pay-day-odd') + '">' + esc(dayName) + '</b>' : '') +
-        '</span>' +
-        '<input class="input" type="date" value="' + esc(s.nextPayday || '') +
-        '" data-act="income-payday" data-id="' + s.id + '" aria-label="Next payday for ' + esc(s.name) + '"></label>' +
-        '<label class="mini"><span>Repeats</span>' +
-        '<select class="input" data-act="income-cadence" data-id="' + s.id + '" aria-label="Pay cadence for ' + esc(s.name) + '">' +
-        ['biweekly', 'weekly', 'monthly'].map(function (c) {
-          return '<option value="' + c + '"' + ((s.cadence || 'biweekly') === c ? ' selected' : '') + '>' +
-            (c === 'biweekly' ? 'every 2 weeks' : c) + '</option>';
-        }).join('') + '</select></label>' +
-        '<button type="button" class="icon-del" data-act="del-income" data-id="' + s.id + '" aria-label="Delete income source">✕</button>' +
-        '</div></div>';
-    });
-    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-income">+ Add income source</button>';
-    html += '<p class="muted small" style="margin:10px 0 0">These are the plan. When a paycheck actually lands, log the real amount with the Log button on the Budget tab — that\'s what "money in" counts.</p>';
-    html += '</section>';
 
     if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
       html += '<div class="section-title"><span>Reminders</span></div><section class="card">' +
@@ -1609,28 +1650,6 @@
       '<button type="button" class="btn btn-block btn-sm" data-act="backup-download">⬇ Download a backup</button>' +
       '</section>';
     setTimeout(refreshBackupStatus, 0);
-
-    html += '<div class="section-title"><span>Savings goal</span></div><section class="card">' +
-      '<div class="edit-row" style="grid-template-columns:1fr 118px">' +
-      '<span class="edit-name">Put away each month<br><span class="muted small">Progress shows on the Plan tab</span></span>' +
-      '<input class="input" type="number" inputmode="decimal" step="0.01" min="0" value="' + (d.savings.target || 0) +
-      '" data-act="savings-target" aria-label="Monthly savings goal">' +
-      '</div></section>';
-
-    html += '<div class="section-title"><span>Smart tune-up</span></div><section class="card">' +
-      '<p class="muted small" style="margin:0 0 10px">Compares every spending budget to what you actually spent in past months and suggests new numbers. You pick which to apply.</p>' +
-      '<button type="button" class="btn btn-primary btn-block" data-act="tuneup-open">Review budget suggestions</button>' +
-      '</section>';
-
-    html += '<div class="section-title"><span>Fixed bill budgets</span></div><section class="card">';
-    fixed.forEach(function (c) { html += billRow(c); });
-    (d.upcoming || []).filter(function (c) { return c.kind === 'fixed'; })
-      .forEach(function (c) { html += billRow(c); });
-    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="fixed">+ Add fixed bill</button></section>';
-
-    html += '<div class="section-title"><span>Spending budgets</span></div><section class="card">';
-    variable.forEach(function (c) { html += categoryRow(c); });
-    html += '<button type="button" class="btn btn-block btn-sm" style="margin-top:12px" data-act="add-category" data-kind="variable">+ Add category</button></section>';
 
     var themeNow = localStorage.getItem(LS.theme) || 'auto';
     html += '<div class="section-title"><span>Appearance</span></div><section class="card">' +
@@ -2540,6 +2559,17 @@
         render();
         break;
       }
+
+      case 'toggle-bank': S.ui.bankOpen = !S.ui.bankOpen; render(); break;
+      case 'toggle-plan-auto': S.ui.planAutoOpen = !S.ui.planAutoOpen; render(); break;
+      case 'toggle-debt': S.ui.debtOpen = !S.ui.debtOpen; render(); break;
+      case 'plan-edit': {
+        var k = node.dataset.key;
+        S.ui.edit[k] = !S.ui.edit[k];
+        render();
+        break;
+      }
+      case 'toggle-auto': S.ui.autoOpen = !S.ui.autoOpen; render(); break;
 
       case 'legend-cat': {
         S.filters.category = id;

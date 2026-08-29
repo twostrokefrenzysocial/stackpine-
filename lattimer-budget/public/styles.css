@@ -878,3 +878,70 @@ select.input {
   color: var(--ink-contrast);
   border-color: var(--ink);
 }
+
+/* ------------------------------------------------------------- home hero */
+.hero { text-align: left; }
+.hero-cap {
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hero-big {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  margin: 2px 0 2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+}
+.hero-neg { color: var(--over); }
+.hero-sub { font-size: 13px; color: var(--muted); }
+.hero-bank {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 0 2px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.hero-bank b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* folded sections on the Plan tab */
+details.fold { border-top: 1px solid var(--line); }
+details.fold:first-child { border-top: 0; }
+details.fold > summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 10px 2px;
+  cursor: pointer;
+  font-weight: 600;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary .fold-chev { color: var(--muted); font-size: 12px; margin-right: 6px; }
+details.fold[open] > summary .fold-chev { transform: rotate(90deg); display: inline-block; }
+details.fold > summary .fold-sum { color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  color: var(--ok);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hero-bank b.cat-over { color: var(--over); }
