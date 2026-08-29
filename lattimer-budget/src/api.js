@@ -26,7 +26,8 @@ const {
   pinMatches,
 } = require('./util');
 const { SETTLEMENT_FUND_CATEGORY } = require('./seed');
-const { parseStatement, merchantKey, keywordGuess, importHash } = require('./import');
+const { parseStatement, merchantKey, keywordGuess, importHash, parseScreenshotLines } = require('./import');
+const { extractImageLines } = require('./ocr');
 const { extractLines, parsePdfLines } = require('./pdf');
 const { runBackup, listBackups, snapshotForDownload } = require('./backup');
 const APP_REV = require('./version');
@@ -1782,7 +1783,28 @@ function createApi(db) {
 
   router.post('/import/preview', auth, async (req, res) => {
     let parsed;
-    if (req.body?.pdf) {
+    if (req.body?.images) {
+      // Screenshots of the banking app, read with on-server OCR. Nothing
+      // leaves this machine.
+      const images = req.body.images;
+      if (!Array.isArray(images) || !images.length) throw bad('Pick at least one screenshot.');
+      if (images.length > 6) throw bad('Six screenshots at a time, tops.');
+      const rows = [];
+      for (const b64 of images) {
+        if (typeof b64 !== 'string' || b64.length > 12_000_000) throw bad('One of those images is too large.');
+        let lines;
+        try {
+          lines = await extractImageLines(Buffer.from(b64, 'base64'));
+        } catch (err) {
+          throw bad('Could not read that image. A sharper, closer screenshot usually fixes it.');
+        }
+        rows.push(...parseScreenshotLines(lines, today()).rows);
+      }
+      if (!rows.length) {
+        throw bad('No transactions found in the screenshot. Make sure the list of transactions — merchant, date and amount — is in the picture.');
+      }
+      parsed = { rows, format: 'screenshot' };
+    } else if (req.body?.pdf) {
       const b64 = String(req.body.pdf);
       if (b64.length > 12_000_000) throw bad('That PDF is too large.');
       let lines;

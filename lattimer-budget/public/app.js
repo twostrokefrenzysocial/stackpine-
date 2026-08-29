@@ -4,7 +4,7 @@
 
   // Bumped with every release; shown in Settings so "am I on the newest
   // version?" is a glance, not a guess.
-  var APP_VERSION = 30;
+  var APP_VERSION = 31;
 
   var LS = { token: 'lfb.token', person: 'lfb.person', tab: 'lfb.tab', theme: 'lfb.theme' };
 
@@ -1135,7 +1135,7 @@
       '<div class="row" style="margin-bottom:10px"><div class="chips">' +
       typeChip('', 'Everything') + typeChip('out', 'Spending') + typeChip('in', 'Income') +
       '</div>' +
-      (d.readOnly ? '' : '<button type="button" class="btn btn-sm" data-act="import-open">⇪ Statement</button>') +
+      (d.readOnly ? '' : '<button type="button" class="btn btn-sm" data-act="import-open">⇪ Import</button>') +
       '</div>' +
       '<div class="chips" style="margin-bottom:10px">' +
       personChip('', 'Both of us') +
@@ -2319,15 +2319,17 @@
 
   function openImport() {
     IMP = { rows: [], busy: false };
-    openSheet(sheetHead('Import bank statement') +
-      '<p class="muted small" style="margin-top:0">Upload last month\'s statement PDF, a CSV export ' +
-      '(PNC: Account Activity → Download), or paste the text. You review everything before it saves.</p>' +
+    openSheet(sheetHead('Import from the bank') +
+      '<p class="muted small" style="margin-top:0">Snap screenshots of the transaction list in your ' +
+      'banking app and upload them here — or upload a statement PDF/CSV. Nothing saves until you review it.</p>' +
       (bankAccounts().length > 1
         ? '<label class="field"><span>This statement is from</span><select class="input" id="imp-account">' +
           bankAccounts().map(function (a, i) {
             return '<option value="' + a.id + '"' + (a.id === defaultAccount() ? ' selected' : '') + '>' + esc(a.name) + '</option>';
           }).join('') + '</select></label>'
         : '') +
+      '<label class="btn btn-primary btn-block" style="margin-bottom:8px">📷 Upload screenshots' +
+      '<input type="file" id="imp-shots" accept="image/*" multiple data-act="imp-file" hidden></label>' +
       '<label class="btn btn-block" style="margin-bottom:10px">Choose PDF or CSV file' +
       '<input type="file" id="imp-file" accept=".csv,.pdf,text/csv,text/plain,application/pdf" data-act="imp-file" hidden></label>' +
       '<label class="field"><span>Or paste it</span>' +
@@ -2338,12 +2340,13 @@
 
   function importPreview(payload) {
     if (typeof payload === 'string') payload = { text: payload };
-    if (!payload || (!payload.pdf && (!payload.text || !payload.text.trim()))) {
+    if (!payload || (!payload.pdf && !payload.images && (!payload.text || !payload.text.trim()))) {
       toast('Pick a file or paste the statement first', 'error');
       return;
     }
     var box = el('imp-results');
-    if (box) box.innerHTML = '<p class="muted small" style="text-align:center">Reading' + (payload.pdf ? ' PDF' : '') + '…</p>';
+    if (box) box.innerHTML = '<p class="muted small" style="text-align:center">Reading' +
+      (payload.pdf ? ' PDF' : payload.images ? ' screenshot' + (payload.images.length === 1 ? '' : 's') : '') + '…</p>';
     api('/import/preview', { method: 'POST', body: payload })
       .then(function (out) {
         IMP.rows = out.rows.map(function (r) {
@@ -3010,8 +3013,31 @@
       S.filters.category = node.value;
       render();
     } else if (act === 'imp-file') {
-      var file = node.files && node.files[0];
-      if (!file) return;
+      var files = Array.prototype.slice.call(node.files || []);
+      if (!files.length) return;
+      var file = files[0];
+      var allImages = files.every(function (f) { return /^image\//.test(f.type); });
+      if (allImages) {
+        if (files.length > 6) { toast('Six screenshots at a time, tops', 'error'); return; }
+        var shots = [];
+        var readNext = function (idx) {
+          if (idx >= files.length) { importPreview({ images: shots }); return; }
+          var r = new FileReader();
+          r.onerror = function () { toast('Could not read that image', 'error'); };
+          r.onload = function () {
+            var bytes = new Uint8Array(r.result);
+            var chunks = [];
+            for (var i = 0; i < bytes.length; i += 0x8000) {
+              chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)));
+            }
+            shots.push(btoa(chunks.join('')));
+            readNext(idx + 1);
+          };
+          r.readAsArrayBuffer(files[idx]);
+        };
+        readNext(0);
+        return;
+      }
       var isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
       var reader = new FileReader();
       reader.onerror = function () { toast('Could not read that file', 'error'); };

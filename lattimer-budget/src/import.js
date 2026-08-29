@@ -225,4 +225,86 @@ function importHash(date, cents, description) {
     .digest('hex');
 }
 
-module.exports = { parseStatement, parseCsv, parseDate, parseAmount, merchantKey, keywordGuess, importHash };
+module.exports = { parseStatement, parseCsv, parseDate, parseAmount, merchantKey, keywordGuess, importHash, parseScreenshotLines };
+
+// ---------------------------------------------------------------- screenshots
+
+const SS_MONEY = /[-+−–—(]?\s*\$\s*([\d,]+\.\d{2})\)?/;
+const SS_MONTH = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
+const SS_NUMDATE = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/;
+const SS_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+// Lines that are app chrome, not transactions.
+const SS_NOISE = /balance|available|total|search|pending transactions|posted transactions|see all|as of|page \d|statement/i;
+
+/**
+ * Transactions out of a banking-app screenshot's OCR text. The common shape
+ * is the merchant and amount on one line with the date on the line below
+ * (PNC's app), but a date on the same line or the line above works too.
+ * Anything without an amount is not a transaction; anything that looks like
+ * a balance or heading is skipped.
+ */
+function parseScreenshotLines(lines, todayIso) {
+  const nowYear = Number(todayIso.slice(0, 4));
+  const nowMonth = Number(todayIso.slice(5, 7));
+
+  const dateFrom = (line) => {
+    let mo; let day; let year = null;
+    const named = line.match(SS_MONTH);
+    if (named) {
+      mo = SS_MONTHS.indexOf(named[1].slice(0, 3).toLowerCase()) + 1;
+      day = Number(named[2]);
+      if (named[3]) year = Number(named[3]);
+    } else {
+      const num = line.match(SS_NUMDATE);
+      if (!num) return null;
+      mo = Number(num[1]);
+      day = Number(num[2]);
+      if (num[3]) { year = Number(num[3]); if (year < 100) year += 2000; }
+    }
+    if (mo < 1 || mo > 12 || day < 1 || day > 31) return null;
+    // No year on screen: it's this year unless that puts the row in the
+    // future — screenshots show the recent past, never the future.
+    if (year === null) year = mo > nowMonth ? nowYear - 1 : nowYear;
+    const iso = `${year}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return iso > todayIso ? null : iso;
+  };
+
+  const rows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = line.match(SS_MONEY);
+    if (!m) continue;
+    if (SS_NOISE.test(line)) continue;
+
+    const cents = Math.round(Number(m[1].replace(/,/g, '')) * 100);
+    if (!cents) continue;
+
+    const head = m[0];
+    const direction = /^\+/.test(head.trim()) ? 'in' : 'out';
+
+    // The merchant is the text around the amount, or the previous line when
+    // the amount stands alone.
+    let description = (line.slice(0, m.index) + ' ' + line.slice(m.index + m[0].length))
+      .replace(/\s+/g, ' ').trim();
+    if (!description && i > 0 && !SS_MONEY.test(lines[i - 1]) && !SS_NOISE.test(lines[i - 1])) {
+      description = lines[i - 1].trim();
+    }
+    // Strip a date out of the description if it rode along on the same line.
+    description = description.replace(SS_MONTH, '').replace(/\s+/g, ' ').trim();
+    if (!description || !/[A-Za-z]/.test(description)) continue;
+
+    // The date: same line, then the next two lines, then the line above.
+    let date = dateFrom(line);
+    for (let j = i + 1; !date && j <= i + 2 && j < lines.length; j++) {
+      if (SS_MONEY.test(lines[j])) break; // ran into the next transaction
+      date = dateFrom(lines[j]);
+    }
+    if (!date && i > 0) date = dateFrom(lines[i - 1]);
+    // A pending charge shows no date — it happened today.
+    if (!date && /pending/i.test(lines.slice(Math.max(0, i - 2), i + 2).join(' '))) date = todayIso;
+    if (!date) continue;
+
+    rows.push({ date, cents, description: description.slice(0, 120), direction });
+  }
+  return { rows, format: 'screenshot' };
+}

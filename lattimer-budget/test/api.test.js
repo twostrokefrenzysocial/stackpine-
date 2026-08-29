@@ -42,7 +42,8 @@ const monthOf = (offset) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
-test.after(() => {
+test.after(async () => {
+  await require('../src/ocr').closeOcr();
   server.close();
   db.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1029,6 +1030,62 @@ test('debt details can be edited', async () => {
 });
 
 // ---------------------------------------------------------------- statement import
+
+test('a screenshot of the banking app imports through OCR', async () => {
+  // A rendered fake of the PNC app's transaction list, committed as a fixture
+  // with explicit years so the assertions never rot with the calendar.
+  const png = fs.readFileSync(path.join(__dirname, 'fixtures', 'bank-screenshot.png'));
+  const res = await call('/api/import/preview', {
+    method: 'POST', body: { images: [png.toString('base64')] },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.format, 'screenshot');
+  const rows = res.body.rows;
+  assert.ok(rows.length >= 8, `found ${rows.length} of the 8 transactions`);
+
+  const sheetz = rows.find((r) => /SHEETZ/i.test(r.description));
+  assert.ok(sheetz, 'the gas station line was read');
+  assert.equal(sheetz.amount, 62.4);
+  assert.equal(sheetz.date, '2026-08-29');
+  assert.equal(sheetz.direction, 'out');
+
+  const deposit = rows.find((r) => /DIRECT DEPOSIT/i.test(r.description));
+  assert.ok(deposit, 'the paycheck line was read');
+  assert.equal(deposit.amount, 2369);
+  assert.equal(deposit.direction, 'in', 'a plus sign means money in');
+
+  // Committing a row books a real transaction, and re-previewing the same
+  // screenshot flags it as already imported.
+  const beforeIds = new Set((await state()).transactions.map((t) => t.id));
+  const commit = await call('/api/import/commit', {
+    method: 'POST',
+    body: { rows: [{ date: sheetz.date, description: sheetz.description, amount: sheetz.amount,
+      direction: 'out', category_id: byName((await state()).categories, 'Fuel').id }] },
+  });
+  assert.equal(commit.status, 201);
+  const added = commit.body.state.transactions.filter((t) => !beforeIds.has(t.id));
+  assert.equal(added.length, 1);
+
+  const again = await call('/api/import/preview', {
+    method: 'POST', body: { images: [png.toString('base64')] },
+  });
+  const dup = again.body.rows.find((r) => /SHEETZ/i.test(r.description));
+  assert.equal(dup.alreadyImported, true, 'the second pass knows it already came in');
+
+  // Leave no trace for the statement-import tests that run after this one.
+  await call(`/api/transactions/${added[0].id}`, { method: 'DELETE' });
+});
+
+test('screenshot uploads are validated', async () => {
+  const none = await call('/api/import/preview', { method: 'POST', body: { images: [] } });
+  assert.equal(none.status, 400);
+  const junk = await call('/api/import/preview', {
+    method: 'POST', body: { images: [Buffer.from('not an image').toString('base64')] },
+  });
+  assert.equal(junk.status, 400);
+  assert.match(junk.body.error, /Could not read|No transactions/);
+});
+
 
 const STATEMENT = () => {
   const m = monthOf(0);
