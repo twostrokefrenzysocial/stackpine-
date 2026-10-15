@@ -59,7 +59,7 @@
   {
    "@type": "ItemList",
    "name": "Builds",
-   "numberOfItems": 6,
+   "numberOfItems": 7,
    "itemListElement": [
     {
      "@type": "ListItem",
@@ -124,6 +124,17 @@
       "name": "Operational Dashboards",
       "applicationCategory": "BusinessApplication",
       "description": "Role-specific dashboards that replace manual status compilation across Outlook, Smartsheet, and internal trackers.",
+      "operatingSystem": "Web"
+     }
+    },
+    {
+     "@type": "ListItem",
+     "position": 7,
+     "item": {
+      "@type": "SoftwareApplication",
+      "name": "Funeral Triage",
+      "applicationCategory": "BusinessApplication",
+      "description": "A dispatch coordination app built for a direct-to-families funeral service, running in production.",
       "operatingSystem": "Web"
      }
     }
@@ -204,6 +215,14 @@
         <p class="build__metric">~15 hrs/week saved across roles</p>
         <p class="build__sum">Role-specific dashboards that replace manual status compilation across Outlook, Smartsheet, and internal trackers.</p>
         <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>Leadership and program staff compiled status manually across Outlook, Smartsheet, and internal trackers.</p><h4>What was built</h4><p>Role-specific dashboards with live task, fleet, grant, and communications views, plus email notifications sent through Microsoft Graph.</p><h4>Impact</h4><p>Estimated 15 hrs/week saved across roles.</p><h4>Stack</h4><ul class="chips"><li>React</li><li>Node/Express</li><li>SQLite</li><li>Microsoft Graph API</li><li>Smartsheet API</li><li>Tailwind</li></ul></div></details>
+      </article>
+      <article class="build">
+        <p class="build__kind">Dispatch coordination</p>
+        <h3>Funeral Triage</h3>
+        <p class="build__metric">In active paid use by a commercial client</p>
+        <p class="build__sum">A dispatch coordination app built for a direct-to-families funeral service, running in production today.</p>
+        <details class="build__more"><summary>Full detail</summary>
+          <div class="build__body"><h4>The problem</h4><p>A direct-to-families funeral service needed structured dispatch coordination in place of ad-hoc phone and text handoffs.</p><h4>What was built</h4><p>A dispatch application that organises incoming cases and coordinates assignment, built for and paid for by the client and in active daily use.</p></div></details>
       </article>
     </div>
 
