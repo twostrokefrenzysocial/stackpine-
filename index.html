@@ -28,7 +28,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/assets/demo.css">
 
 <script type="application/ld+json">
 {
@@ -94,7 +93,6 @@
     <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
     <nav class="nav__links">
       <a href="#how">How it works</a>
-      <a href="#demo-section">Live demo</a>
       <a href="#results">Results</a>
       <a href="/builds/">Builds</a>
       <a href="#pricing">Pricing</a>
@@ -112,9 +110,9 @@
     <h1>Your business. Your software. Built for <em>exactly how you work.</em></h1>
     <p class="lede">Stop bending your business around off-the-shelf tools. We build custom software, websites and online storefronts shaped around you — for one affordable monthly subscription that covers everything.</p>
     <div class="btn-row">
-      <a class="btn btn--primary" href="#demo-section">Try the live demo
+      <a class="btn btn--primary" href="#contact">Get a free quote
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="btn btn--ghost" href="#contact">Get a free quote</a>
+      <a class="btn btn--ghost" href="/builds/">See our work</a>
     </div>
     <div class="hero__meta">
       <span>No upfront build cost</span>
@@ -167,56 +165,7 @@
   </div>
 </section>
 
-<section class="section section--tint" id="demo-section">
-  <div class="wrap">
-    <div class="head reveal">
-      <p class="eyebrow">Live demo</p>
-      <h2 class="h-lg">Don’t take our word for it — run it.</h2>
-      <p class="lede">A working mini command center, live on this page. The tabs talk to each other: confirm a booking or finish a request, then watch the dashboard react in real time.</p>
-    </div>
-
-    <div class="demo reveal d1" id="demo">
-      <div class="demo__chrome">
-        <div class="demo__dots"><i></i><i></i><i></i></div>
-        <div class="demo__url">app.yourbusiness.com/command-center</div>
-        <div class="demo__live">Live</div>
-      </div>
-      <div class="demo__tabs" role="tablist">
-        <button class="demo__tab" role="tab" aria-selected="true"  data-panel="dashboard">Dashboard</button>
-        <button class="demo__tab" role="tab" aria-selected="false" data-panel="bookings">Bookings</button>
-        <button class="demo__tab" role="tab" aria-selected="false" data-panel="requests">Requests</button>
-      </div>
-      <p class="demo__hint">Everything updates live — go confirm a booking or drag a request to Done, then come back here.</p>
-
-      <div class="demo__panel" id="panel-dashboard" role="tabpanel">
-        <div class="tiles">
-          <div class="tile"><div class="tile__k">Bookings today</div><div class="tile__v" id="stat-bookings">7</div><div class="tile__d up">▲ 2 vs yesterday</div></div>
-          <div class="tile"><div class="tile__k">Open requests</div><div class="tile__v" id="stat-open">0</div><div class="tile__d">live from Requests</div></div>
-          <div class="tile"><div class="tile__k">Revenue this week</div><div class="tile__v" id="stat-rev">$8,420</div><div class="tile__d up">▲ 12% vs last week</div></div>
-          <div class="tile"><div class="tile__k">Avg. response</div><div class="tile__v">14<span style="font-size:.9rem"> min</span></div><div class="tile__d down">▼ was 3 hours</div></div>
-        </div>
-        <div class="chart"><div class="chart__h">Bookings — last 7 days</div><div class="chart__bars" id="chart"></div></div>
-        <div class="feed"><div class="feed__h">Live activity</div><ul id="feed"></ul></div>
-      </div>
-
-      <div class="demo__panel" id="panel-bookings" role="tabpanel" hidden>
-        <div class="bk" id="bookings"></div>
-      </div>
-
-      <div class="demo__panel" id="panel-requests" role="tabpanel" hidden>
-        <form class="kb__add" id="kb-add">
-          <input id="kb-input" type="text" placeholder="Add a request — try “fix the leaking sink”" aria-label="New request">
-          <button class="btn btn--primary btn--sm" type="submit">Add request</button>
-        </form>
-        <div class="kb" id="kanban"></div>
-      </div>
-
-      <p class="demo__foot">Built as a working example — bookings, requests and live stats all talking to each other. <b>Now imagine the version wired to your business.</b></p>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="build">
+<section class="section section--tint" id="build">
   <div class="wrap">
     <div class="head head--center reveal">
       <p class="eyebrow eyebrow--center">What we can build</p>
@@ -234,7 +183,7 @@
   </div>
 </section>
 
-<section class="section section--tint" id="results">
+<section class="section" id="results">
   <div class="wrap">
     <div class="head reveal">
       <p class="eyebrow">Real results</p>
@@ -347,7 +296,7 @@
       </div>
       <div><h4>Explore</h4><ul>
         <li><a href="#how">How it works</a></li>
-        <li><a href="#demo-section">Live demo</a></li>
+        
         <li><a href="#results">Results</a></li>
         <li><a href="/builds/">Builds</a></li>
       </ul></div>
@@ -369,6 +318,5 @@
 </footer>
 
 <script src="/assets/site.js" defer></script>
-<script src="/assets/demo.js" defer></script>
 </body>
 </html>
