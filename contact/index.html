@@ -83,14 +83,82 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="contact-card reveal">
-      <h2 class="h-lg">Get a free quote</h2>
-      <p class="lede" style="margin-inline:auto">No commitment, no sales pitch. If we think you don’t actually need custom software, we’ll tell you — and you’ll have gotten honest advice for free.</p>
-      <div class="btn-row" style="justify-content:center">
-        <a class="btn btn--primary" href="mailto:crlattimer@icloud.com?subject=Custom%20software%20enquiry">Email us</a>
-        <a class="btn btn--ghost" href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message on Facebook</a>
+    <div class="form-layout">
+
+      <div class="form-card reveal">
+        <form class="form" id="enquiry" novalidate>
+          <div class="form__grid">
+            <div class="f"><label for="f-name">Your name <i>*</i></label>
+              <input id="f-name" name="name" autocomplete="name" maxlength="120" required></div>
+            <div class="f"><label for="f-email">Email <i>*</i></label>
+              <input id="f-email" name="email" type="email" autocomplete="email" maxlength="200" required></div>
+            <div class="f"><label for="f-company">Company</label>
+              <input id="f-company" name="company" autocomplete="organization" maxlength="160"></div>
+            <div class="f"><label for="f-phone">Phone <span>(optional)</span></label>
+              <input id="f-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div>
+          </div>
+
+          <div class="f"><label for="f-business">What does your business do?</label>
+            <textarea id="f-business" name="business" rows="2" maxlength="1500"
+              placeholder="e.g. We run a landscaping company with three crews."></textarea></div>
+
+          <div class="f"><label for="f-problem">What&rsquo;s slowing your business down? <i>*</i></label>
+            <textarea id="f-problem" name="problem" rows="4" maxlength="3000" required
+              placeholder="&ldquo;Requests come in by text and we lose track of them&rdquo; is a perfect start."></textarea></div>
+
+          <div class="f"><label for="f-vision">What would you like built?</label>
+            <textarea id="f-vision" name="vision" rows="4" maxlength="3000"
+              placeholder="Describe it the way you&rsquo;d explain it to a friend. Screens, features, anything you picture."></textarea></div>
+
+          <div class="f"><label for="f-current">How do you handle this today?</label>
+            <textarea id="f-current" name="current" rows="3" maxlength="1500"
+              placeholder="Spreadsheets, sticky notes, an app that only half fits&hellip;"></textarea></div>
+
+          <div class="form__grid form__grid--3">
+            <div class="f"><label for="f-people">People who&rsquo;d use it</label>
+              <select id="f-people" name="people">
+                <option value="">Select&hellip;</option>
+                <option>Just me</option><option>2&ndash;5</option><option>6&ndash;15</option>
+                <option>16&ndash;50</option><option>50+</option>
+              </select></div>
+            <div class="f"><label for="f-timeline">When would you like to start?</label>
+              <select id="f-timeline" name="timeline">
+                <option value="">Select&hellip;</option>
+                <option>As soon as possible</option><option>Within a month</option>
+                <option>In 1&ndash;3 months</option><option>Just exploring</option>
+              </select></div>
+            <div class="f"><label for="f-heard">How did you hear about us?</label>
+              <input id="f-heard" name="heard" maxlength="200"></div>
+          </div>
+
+          <div class="hp" aria-hidden="true">
+            <label>Leave this empty<input name="website" tabindex="-1" autocomplete="off"></label>
+          </div>
+
+          <div class="form__foot">
+            <button class="btn btn--primary" type="submit" id="f-submit">Send enquiry
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            <p class="form__status" id="form-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <div class="form__done" id="form-done" hidden>
+          <div class="form__tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg></div>
+          <h2 class="h-lg">Thanks &mdash; it&rsquo;s with us.</h2>
+          <p class="lede" style="margin-top:12px">We read every enquiry personally and reply by email, usually the same day. Keep an eye on your inbox, and check spam just in case.</p>
+        </div>
       </div>
-      <p class="fineprint">We reply fast — usually the same day.</p>
+
+      <aside class="form-aside reveal d1">
+        <h3>What happens next</h3>
+        <ol class="steps-mini">
+          <li><b>We read it.</b> Properly, not skimmed by a bot.</li>
+          <li><b>We reply by email</b> with a few questions, or to book a short call.</li>
+          <li><b>You get an honest quote.</b> Free, no pressure. If we think you don&rsquo;t need custom software, we&rsquo;ll say so.</li>
+        </ol>
+        <p class="aside-alt">Rather use Messenger? <a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message us on Facebook</a>.</p>
+      </aside>
+
     </div>
   </div>
 </section>
@@ -117,7 +185,6 @@
       </ul></div>
       <div><h4>Contact</h4><ul>
         <li><a href="/contact/">Get in touch</a></li>
-        <li><a href="mailto:crlattimer@icloud.com">Email</a></li>
         <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Facebook</a></li>
       </ul></div>
     </div>
@@ -129,5 +196,6 @@
 </footer>
 <script src="/assets/site.js" defer></script>
 <script src="/assets/beacon.js" defer></script>
+<script src="/assets/contact.js" defer></script>
 </body>
 </html>

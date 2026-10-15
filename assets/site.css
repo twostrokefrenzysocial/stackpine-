@@ -55,6 +55,8 @@ body{
 }
 img,svg{max-width:100%;height:auto;display:block}
 a{color:inherit;text-decoration:none}
+/* an element's own display value must never override the hidden attribute */
+[hidden]{display:none!important}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 h1,h2,h3,h4{margin:0;line-height:1.12;letter-spacing:-.025em;font-weight:650}
 p{margin:0}
@@ -364,3 +366,42 @@ html.js-reveal .head.reveal{transform:translateY(44px)}
 .next a:hover{border-color:var(--accent-line);transform:translateY(-2px)}
 .next b{display:block;font-size:14.8px;margin-bottom:5px}
 .next span{font-size:13.4px;color:var(--text-faint)}
+
+/* ---------- enquiry form ---------- */
+.form-layout{display:grid;gap:clamp(18px,3vw,32px);align-items:start}
+@media (min-width:960px){.form-layout{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}}
+.form-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(22px,3.4vw,38px)}
+.form{display:grid;gap:18px}
+.form__grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.form__grid--3{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.f label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+.f label i{font-style:normal;color:var(--accent)}
+.f label span{text-transform:none;letter-spacing:0;color:var(--text-faint)}
+.f input,.f select,.f textarea{
+  width:100%;padding:12px 14px;background:var(--bg-2);border:1px solid var(--line-strong);
+  border-radius:var(--r);color:var(--text);font:inherit;font-size:16px;line-height:1.55;
+  transition:border-color .16s,background .16s;
+}
+.f textarea{resize:vertical;min-height:92px}
+.f select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text-faint) 50%),linear-gradient(135deg,var(--text-faint) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--accent-line);background:var(--bg)}
+.f ::placeholder{color:var(--text-faint)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.form__foot{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.form__status{font-size:14px;color:var(--text-dim);flex:1;min-width:200px}
+.form__status.is-error{color:var(--rose)}
+.btn[disabled]{opacity:.6;cursor:progress;transform:none}
+.form__done{text-align:center;padding:clamp(28px,5vw,56px) 8px}
+.form__tick{width:54px;height:54px;border-radius:50%;margin:0 auto 22px;display:grid;place-items:center;background:var(--accent-soft);border:1px solid var(--accent-line)}
+.form__tick svg{width:26px;height:26px;stroke:var(--accent)}
+.form-aside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(22px,3vw,30px)}
+.form-aside h3{font-size:1.05rem;margin-bottom:18px}
+.steps-mini{display:grid;gap:16px;counter-reset:s;list-style:none}
+.steps-mini li{counter-increment:s;position:relative;padding-left:40px;color:var(--text-dim);font-size:14.6px;line-height:1.6}
+.steps-mini li::before{
+  content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:var(--r);
+  display:grid;place-items:center;font:500 12px var(--mono);color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--accent-line)}
+.steps-mini b{color:var(--text);font-weight:600}
+.aside-alt{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--text-dim)}
+.aside-alt a{color:var(--accent);border-bottom:1px solid var(--accent-line)}
