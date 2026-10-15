@@ -48,7 +48,7 @@
   {
    "@type": "CollectionPage",
    "name": "Builds — AI systems and software portfolio",
-   "description": "A portfolio of AI systems and custom software: internal RAG assistants, autonomous email triage, live dashboards, SaaS products and on-prem AI infrastructure.",
+   "description": "Selected AI systems and custom software: autonomous email triage, on-prem LLM inference, a production SaaS platform, internal RAG assistants and live operational dashboards.",
    "url": "https://stackpine.org/builds/",
    "isPartOf": {
     "@type": "WebSite",
@@ -59,22 +59,11 @@
   {
    "@type": "ItemList",
    "name": "Builds",
-   "numberOfItems": 13,
+   "numberOfItems": 6,
    "itemListElement": [
     {
      "@type": "ListItem",
      "position": 1,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "Staff Knowledge Assistant",
-      "applicationCategory": "BusinessApplication",
-      "description": "An internal AI assistant that answers staff policy and procedure questions from the organization's own documents.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 2,
      "item": {
       "@type": "SoftwareApplication",
       "name": "Email Triage Agent",
@@ -85,12 +74,23 @@
     },
     {
      "@type": "ListItem",
+     "position": 2,
+     "item": {
+      "@type": "SoftwareApplication",
+      "name": "On-Prem AI Server",
+      "applicationCategory": "BusinessApplication",
+      "description": "An on-premises inference layer that keeps compliance-sensitive AI workloads entirely in the building.",
+      "operatingSystem": "Web"
+     }
+    },
+    {
+     "@type": "ListItem",
      "position": 3,
      "item": {
       "@type": "SoftwareApplication",
-      "name": "Resume Screening Pipeline",
+      "name": "RevLane / OpenThrottle",
       "applicationCategory": "BusinessApplication",
-      "description": "A privacy-first pipeline that scores resumes against a job description with a locally hosted LLM.",
+      "description": "A SaaS platform that recovers declined-service revenue for auto and powersports shops.",
       "operatingSystem": "Web"
      }
     },
@@ -99,9 +99,9 @@
      "position": 4,
      "item": {
       "@type": "SoftwareApplication",
-      "name": "AI Governance Policy Builder",
+      "name": "Staff Knowledge Assistant",
       "applicationCategory": "BusinessApplication",
-      "description": "A multi-step web form that generates a customized AI governance policy as a downloadable Word document.",
+      "description": "An internal AI assistant that answers staff policy and procedure questions from the organization's own documents.",
       "operatingSystem": "Web"
      }
     },
@@ -110,9 +110,9 @@
      "position": 5,
      "item": {
       "@type": "SoftwareApplication",
-      "name": "On-Prem AI Server",
+      "name": "Resume Screening Pipeline",
       "applicationCategory": "BusinessApplication",
-      "description": "An on-premises inference layer that keeps compliance-sensitive AI workloads entirely in the building.",
+      "description": "A privacy-first pipeline that scores resumes against a job description with a locally hosted LLM.",
       "operatingSystem": "Web"
      }
     },
@@ -124,83 +124,6 @@
       "name": "Operational Dashboards",
       "applicationCategory": "BusinessApplication",
       "description": "Role-specific dashboards that replace manual status compilation across Outlook, Smartsheet, and internal trackers.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 7,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "Resident Budget Builder",
-      "applicationCategory": "BusinessApplication",
-      "description": "A private, resident-facing budgeting tool built to accompany a financial literacy course.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 8,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "CRM Automation Suite",
-      "applicationCategory": "BusinessApplication",
-      "description": "Automated pipelines for intake, follow-up, and program communications.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 9,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "Multi-Page Website Migration",
-      "applicationCategory": "BusinessApplication",
-      "description": "A slow WordPress site rebuilt as a fast static site with documented handoff.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 10,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "RevLane / OpenThrottle",
-      "applicationCategory": "BusinessApplication",
-      "description": "A SaaS platform that recovers declined-service revenue for auto and powersports shops.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 11,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "Funeral Triage",
-      "applicationCategory": "BusinessApplication",
-      "description": "A dispatch app built for a funeral services client, in active paid use.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 12,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "YouTube Channel Analytics Dashboard",
-      "applicationCategory": "BusinessApplication",
-      "description": "A self-hosted analytics dashboard for running a monetized YouTube channel toward a revenue goal.",
-      "operatingSystem": "Web"
-     }
-    },
-    {
-     "@type": "ListItem",
-     "position": 13,
-     "item": {
-      "@type": "SoftwareApplication",
-      "name": "Stackpine Aftercare",
-      "applicationCategory": "BusinessApplication",
-      "description": "Multi-tenant aftercare portal for funeral homes, giving every family a branded post-loss checklist, document vault, and guided next steps.",
       "operatingSystem": "Web"
      }
     }
@@ -233,122 +156,54 @@
     <p class="crumbs"><a href="/">Home</a><span></span>Builds</p>
     <p class="eyebrow">Builds</p>
     <h1>Systems that pay for themselves.</h1>
-    <p class="lede">AI systems and custom software built end to end with Claude and Claude Code — internal AI assistants, autonomous agents, live dashboards, SaaS products and on-prem inference.</p>
+    <p class="lede">Selected systems in production use — autonomous agents, on-prem LLM inference, a live SaaS platform and internal AI tooling. Each one replaced hours of manual work with something that runs itself.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <div class="kpis reveal">
-      <div class="kpi"><div class="kpi__v">146<span> hrs/week</span></div><div class="kpi__l">saved through AI and automation</div></div>
-      <div class="kpi"><div class="kpi__v">7,592<span> hours</span></div><div class="kpi__l">recovered per year</div></div>
-      <div class="kpi"><div class="kpi__v">$227,760<span></span></div><div class="kpi__l">estimated annual efficiency value (at a $30/hr staff equivalency rate)</div></div>
-    </div>
-    <p class="kpis__note">Figures are conservative, per-system estimates from production systems in active daily use. A per-system breakdown is available on request.</p>
-
     <div class="builds reveal d1" id="builds">
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Internal RAG chatbot</p><h3>Staff Knowledge Assistant</h3></div>
-        </div>
-        <p class="build__sum">An internal AI assistant that answers staff policy and procedure questions from the organization&#x27;s own documents.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Staff interrupted supervisors constantly for policy and procedure answers buried in documents.</p><h4>What was built</h4><p>Internal AI assistant grounded in ingested organizational documents (PDF, DOCX, TXT) with OCR for scanned files, streaming answers, voice input, a feedback loop, per-document re-indexing, and honest-decline behavior when documents do not cover a question. Upgraded from document lookup to an operational reasoning advisor.</p><h4>Impact</h4><p>Absorbs an estimated 30 hrs/week of procedural questions and supervisor interruptions.</p><h4>Stack</h4><ul class="chips"><li>Node/Express</li><li>React/Vite PWA</li><li>SQLite FTS5</li><li>tesseract.js + pdfjs-dist OCR</li><li>SSE streaming</li><li>JWT auth</li><li>Railway</li><li>Automated daily Box backups</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Autonomous inbox management</p><h3>Email Triage Agent</h3></div>
-        </div>
+      <article class="build build--featured">
+        <p class="build__kind">Autonomous inbox management</p>
+        <h3>Email Triage Agent</h3>
+        <p class="build__metric">50 emails triaged in 13s — was 8 minutes</p>
         <p class="build__sum">A persistent agent that sorts high-volume Outlook inboxes automatically and rescues legitimate mail from junk.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>High-volume Outlook inboxes needed constant manual sorting, and legitimate contacts occasionally landed in junk unseen.</p><h4>What was built</h4><p>Persistent Python agent that authenticates to Microsoft Graph (MSAL device-code flow, cached token), applies sender rules first, batch-classifies the rest with an LLM (Actionable, Automated, Spam), moves messages to the right folders, and rescues protected contacts from junk. Replicated across multiple staff inboxes from a reusable build prompt.</p><h4>Impact</h4><p>Cut triage of 50 emails from roughly 8 minutes to about 13 seconds.</p><h4>Stack</h4><ul class="chips"><li>Python</li><li>Microsoft Graph API</li><li>MSAL</li><li>Anthropic API</li><li>Local JSON classification cache</li><li>Continuous polling service</li></ul></div></details>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>High-volume Outlook inboxes needed constant manual sorting, and legitimate contacts occasionally landed in junk unseen.</p><h4>What was built</h4><p>Persistent Python agent that authenticates to Microsoft Graph (MSAL device-code flow, cached token), applies sender rules first, batch-classifies the rest with an LLM (Actionable, Automated, Spam), moves messages to the right folders, and rescues protected contacts from junk. Replicated across multiple staff inboxes from a reusable build prompt.</p><h4>Impact</h4><p>Cut triage of 50 emails from roughly 8 minutes to about 13 seconds.</p><h4>Stack</h4><ul class="chips"><li>Python</li><li>Microsoft Graph API</li><li>MSAL</li><li>Anthropic API</li><li>Local JSON classification cache</li><li>Continuous polling service</li></ul></div></details>
       </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Privacy-first candidate triage</p><h3>Resume Screening Pipeline</h3></div>
-        </div>
-        <p class="build__sum">A privacy-first pipeline that scores resumes against a job description with a locally hosted LLM.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>A large resume backlog plus a live stream of new applicants, with strict data privacy requirements.</p><h4>What was built</h4><p>Pulls resumes from Google Drive, extracts text, scores each candidate against the job description on weighted dimensions (JD match, behavioral adaptability, AI/tech leverage) using a locally hosted LLM so no PII leaves the building, writes ranked results with rationale to Google Sheets, logs failures for review, and covers both a one-time backlog burn and an always-on watch folder. Framed as triage assist with human-in-the-loop review, never a hiring decision-maker.</p><h4>Stack</h4><ul class="chips"><li>n8n</li><li>Google Drive</li><li>Google Sheets</li><li>Ollama on on-prem hardware</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Policy generation web app</p><h3>AI Governance Policy Builder</h3></div>
-        </div>
-        <p class="build__sum">A multi-step web form that generates a customized AI governance policy as a downloadable Word document.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Organizations at a statewide summit needed real AI governance policies, not templates.</p><h4>What was built</h4><p>Multi-step web form that generates a customized AI governance policy as a downloadable Word document. Load-hardened for roughly 300 concurrent users (rate-limit backoff, mobile fixes, generation logging).</p><h4>Stack</h4><ul class="chips"><li>React/Vite</li><li>Vercel serverless</li><li>Anthropic API</li><li>docx generation</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">NVIDIA DGX Spark</p><h3>On-Prem AI Server</h3></div>
-        </div>
+      <article class="build build--featured">
+        <p class="build__kind">NVIDIA DGX Spark</p>
+        <h3>On-Prem AI Server</h3>
+        <p class="build__metric">Nemotron Super 49B running fully on-prem</p>
         <p class="build__sum">An on-premises inference layer that keeps compliance-sensitive AI workloads entirely in the building.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Compliance-sensitive workflows (intake, case-adjacent processing) cannot run on cloud LLMs.</p><h4>What was built</h4><p>On-premises inference layer serving a large local model through an OpenAI-compatible endpoint, powering local document RAG, privacy-sensitive processing, and scheduled agent runs as persistent services.</p><h4>Stack</h4><ul class="chips"><li>NVIDIA DGX Spark</li><li>Ollama</li><li>Nemotron Super 49B</li><li>systemd services</li></ul></div></details>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>Compliance-sensitive workflows (intake, case-adjacent processing) cannot run on cloud LLMs.</p><h4>What was built</h4><p>On-premises inference layer serving a large local model through an OpenAI-compatible endpoint, powering local document RAG, privacy-sensitive processing, and scheduled agent runs as persistent services.</p><h4>Stack</h4><ul class="chips"><li>NVIDIA DGX Spark</li><li>Ollama</li><li>Nemotron Super 49B</li><li>systemd services</li></ul></div></details>
       </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Role-specific live views</p><h3>Operational Dashboards</h3></div>
-        </div>
-        <p class="build__sum">Role-specific dashboards that replace manual status compilation across Outlook, Smartsheet, and internal trackers.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Leadership and program staff compiled status manually across Outlook, Smartsheet, and internal trackers.</p><h4>What was built</h4><p>Role-specific dashboards with live task, fleet, grant, and communications views, plus email notifications sent through Microsoft Graph.</p><h4>Impact</h4><p>Estimated 15 hrs/week saved across roles.</p><h4>Stack</h4><ul class="chips"><li>React</li><li>Node/Express</li><li>SQLite</li><li>Microsoft Graph API</li><li>Smartsheet API</li><li>Tailwind</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Private budgeting PWA</p><h3>Resident Budget Builder</h3></div>
-        </div>
-        <p class="build__sum">A private, resident-facing budgeting tool built to accompany a financial literacy course.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Residents completing a financial literacy course needed a private, simple budgeting tool to take home.</p><h4>What was built</h4><p>Resident-facing budgeting PWA built around zero-based budgeting, a starter emergency fund, and debt snowball tracking. Admin-provisioned credentials, no self-registration, and privacy by design: administrators cannot view resident financial data.</p><h4>Stack</h4><ul class="chips"><li>Node/Express</li><li>better-sqlite3</li><li>Vanilla JS PWA</li><li>pm2 on on-prem hardware</li><li>Cloudflare Tunnel</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">GoHighLevel</p><h3>CRM Automation Suite</h3></div>
-        </div>
-        <p class="build__sum">Automated pipelines for intake, follow-up, and program communications.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Intake, follow-up, and program communications ran on manual effort.</p><h4>What was built</h4><p>Automated pipelines for client intake and onboarding, staff notifications and task routing, client follow-up, document distribution, program transition workflows, Voice AI inbound handling, A2P 10DLC SMS compliance, and Stripe-backed event registration for a statewide summit.</p><h4>Impact</h4><p>Estimated 23 hrs/week saved across programs.</p><h4>Stack</h4><ul class="chips"><li>GoHighLevel</li><li>Stripe</li><li>A2P 10DLC</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">WordPress to static</p><h3>Multi-Page Website Migration</h3></div>
-        </div>
-        <p class="build__sum">A slow WordPress site rebuilt as a fast static site with documented handoff.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>A slow WordPress site with contractor-dependent hosting.</p><h4>What was built</h4><p>Rebuilt a 30+ page organizational website as a fast static site, deployed from GitHub with documented handoff for future maintainers.</p><h4>Stack</h4><ul class="chips"><li>Static HTML/CSS/JS</li><li>Railway</li><li>GitHub</li><li>Cloudflare DNS</li></ul></div></details>
-      </article>
-      <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Revenue recovery SaaS</p><h3>RevLane / OpenThrottle</h3></div>
-        </div>
+      <article class="build build--featured">
+        <p class="build__kind">Revenue recovery SaaS</p>
+        <h3>RevLane / OpenThrottle</h3>
+        <p class="build__metric">Production SaaS · verified by 56 tests</p>
         <p class="build__sum">A SaaS platform that recovers declined-service revenue for auto and powersports shops.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Auto and powersports shops lose revenue when customers decline recommended service or walk out on a quote, and nobody follows up.</p><h4>What was built</h4><p>SaaS platform that tracks declined services and walk-out leads and runs automated SMS follow-up to recover the revenue, with shop dashboards, admin tooling (impersonation, health-check watchdog, daily digests, trial and churn automation), and a performance-based pricing engine. Verified by a 56-test production suite.</p><h4>Stack</h4><ul class="chips"><li>Node/Express</li><li>React</li><li>SQLite</li><li>Railway</li><li>Vercel</li><li>Telnyx 10DLC with Ed25519 webhook signature verification</li><li>Stripe</li><li>Resend</li></ul></div></details>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>Auto and powersports shops lose revenue when customers decline recommended service or walk out on a quote, and nobody follows up.</p><h4>What was built</h4><p>SaaS platform that tracks declined services and walk-out leads and runs automated SMS follow-up to recover the revenue, with shop dashboards, admin tooling (impersonation, health-check watchdog, daily digests, trial and churn automation), and a performance-based pricing engine. Verified by a 56-test production suite.</p><h4>Stack</h4><ul class="chips"><li>Node/Express</li><li>React</li><li>SQLite</li><li>Railway</li><li>Vercel</li><li>Telnyx 10DLC with Ed25519 webhook signature verification</li><li>Stripe</li><li>Resend</li></ul></div></details>
       </article>
       <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Dispatch coordination</p><h3>Funeral Triage</h3></div>
-        </div>
-        <p class="build__sum">A dispatch app built for a funeral services client, in active paid use.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>A direct-to-families funeral service needed structured dispatch coordination.</p><h4>What was built</h4><p>Dispatch app built for a funeral services client, in active paid use.</p></div></details>
+        <p class="build__kind">Internal RAG chatbot</p>
+        <h3>Staff Knowledge Assistant</h3>
+        <p class="build__metric">~30 hrs/week of interruptions absorbed</p>
+        <p class="build__sum">An internal AI assistant that answers staff policy and procedure questions from the organization&#x27;s own documents.</p>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>Staff interrupted supervisors constantly for policy and procedure answers buried in documents.</p><h4>What was built</h4><p>Internal AI assistant grounded in ingested organizational documents (PDF, DOCX, TXT) with OCR for scanned files, streaming answers, voice input, a feedback loop, per-document re-indexing, and honest-decline behavior when documents do not cover a question. Upgraded from document lookup to an operational reasoning advisor.</p><h4>Impact</h4><p>Absorbs an estimated 30 hrs/week of procedural questions and supervisor interruptions.</p><h4>Stack</h4><ul class="chips"><li>Node/Express</li><li>React/Vite PWA</li><li>SQLite FTS5</li><li>tesseract.js + pdfjs-dist OCR</li><li>SSE streaming</li><li>JWT auth</li><li>Railway</li><li>Automated daily Box backups</li></ul></div></details>
       </article>
       <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">Creator revenue tooling</p><h3>YouTube Channel Analytics Dashboard</h3></div>
-        </div>
-        <p class="build__sum">A self-hosted analytics dashboard for running a monetized YouTube channel toward a revenue goal.</p>
-        <details class="build__more"><summary>Details</summary>
-          <div class="build__body"><h4>The problem</h4><p>Managing a monetized YouTube channel toward a revenue goal required stitching together data YouTube Studio does not present in one place.</p><h4>What was built</h4><p>Self-hosted analytics dashboard pulling channel and per-video data via OAuth, with an income goal tracker, Shorts vs long-form breakdown, upload consistency heatmap, performance scoring, and revenue projections. Installable as a mobile PWA.</p><h4>Stack</h4><ul class="chips"><li>Python/Flask</li><li>YouTube Data API v3</li><li>YouTube Analytics API</li><li>SQLite</li><li>Chart.js</li><li>Railway</li></ul></div></details>
+        <p class="build__kind">Privacy-first candidate triage</p>
+        <h3>Resume Screening Pipeline</h3>
+        <p class="build__metric">Zero PII leaves the building</p>
+        <p class="build__sum">A privacy-first pipeline that scores resumes against a job description with a locally hosted LLM.</p>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>A large resume backlog plus a live stream of new applicants, with strict data privacy requirements.</p><h4>What was built</h4><p>Pulls resumes from Google Drive, extracts text, scores each candidate against the job description on weighted dimensions (JD match, behavioral adaptability, AI/tech leverage) using a locally hosted LLM so no PII leaves the building, writes ranked results with rationale to Google Sheets, logs failures for review, and covers both a one-time backlog burn and an always-on watch folder. Framed as triage assist with human-in-the-loop review, never a hiring decision-maker.</p><h4>Stack</h4><ul class="chips"><li>n8n</li><li>Google Drive</li><li>Google Sheets</li><li>Ollama on on-prem hardware</li></ul></div></details>
       </article>
       <article class="build">
-        <div class="build__head">
-          <div><p class="build__kind">In development</p><h3>Stackpine Aftercare</h3></div>
-        </div>
-        <p class="build__sum">Multi-tenant aftercare portal for funeral homes, giving every family a branded post-loss checklist, document vault, and guided next steps.</p>
-        
+        <p class="build__kind">Role-specific live views</p>
+        <h3>Operational Dashboards</h3>
+        <p class="build__metric">~15 hrs/week saved across roles</p>
+        <p class="build__sum">Role-specific dashboards that replace manual status compilation across Outlook, Smartsheet, and internal trackers.</p>
+        <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>Leadership and program staff compiled status manually across Outlook, Smartsheet, and internal trackers.</p><h4>What was built</h4><p>Role-specific dashboards with live task, fleet, grant, and communications views, plus email notifications sent through Microsoft Graph.</p><h4>Impact</h4><p>Estimated 15 hrs/week saved across roles.</p><h4>Stack</h4><ul class="chips"><li>React</li><li>Node/Express</li><li>SQLite</li><li>Microsoft Graph API</li><li>Smartsheet API</li><li>Tailwind</li></ul></div></details>
       </article>
     </div>
 
