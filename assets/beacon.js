@@ -9,7 +9,7 @@
  *   https://admin.stackpine.org
  * While it is left empty the beacon does nothing at all.
  */
-var STACKPINE_ANALYTICS_ENDPOINT = '';
+var STACKPINE_ANALYTICS_ENDPOINT = 'https://stackpine-admin-production.up.railway.app';
 
 (function () {
   'use strict';
