@@ -278,14 +278,22 @@ ul,ol{margin:0;padding:0;list-style:none}
 
 /* ---------- reveal (fails SAFE: visible unless JS opts in) ---------- */
 .reveal{opacity:1;transform:none}
-html.js-reveal .reveal{opacity:0;transform:translateY(16px)}
+html.js-reveal .reveal{opacity:0;transform:translateY(34px) scale(.985)}
 html.js-reveal .reveal.is-in{
   opacity:1;transform:none;
-  transition:opacity .62s var(--ease),transform .62s var(--ease);
+  transition:opacity .72s var(--ease),transform .72s var(--ease);
 }
-html.js-reveal .reveal.d1{transition-delay:.07s}
-html.js-reveal .reveal.d2{transition-delay:.14s}
-html.js-reveal .reveal.d3{transition-delay:.21s}
+/* stagger: cards arrive one after another rather than all at once */
+html.js-reveal .reveal.d1{transition-delay:.09s}
+html.js-reveal .reveal.d2{transition-delay:.18s}
+html.js-reveal .reveal.d3{transition-delay:.27s}
+html.js-reveal .reveal.d4{transition-delay:.36s}
+html.js-reveal .reveal.d5{transition-delay:.45s}
+html.js-reveal .reveal.d6{transition-delay:.54s}
+
+/* section headers get a touch more travel so a new section announces itself */
+html.js-reveal .head.reveal{transform:translateY(44px)}
+
 @media (prefers-reduced-motion:reduce){
   html.js-reveal .reveal{opacity:1!important;transform:none!important;transition:none!important}
 }
