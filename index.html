@@ -1,1825 +1,374 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stackpine | Custom Software Development &amp; Websites for Small Businesses</title>
-
-<!-- ===================== SEO / OPEN GRAPH =====================
-     Live domain: https://stackpine.org -->
-<meta name="description" content="Stackpine builds custom software, business apps, websites, and online storefronts shaped around exactly how your business runs — for one affordable monthly subscription covering the build, hosting, updates, and support. Ohio-based, serving businesses everywhere. Get a free quote.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom Software for Small Business | Stackpine</title>
+<meta name="description" content="Stackpine builds custom software, business apps and websites shaped around how your business actually runs — one monthly fee, hosting and support included.">
 <link rel="canonical" href="https://stackpine.org/">
+<meta name="theme-color" content="#080B0A">
+<meta name="robots" content="index,follow,max-image-preview:large">
+
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
-<meta property="og:title" content="Stackpine | Custom Software Development &amp; Websites for Small Businesses">
-<meta property="og:description" content="Any idea you have, we can build it. Custom software, websites & online storefronts for one affordable monthly subscription — build, hosting, updates, and support included.">
+<meta property="og:title" content="Custom Software for Small Business | Stackpine">
+<meta property="og:description" content="Custom software and websites built around how your business actually runs — for one predictable monthly fee.">
 <meta property="og:url" content="https://stackpine.org/">
 <meta property="og:image" content="https://stackpine.org/cover.jpg">
 <meta property="og:image:width" content="1696">
 <meta property="og:image:height" content="624">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Stackpine | Custom Software Development &amp; Websites for Small Businesses">
-<meta name="twitter:description" content="Any idea you have, we can build it. Custom software, websites &amp; online storefronts for one affordable monthly subscription.">
+<meta name="twitter:title" content="Custom Software for Small Business | Stackpine">
+<meta name="twitter:description" content="Custom software and websites built around how your business actually runs — one monthly fee.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
-<link rel="icon" type="image/png" href="logo.png">
-<link rel="preload" as="image" href="cover.jpg" fetchpriority="high">
 
-<!-- Structured data so Google understands who/what Stackpine is -->
+<link rel="icon" href="/logo.png" type="image/png">
+<link rel="apple-touch-icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/demo.css">
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "ProfessionalService",
-  "@id": "https://stackpine.org/#org",
-  "name": "Stackpine",
-  "url": "https://stackpine.org/",
-  "logo": "https://stackpine.org/logo.png",
-  "image": "https://stackpine.org/cover.jpg",
-  "slogan": "Building the Future, One Layer at a Time",
-  "description": "Custom software development, websites, and online storefronts for small businesses on an affordable monthly subscription — build, hosting, updates, and support included.",
-  "email": "crlattimer@icloud.com",
-  "sameAs": ["https://www.facebook.com/profile.php?id=61588702793283"],
-  "address": {"@type": "PostalAddress", "addressRegion": "OH", "addressCountry": "US"},
-  "areaServed": {"@type": "Country", "name": "United States"},
-  "hasOfferCatalog": {
-    "@type": "OfferCatalog",
-    "name": "Services",
-    "itemListElement": [
-      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Custom software development", "description": "Business software built to order — intake systems, scheduling tools, dashboards, portals, inventory and quoting systems."}},
-      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Custom website design", "description": "Custom-built business websites, hosted and maintained for a small monthly fee."}},
-      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Online storefronts", "description": "Custom e-commerce stores, hosted, maintained, and kept up to date."}}
-    ]
-  }
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {"@type": "Question", "name": "How long does a custom software build take?", "acceptedAnswer": {"@type": "Answer", "text": "Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through."}},
-    {"@type": "Question", "name": "Do I need to know anything about technology?", "acceptedAnswer": {"@type": "Answer", "text": "No. You describe how your business runs in plain English, and Stackpine turns that into working software."}},
-    {"@type": "Question", "name": "What does custom software cost?", "acceptedAnswer": {"@type": "Answer", "text": "Every project is quoted custom. There is no big upfront bill — hosting, support, updates, and improvements are included in one predictable monthly fee. Quotes are free."}},
-    {"@type": "Question", "name": "What happens when I reach out?", "acceptedAnswer": {"@type": "Answer", "text": "A normal conversation, not a sales pitch. Describe what's slowing your business down and you'll get an honest free quote."}},
-    {"@type": "Question", "name": "What if I need changes later?", "acceptedAnswer": {"@type": "Answer", "text": "Ongoing improvements are included in the subscription — your software grows and changes as your business does."}},
-    {"@type": "Question", "name": "Am I locked into a contract?", "acceptedAnswer": {"@type": "Answer", "text": "No. Everything is month to month, you can cancel anytime, and your data is always yours."}}
+  "@graph": [
+    {
+      "@type": "ProfessionalService",
+      "@id": "https://stackpine.org/#business",
+      "name": "Stackpine",
+      "description": "Custom software, business apps and websites for small businesses, delivered on a monthly subscription that includes hosting, updates and support.",
+      "url": "https://stackpine.org/",
+      "logo": "https://stackpine.org/logo.png",
+      "image": "https://stackpine.org/cover.jpg",
+      "email": "crlattimer@icloud.com",
+      "priceRange": "$$",
+      "address": { "@type": "PostalAddress", "addressRegion": "OH", "addressCountry": "US" },
+      "areaServed": [
+        { "@type": "State", "name": "Ohio" },
+        { "@type": "Country", "name": "United States" }
+      ],
+      "knowsAbout": ["Custom software development","Business applications","Web development","E-commerce","Workflow automation"],
+      "sameAs": ["https://www.facebook.com/profile.php?id=61588702793283"],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Services",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Custom software development", "description": "Business apps built around your workflow." } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Custom websites and online stores", "description": "Websites and storefronts, hosted and maintained." } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Workflow automation", "description": "Intake, triage, scheduling and reporting systems." } }
+        ]
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://stackpine.org/#website",
+      "url": "https://stackpine.org/",
+      "name": "Stackpine",
+      "publisher": { "@id": "https://stackpine.org/#business" }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://stackpine.org/#faq",
+      "mainEntity": [
+        { "@type": "Question", "name": "How long does a custom software build take?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Most first versions are up and working in a few weeks, not months. Simple tools can take days. You see progress the whole way through, so there is never a six-month black box between the first conversation and working software." } },
+        { "@type": "Question", "name": "Do I need to know anything about technology?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Not a thing. You describe how your business runs in plain English. Turning that into software is our job, not yours." } },
+        { "@type": "Question", "name": "What does custom software cost?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Every project is quoted custom, but there is no large upfront bill. Hosting, support, updates and improvements are all included in one predictable monthly fee." } },
+        { "@type": "Question", "name": "What happens when I reach out?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A normal conversation, not a sales pitch. Tell us what is slowing your business down, we ask a few questions, and you get an honest free quote. If we think you do not need custom software, we will say so." } }
+      ]
+    }
   ]
 }
 </script>
-
-<!-- Font -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-<script>if(new URLSearchParams(location.search).has("static"))document.documentElement.classList.add("static-mode");</script>
-<style>
-/* =====================================================
-   STACKPINE — brand tokens
-   ===================================================== */
-:root{
-  --navy:#2B3A5C;
-  --navy-deep:#1E2A45;
-  --navy-ink:#182236;
-  --pine:#3A7D44;
-  --pine-dark:#2E6537;
-  --slate:#4A5D7E;
-  --slate-lt:#7A8BA6;
-  --sage:#6FA07A;
-  --sage-lt:#A8C3AE;
-  --ice:#EDF1F5;
-  --white:#FFFFFF;
-  --text:#33415E;
-  --text-soft:#5C6B88;
-  --radius:14px;
-  --shadow-sm:0 2px 8px rgba(43,58,92,.08);
-  --shadow-md:0 8px 28px rgba(43,58,92,.14);
-  --shadow-lg:0 18px 48px rgba(30,42,69,.22);
-  --nav-h:68px;
-}
-
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h) + 12px)}
-body{
-  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
-  color:var(--text);
-  background:var(--white);
-  line-height:1.65;
-  -webkit-font-smoothing:antialiased;
-  overflow-x:hidden;
-}
-img{max-width:100%;display:block}
-a{color:var(--pine)}
-h1,h2,h3,h4{color:var(--navy);line-height:1.2;font-weight:700}
-.container{width:min(1120px,92%);margin:0 auto}
-section{position:relative}
-
-/* ---------- buttons ---------- */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:.55em;
-  font-family:inherit;font-weight:600;font-size:1rem;
-  padding:.85em 1.9em;border-radius:999px;border:2px solid transparent;
-  cursor:pointer;text-decoration:none;line-height:1.2;
-  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease,border-color .18s ease;
-}
-.btn:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
-.btn-primary{background:var(--pine);color:#fff;box-shadow:0 6px 18px rgba(58,125,68,.35)}
-.btn-primary:hover{background:var(--pine-dark);transform:translateY(-2px);box-shadow:0 10px 24px rgba(58,125,68,.42)}
-.btn-primary:active{transform:translateY(0)}
-.btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
-.btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.1);transform:translateY(-2px)}
-.btn-navy{background:var(--navy);color:#fff;box-shadow:0 6px 18px rgba(43,58,92,.3)}
-.btn-navy:hover{background:var(--navy-deep);transform:translateY(-2px)}
-.btn-sm{font-size:.88rem;padding:.6em 1.4em}
-
-/* ---------- sticky nav ---------- */
-.nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);
-  display:flex;align-items:center;
-  background:rgba(255,255,255,0);
-  transition:background .3s ease,box-shadow .3s ease;
-}
-.nav.scrolled{background:rgba(255,255,255,.96);box-shadow:0 2px 18px rgba(30,42,69,.12);backdrop-filter:blur(8px)}
-.nav-inner{width:min(1120px,92%);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-
-/* Logo file has generous white padding — crop tight with an overflow window.
-   The white logo background sits on a white chip so it works on any nav state. */
-.logo-link{display:flex;align-items:center;text-decoration:none;border-radius:10px}
-.logo-link:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
-.logo-crop{
-  position:relative;overflow:hidden;border-radius:8px;background:#fff;
-  width:127px;height:40px;flex:0 0 auto;
-}
-.logo-crop img{
-  position:absolute;width:161px;height:161px;max-width:none;
-  left:-18px;top:-61px;
-}
-.nav:not(.scrolled) .logo-crop{box-shadow:0 2px 10px rgba(24,34,54,.35)}
-
-.nav-links{display:flex;align-items:center;gap:1.6rem;list-style:none}
-.nav-links a{
-  text-decoration:none;font-weight:500;font-size:.95rem;color:#fff;
-  transition:color .2s ease,opacity .2s ease;opacity:.92;
-}
-.nav-links a:hover{opacity:1;color:var(--sage-lt)}
-.nav.scrolled .nav-links a{color:var(--navy)}
-.nav.scrolled .nav-links a:hover{color:var(--pine)}
-.nav-links .btn{color:#fff}
-.nav-cta{font-size:.88rem;padding:.55em 1.3em}
-
-.nav-toggle{
-  display:none;background:none;border:0;cursor:pointer;padding:.5rem;border-radius:8px;
-}
-.nav-toggle:focus-visible{outline:3px solid var(--sage)}
-.nav-toggle span{display:block;width:24px;height:2.6px;border-radius:2px;background:#fff;margin:5px 0;transition:all .25s ease}
-.nav.scrolled .nav-toggle span,.nav.menu-open .nav-toggle span{background:var(--navy)}
-.nav.menu-open .nav-toggle span:nth-child(1){transform:translateY(7.6px) rotate(45deg)}
-.nav.menu-open .nav-toggle span:nth-child(2){opacity:0}
-.nav.menu-open .nav-toggle span:nth-child(3){transform:translateY(-7.6px) rotate(-45deg)}
-
-@media (max-width:840px){
-  .nav-toggle{display:block}
-  .nav-links{
-    position:absolute;top:var(--nav-h);left:0;right:0;
-    flex-direction:column;gap:0;background:#fff;box-shadow:0 18px 30px rgba(30,42,69,.18);
-    max-height:0;overflow:hidden;transition:max-height .3s ease;
-  }
-  .nav.menu-open{background:#fff;box-shadow:0 2px 18px rgba(30,42,69,.12)}
-  .nav.menu-open .nav-links{max-height:520px}
-  .nav-links li{width:100%;text-align:center}
-  .nav-links a{display:block;padding:1rem;color:var(--navy)!important;font-size:1.05rem}
-  .nav-links a:hover{background:var(--ice)}
-  .nav-links .nav-cta{margin:.6rem auto 1.2rem;display:inline-flex;width:auto;background:var(--pine);color:#fff!important}
-}
-
-/* ---------- hero ---------- */
-.hero{
-  min-height:100svh;display:flex;align-items:center;
-  position:relative;overflow:hidden;background:var(--navy-ink);
-}
-.hero-bg{
-  position:absolute;inset:-12% 0;z-index:0;
-  background:url('cover.jpg') center 30%/cover no-repeat;
-  will-change:transform;
-}
-.hero-overlay{
-  position:absolute;inset:0;z-index:1;
-  background:linear-gradient(100deg,
-    rgba(24,34,54,.94) 0%,
-    rgba(24,34,54,.86) 38%,
-    rgba(30,42,69,.62) 68%,
-    rgba(43,58,92,.45) 100%);
-}
-.hero-content{position:relative;z-index:2;padding:calc(var(--nav-h) + 3rem) 0 5.5rem;max-width:680px}
-.hero-eyebrow{
-  display:inline-flex;align-items:center;gap:.5em;
-  color:var(--sage-lt);font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;
-  margin-bottom:1.2rem;
-}
-.hero-eyebrow::before{content:"";width:28px;height:2px;background:var(--sage);border-radius:2px}
-.hero h1{
-  color:#fff;font-size:clamp(2.1rem,4.6vw,3.6rem);font-weight:800;letter-spacing:-.01em;
-  margin-bottom:1.1rem;
-}
-.hero h1 .accent{color:var(--sage-lt)}
-.hero-tagline{color:#8FCB9B;font-size:clamp(1.05rem,1.8vw,1.3rem);font-weight:600;margin-bottom:1.4rem}
-.hero-sub{color:rgba(237,241,245,.82);font-size:1.05rem;max-width:540px;margin-bottom:2.2rem}
-.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap}
-.hero-scroll{
-  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:2;
-  color:rgba(255,255,255,.65);font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;
-  display:flex;flex-direction:column;align-items:center;gap:.4rem;text-decoration:none;
-}
-.hero-scroll svg{animation:bob 2.2s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
-
-/* staggered hero entrance */
-.hero-content > *{opacity:0;transform:translateY(22px);animation:heroIn .8s cubic-bezier(.2,.7,.3,1) forwards}
-.hero-content > *:nth-child(1){animation-delay:.05s}
-.hero-content > *:nth-child(2){animation-delay:.15s}
-.hero-content > *:nth-child(3){animation-delay:.25s}
-.hero-content > *:nth-child(4){animation-delay:.35s}
-.hero-content > *:nth-child(5){animation-delay:.5s}
-@keyframes heroIn{to{opacity:1;transform:translateY(0)}}
-
-/* ---------- layered treeline divider ---------- */
-.treeline{display:block;width:100%;height:70px;margin-bottom:-1px}
-.treeline svg{display:block;width:100%;height:100%}
-
-/* ---------- generic sections ---------- */
-.section{padding:5.5rem 0}
-.section-ice{background:var(--ice)}
-.section-dark{background:var(--navy);color:var(--ice)}
-.section-dark h2,.section-dark h3{color:#fff}
-.section-head{max-width:640px;margin:0 auto 3.2rem;text-align:center}
-.section-eyebrow{
-  color:var(--pine);font-weight:600;font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;
-  display:block;margin-bottom:.6rem;
-}
-.section-dark .section-eyebrow{color:var(--sage-lt)}
-.section-head h2{font-size:clamp(1.7rem,3.2vw,2.5rem);margin-bottom:.8rem}
-.section-head p{color:var(--text-soft);font-size:1.05rem}
-.section-dark .section-head p{color:rgba(237,241,245,.75)}
-
-/* node-network texture for dark sections */
-.net-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:.5}
-.net-bg svg{position:absolute;inset:0;width:100%;height:100%}
-
-/* ---------- scroll reveal ---------- */
-.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
-.reveal.from-left{transform:translateX(-46px)}
-.reveal.from-right{transform:translateX(46px)}
-.reveal.visible{opacity:1;transform:none}
-.reveal.d1{transition-delay:.1s}.reveal.d2{transition-delay:.2s}.reveal.d3{transition-delay:.3s}
-.reveal.d4{transition-delay:.4s}.reveal.d5{transition-delay:.5s}
-
-/* ---------- problem section ---------- */
-.problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center}
-.problem-copy h2{font-size:clamp(1.7rem,3vw,2.4rem);margin-bottom:1.1rem}
-.problem-copy p{color:var(--text-soft);margin-bottom:1rem;font-size:1.05rem}
-.problem-copy strong{color:var(--navy)}
-.problem-punch{
-  font-size:1.25rem;font-weight:700;color:var(--pine);margin-top:1.4rem;
-}
-.pain-list{list-style:none;display:grid;gap:1rem}
-.pain-list li{
-  background:#fff;border-radius:var(--radius);padding:1.1rem 1.3rem;
-  box-shadow:var(--shadow-sm);display:flex;gap:.9rem;align-items:flex-start;
-  border-left:4px solid var(--slate-lt);font-size:.97rem;color:var(--text);
-}
-.pain-list li svg{flex:0 0 auto;margin-top:.2rem}
-@media (max-width:840px){.problem-grid{grid-template-columns:1fr;gap:2.2rem}}
-
-/* ---------- how it works ---------- */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.8rem;counter-reset:step}
-.step{
-  background:#fff;border-radius:var(--radius);padding:2.2rem 1.8rem 2rem;
-  box-shadow:var(--shadow-sm);position:relative;
-  transition:transform .25s ease,box-shadow .25s ease;
-}
-.step:hover{transform:translateY(-6px);box-shadow:var(--shadow-md)}
-.step-num{
-  position:absolute;top:1.3rem;right:1.5rem;
-  font-size:2.6rem;font-weight:800;color:var(--ice);line-height:1;
-}
-.step-icon{
-  width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,var(--pine),var(--sage));margin-bottom:1.3rem;
-  box-shadow:0 6px 16px rgba(58,125,68,.3);
-}
-.step h3{font-size:1.15rem;margin-bottom:.6rem}
-.step p{color:var(--text-soft);font-size:.95rem}
-@media (max-width:840px){.steps{grid-template-columns:1fr}}
-
-/* ---------- demos ---------- */
-.demo-block{margin-bottom:4.5rem}
-.demo-block:last-child{margin-bottom:0}
-.demo-frame{
-  background:#fff;border-radius:18px;box-shadow:var(--shadow-md);overflow:hidden;
-  border:1px solid rgba(122,139,166,.18);
-}
-.demo-titlebar{
-  display:flex;align-items:center;gap:.6rem;padding:.7rem 1.1rem;
-  background:var(--navy);color:#fff;
-}
-.demo-titlebar .dots{display:flex;gap:.38rem}
-.demo-titlebar .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.28)}
-.demo-titlebar .dots span:first-child{background:var(--sage)}
-.demo-titlebar h3{color:#fff;font-size:.92rem;font-weight:600;margin:0}
-.demo-body{padding:1.6rem}
-.demo-caption{
-  text-align:center;font-size:.92rem;color:var(--text-soft);font-style:italic;margin-top:1rem;
-}
-.demo-caption strong{color:var(--pine);font-style:normal}
-
-/* --- demo 1: kanban --- */
-.intake-form{display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.4rem}
-.intake-form input[type=text]{
-  flex:1;min-width:220px;font-family:inherit;font-size:.95rem;
-  padding:.75em 1.1em;border:2px solid var(--ice);border-radius:10px;color:var(--text);
-  transition:border-color .2s ease;background:var(--ice);
-}
-.intake-form input[type=text]:focus{outline:none;border-color:var(--pine);background:#fff}
-.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
-.kanban-col{
-  background:var(--ice);border-radius:12px;padding:.9rem;min-height:230px;
-  transition:background .2s ease,box-shadow .2s ease;
-}
-.kanban-col.drag-over{background:#DDE8DF;box-shadow:inset 0 0 0 2px var(--sage)}
-.kanban-col-head{
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--slate);margin-bottom:.8rem;padding:0 .2rem;
-}
-.kanban-count{
-  background:#fff;color:var(--slate);border-radius:999px;min-width:1.7em;height:1.7em;
-  display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;
-}
-.kcard{
-  background:#fff;border-radius:10px;padding:.8rem .9rem;margin-bottom:.7rem;
-  box-shadow:var(--shadow-sm);cursor:grab;position:relative;
-  border-left:4px solid var(--slate-lt);
-  transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease;
-}
-.kcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.kcard:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
-.kcard.dragging{opacity:.45;cursor:grabbing}
-.kcard.pop-in{animation:popIn .4s cubic-bezier(.3,1.4,.5,1)}
-@keyframes popIn{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:none}}
-.kcard.prio-high{border-left-color:#C15B4E}
-.kcard.prio-med{border-left-color:#CFA23C}
-.kcard.prio-low{border-left-color:var(--sage)}
-.kcard-title{font-size:.9rem;font-weight:600;color:var(--navy);margin-bottom:.45rem;padding-right:3.4rem}
-.kcard-meta{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center}
-.badge{
-  font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-  padding:.2em .7em;border-radius:999px;
-}
-.badge-high{background:#F7E3E0;color:#A34438}
-.badge-med{background:#F7EED8;color:#8A6A1B}
-.badge-low{background:#E2EEE5;color:var(--pine-dark)}
-.badge-route{background:var(--ice);color:var(--slate);text-transform:none;letter-spacing:0}
-.kcard-move{position:absolute;top:.55rem;right:.55rem;display:flex;gap:.25rem}
-.kcard-move button{
-  width:24px;height:24px;border:0;border-radius:6px;background:var(--ice);color:var(--slate);
-  cursor:pointer;font-size:.8rem;line-height:1;display:flex;align-items:center;justify-content:center;
-  transition:background .15s ease,color .15s ease;
-}
-.kcard-move button:hover{background:var(--pine);color:#fff}
-.kcard-move button:focus-visible{outline:2px solid var(--sage)}
-.kanban-hint{font-size:.8rem;color:var(--slate-lt);margin-top:.9rem;text-align:center}
-@media (max-width:760px){.kanban{grid-template-columns:1fr}.kanban-col{min-height:auto}}
-
-/* --- demo 2: booking --- */
-.booking-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:1.8rem;align-items:start}
-.booking-picker,.booking-panel{min-width:0}
-.bk-label{font-size:.85rem;font-weight:700;color:var(--navy);display:block;margin:1.3rem 0 .55rem}
-.bk-label:first-child{margin-top:0}
-.bk-open{font-weight:500;color:var(--pine);font-size:.8rem;margin-left:.4em}
-.bk-services{display:flex;flex-wrap:wrap;gap:.5rem}
-.bk-chip{
-  font-family:inherit;font-size:.88rem;font-weight:500;color:var(--navy);
-  background:var(--ice);border:2px solid transparent;border-radius:999px;padding:.5em 1.1em;
-  cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease;
-}
-.bk-chip:hover{transform:translateY(-1px);border-color:var(--sage-lt)}
-.bk-chip[aria-pressed=true]{background:#E2EEE5;border-color:var(--pine);color:var(--pine-dark);font-weight:600}
-.bk-chip:focus-visible,.bk-day:focus-visible,.bk-slot:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
-.bk-days{display:flex;gap:.45rem;overflow-x:auto;padding-bottom:.3rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
-.bk-day{
-  font-family:inherit;flex:0 0 auto;min-width:62px;padding:.55em .4em;border:2px solid var(--ice);
-  border-radius:12px;background:var(--ice);cursor:pointer;text-align:center;color:var(--slate);
-  display:flex;flex-direction:column;gap:.1em;scroll-snap-align:start;
-  transition:background .15s ease,border-color .15s ease;
-}
-.bk-day:hover{border-color:var(--sage-lt)}
-.bk-day .dow{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.bk-day .dom{font-size:1.15rem;font-weight:700;color:var(--navy)}
-.bk-day[aria-pressed=true]{background:var(--pine);border-color:var(--pine)}
-.bk-day[aria-pressed=true] .dow,.bk-day[aria-pressed=true] .dom{color:#fff}
-.bk-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:.5rem}
-.bk-slot{
-  font-family:inherit;font-size:.86rem;font-weight:600;color:var(--navy);
-  background:var(--ice);border:2px solid transparent;border-radius:9px;padding:.55em .3em;
-  cursor:pointer;transition:background .15s ease,border-color .15s ease;
-}
-.bk-slot:hover:not(:disabled){border-color:var(--sage-lt)}
-.bk-slot[aria-pressed=true]{background:var(--pine);color:#fff}
-.bk-slot:disabled{opacity:.38;cursor:not-allowed}
-.bk-slot.taken{text-decoration:line-through}
-.booking-panel{
-  position:relative;background:var(--navy);border-radius:14px;padding:1.8rem 1.6rem;
-  overflow:hidden;min-height:300px;
-}
-.bk-title{color:#fff;font-size:1.05rem;margin-bottom:1rem}
-.bk-row{
-  display:flex;justify-content:space-between;gap:1rem;font-size:.9rem;padding:.55em 0;
-  border-bottom:1px dashed rgba(255,255,255,.18);color:rgba(237,241,245,.65);
-}
-.bk-row strong{color:#fff;font-weight:600;text-align:right}
-.bk-confirm{width:100%;margin-top:1.3rem}
-.bk-confirm:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
-.bk-hint{font-size:.78rem;color:rgba(237,241,245,.55);margin-top:.8rem;text-align:center}
-.bk-check{
-  width:60px;height:60px;border-radius:50%;background:var(--pine);margin:0 auto 1rem;
-  display:flex;align-items:center;justify-content:center;
-  animation:winnerPop .55s cubic-bezier(.3,1.6,.5,1);
-}
-#bkSuccess{text-align:center;padding-top:.5rem}
-#bkSuccess .bk-title{margin-bottom:.5rem}
-.bk-done{color:#8FCB9B;font-weight:600;font-size:.95rem}
-.bk-again{margin-top:1.2rem;font-size:.88rem;padding:.6em 1.5em}
-@keyframes winnerPop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
-.confetti-canvas{position:absolute;inset:0;pointer-events:none}
-@media (max-width:760px){.booking-wrap{grid-template-columns:1fr}}
-
-/* --- command center: tabs, dashboard, feed --- */
-.cc-tabs{display:flex;gap:.25rem;background:var(--navy-deep);padding:.5rem .9rem 0}
-.cc-tabs [role=tab]{
-  font-family:inherit;font-size:.88rem;font-weight:600;color:rgba(237,241,245,.6);
-  background:transparent;border:0;border-radius:10px 10px 0 0;padding:.7em 1.2em;cursor:pointer;
-  transition:background .15s ease,color .15s ease;
-}
-.cc-tabs [role=tab]:hover{color:#fff}
-.cc-tabs [role=tab][aria-selected=true]{background:#fff;color:var(--navy)}
-.cc-tabs [role=tab]:focus-visible{outline:3px solid var(--sage);outline-offset:-3px}
-.cc-hint{
-  font-size:.82rem;color:var(--slate);background:#E9F1EB;padding:.6em 1.2em;margin:0;
-  border-bottom:1px solid rgba(122,139,166,.15);
-}
-.cc-panel[hidden]{display:none}
-.cc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.4rem}
-.cc-stat{
-  background:var(--ice);border-radius:12px;padding:1rem 1.1rem;
-  display:flex;flex-direction:column;gap:.15rem;
-}
-.cc-stat-label{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate)}
-.cc-stat-num{font-size:1.9rem;font-weight:800;color:var(--navy);line-height:1.15;font-variant-numeric:tabular-nums}
-.cc-stat-num small{font-size:.5em;font-weight:600;color:var(--text-soft);margin-left:.15em}
-.cc-stat-delta{font-size:.72rem;color:var(--pine);font-weight:600}
-.cc-stat-num.bump{animation:statBump .5s cubic-bezier(.3,1.5,.5,1)}
-@keyframes statBump{0%{transform:scale(1)}40%{transform:scale(1.22);color:var(--pine)}100%{transform:scale(1)}}
-.cc-mid{display:grid;grid-template-columns:1fr 1.15fr;gap:1.4rem}
-.cc-chart h4,.cc-feedwrap h4{font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;color:var(--slate);margin-bottom:.9rem}
-.cc-bars{display:flex;align-items:flex-end;gap:.6rem;height:150px;padding:0 .2rem}
-.cc-bar{
-  flex:1;height:var(--h);background:linear-gradient(to top,var(--pine),var(--sage));
-  border-radius:6px 6px 0 0;position:relative;min-height:14px;
-  transition:filter .15s ease;
-}
-.cc-bar:hover{filter:brightness(1.12)}
-.cc-bar i{
-  position:absolute;top:-1.4em;left:50%;transform:translateX(-50%);
-  font-style:normal;font-size:.72rem;font-weight:700;color:var(--slate);
-}
-.cc-bar b{
-  position:absolute;bottom:-1.6em;left:50%;transform:translateX(-50%);
-  font-size:.68rem;font-weight:600;color:var(--slate-lt);
-}
-.cc-chart{padding-bottom:1.4rem}
-.cc-feed{list-style:none;display:grid;gap:.55rem}
-.cc-feed li{
-  display:flex;align-items:flex-start;gap:.6rem;font-size:.84rem;color:var(--text);
-  background:var(--ice);border-radius:10px;padding:.6rem .8rem;
-}
-.cc-feed li.pop-in{animation:popIn .4s cubic-bezier(.3,1.4,.5,1)}
-.cc-feed .cc-ico{flex:0 0 auto}
-.cc-feed li span:nth-child(2){flex:1}
-.cc-feed time{font-size:.7rem;color:var(--slate-lt);white-space:nowrap;margin-top:.15em}
-
-/* --- real results / proof cards --- */
-.proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
-.proof-card{
-  background:#fff;border-radius:18px;overflow:hidden;box-shadow:var(--shadow-sm);
-  display:flex;flex-direction:column;
-  transition:transform .25s ease,box-shadow .25s ease;
-}
-.proof-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md)}
-.proof-card h3{font-size:1rem;margin:1.3rem 1.4rem .5rem}
-.proof-card p{font-size:.9rem;color:var(--text-soft);margin:0 1.4rem;flex:1}
-.proof-stat{
-  display:inline-block;margin:1.1rem 1.4rem 1.4rem;align-self:flex-start;
-  background:#E2EEE5;color:var(--pine-dark);font-size:.78rem;font-weight:700;
-  padding:.4em 1em;border-radius:999px;
-}
-.proof-shot{
-  position:relative;height:150px;background:linear-gradient(150deg,var(--navy),var(--slate));
-  padding:1.6rem 1.2rem .9rem;display:flex;flex-direction:column;gap:.5rem;overflow:hidden;
-}
-.ps-dots{position:absolute;top:.55rem;left:.8rem;display:flex;gap:.3rem}
-.ps-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3)}
-.ps-dots i:first-child{background:var(--sage)}
-.ps-block{display:block;border-radius:4px;background:rgba(255,255,255,.25)}
-.ps-title{width:45%;height:10px}
-.ps-row{display:flex;gap:.5rem;flex:1}
-.ps-tile{flex:1;border-radius:6px;background:rgba(255,255,255,.14)}
-.ps-chart{display:flex;align-items:flex-end;gap:.35rem;height:44px}
-.ps-chart i{flex:1;height:var(--h);background:var(--sage);opacity:.85;border-radius:3px 3px 0 0}
-.ps-product{flex:1;border-radius:6px;background:rgba(255,255,255,.16);position:relative}
-.ps-product::after{content:"";position:absolute;left:15%;right:15%;bottom:12%;height:7px;border-radius:3px;background:var(--sage);opacity:.8}
-.ps-btnrow{display:flex;justify-content:flex-end}
-.ps-btn{width:34%;height:14px;border-radius:999px;background:var(--pine)}
-.ps-btn.wide{width:70%;margin-top:.4rem}
-.ps-phone{
-  width:46%;margin:0 auto;background:rgba(255,255,255,.1);border-radius:10px 10px 0 0;
-  padding:.7rem .6rem 0;display:flex;flex-direction:column;gap:.4rem;flex:1;
-}
-.ps-line{display:block;height:7px;border-radius:3px;background:rgba(255,255,255,.28)}
-.ps-line.short{width:60%}
-@media (max-width:900px){.proof-grid{grid-template-columns:1fr;max-width:460px;margin:0 auto}}
-
-/* --- faq --- */
-.faq-list{max-width:760px;margin:0 auto;display:grid;gap:.8rem}
-.faq-item{
-  background:#fff;border:1px solid rgba(122,139,166,.2);border-radius:14px;
-  box-shadow:var(--shadow-sm);overflow:hidden;
-}
-.faq-item summary{
-  list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;
-  font-weight:600;color:var(--navy);font-size:.98rem;padding:1.1rem 1.4rem;
-}
-.faq-item summary::-webkit-details-marker{display:none}
-.faq-item summary svg{flex:0 0 auto;color:var(--pine);transition:transform .25s ease}
-.faq-item[open] summary svg{transform:rotate(180deg)}
-.faq-item summary:hover{color:var(--pine-dark)}
-.faq-item summary:focus-visible{outline:3px solid var(--sage);outline-offset:-3px;border-radius:14px}
-.faq-a{padding:0 1.4rem 1.2rem}
-.faq-a p{font-size:.93rem;color:var(--text-soft)}
-
-/* --- sticky mobile CTA --- */
-.mobile-cta{
-  display:none;position:fixed;left:50%;bottom:14px;transform:translate(-50%,90px);z-index:90;
-  align-items:center;gap:.5em;
-  background:var(--pine);color:#fff;text-decoration:none;font-weight:600;font-size:.95rem;
-  padding:.9em 1.7em;border-radius:999px;box-shadow:0 8px 24px rgba(30,42,69,.35);
-  transition:transform .35s cubic-bezier(.2,.7,.3,1);white-space:nowrap;
-  padding-bottom:calc(.9em + env(safe-area-inset-bottom,0px)/2);
-}
-.mobile-cta.show{transform:translate(-50%,0)}
-.mobile-cta:focus-visible{outline:3px solid var(--sage);outline-offset:3px}
-
-/* ---------- what we can build ---------- */
-.build-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
-.build-card{
-  background:#fff;border-radius:var(--radius);padding:1.9rem 1.6rem;box-shadow:var(--shadow-sm);
-  transition:transform .25s ease,box-shadow .25s ease;border-top:4px solid transparent;
-}
-.build-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md);border-top-color:var(--pine)}
-.build-card .b-icon{
-  width:48px;height:48px;border-radius:12px;background:var(--ice);
-  display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem;
-  transition:background .25s ease;
-}
-.build-card:hover .b-icon{background:#E2EEE5}
-.build-card h3{font-size:1.05rem;margin-bottom:.5rem}
-.build-card p{font-size:.92rem;color:var(--text-soft)}
-.build-card.wild{
-  background:linear-gradient(150deg,var(--pine),var(--pine-dark));color:#fff;
-  grid-column:1/-1;display:flex;align-items:center;gap:1.4rem;
-}
-.build-card.wild .b-icon{margin-bottom:0;flex:0 0 auto}
-.build-card.wild h3{color:#fff}
-.build-card.wild p{color:rgba(255,255,255,.85)}
-.build-card.wild .b-icon{background:rgba(255,255,255,.16)}
-@media (max-width:900px){.build-grid{grid-template-columns:1fr 1fr}}
-@media (max-width:620px){.build-grid{grid-template-columns:1fr}}
-
-/* ---------- why subscription ---------- */
-.versus{display:grid;grid-template-columns:1fr 1fr;gap:1.8rem;align-items:stretch}
-.vs-card{border-radius:16px;padding:2.2rem 1.9rem}
-.vs-old{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
-.vs-new{background:#fff;box-shadow:var(--shadow-lg)}
-.vs-card h3{font-size:1.2rem;margin-bottom:.4rem}
-.vs-old h3{color:rgba(255,255,255,.92)}
-.vs-tag{font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.4rem;display:block}
-.vs-old .vs-tag{color:var(--slate-lt)}
-.vs-new .vs-tag{color:var(--pine)}
-.section-dark .vs-new h3{color:var(--navy)}
-.vs-list{list-style:none;display:grid;gap:.95rem}
-.vs-list li{display:flex;gap:.8rem;align-items:flex-start;font-size:.95rem}
-.vs-old .vs-list li{color:rgba(237,241,245,.75)}
-.vs-new .vs-list li{color:var(--text)}
-.vs-list .mark{
-  flex:0 0 auto;width:22px;height:22px;border-radius:50%;margin-top:.15rem;
-  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;
-}
-.vs-old .mark{background:rgba(193,91,78,.25);color:#E8A199}
-.vs-new .mark{background:#E2EEE5;color:var(--pine)}
-@media (max-width:760px){.versus{grid-template-columns:1fr}}
-
-/* ---------- what it costs ---------- */
-.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
-.cost-card{
-  background:#fff;border-radius:18px;padding:2.2rem 1.9rem;box-shadow:var(--shadow-sm);
-  transition:transform .25s ease,box-shadow .25s ease;border-top:4px solid transparent;
-}
-.cost-card:hover{transform:translateY(-8px);box-shadow:var(--shadow-md);border-top-color:var(--pine)}
-.cost-icon{
-  width:52px;height:52px;border-radius:14px;background:var(--ice);
-  display:flex;align-items:center;justify-content:center;margin-bottom:1.2rem;
-  transition:background .25s ease;
-}
-.cost-card:hover .cost-icon{background:#E2EEE5}
-.cost-card h3{font-size:1.12rem;margin-bottom:.55rem}
-.cost-card p{font-size:.95rem;color:var(--text-soft)}
-.cost-cta{
-  position:relative;overflow:hidden;margin-top:2.4rem;
-  background:linear-gradient(150deg,var(--navy),var(--navy-deep));
-  border-radius:18px;padding:3rem 2rem;box-shadow:var(--shadow-md);text-align:center;
-}
-.cost-cta-inner{position:relative;z-index:1;max-width:620px;margin:0 auto}
-.cost-cta h3{color:#fff;font-size:clamp(1.35rem,2.6vw,1.9rem);margin-bottom:.8rem}
-.cost-cta p{color:rgba(237,241,245,.82);font-size:1.02rem;margin-bottom:1.8rem}
-.cost-cta .btn{font-size:1.05rem;padding:.95em 2.3em}
-.cost-cta-sub{display:block;margin-top:1rem;font-size:.8rem;color:var(--sage-lt);letter-spacing:.02em}
-.pricing-note{text-align:center;font-size:.9rem;color:var(--text-soft);margin-top:2.2rem;max-width:640px;margin-left:auto;margin-right:auto}
-@media (max-width:820px){.cost-grid{grid-template-columns:1fr;max-width:460px;margin:0 auto}}
-
-/* ---------- contact ---------- */
-.contact-box{max-width:640px;margin:0 auto;text-align:center}
-.contact-box h2{font-size:clamp(1.8rem,3.4vw,2.6rem);color:#fff;margin-bottom:1rem}
-.contact-box p{color:rgba(237,241,245,.8);font-size:1.08rem;margin-bottom:2.2rem}
-.contact-ctas{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.6rem}
-.contact-fast{display:inline-flex;align-items:center;gap:.5em;color:var(--sage-lt);font-size:.9rem;font-weight:500}
-.contact-fast .pulse{
-  width:9px;height:9px;border-radius:50%;background:#6FCF7C;position:relative;
-}
-.contact-fast .pulse::after{
-  content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #6FCF7C;
-  animation:pulse 1.8s ease-out infinite;
-}
-@keyframes pulse{from{transform:scale(.5);opacity:1}to{transform:scale(1.5);opacity:0}}
-/* Formspree-ready: when you have an endpoint, unhide this form and set its action. */
-.contact-form{display:none;margin-top:2.5rem;text-align:left;gap:1rem}
-
-/* ---------- footer ---------- */
-.footer{background:var(--navy-ink);color:rgba(237,241,245,.72);padding:3.2rem 0 2.2rem}
-.footer-inner{display:flex;justify-content:space-between;align-items:center;gap:2rem;flex-wrap:wrap}
-.footer .logo-crop{width:152px;height:48px;border-radius:10px}
-.footer .logo-crop img{width:193px;height:193px;left:-22px;top:-73px}
-.footer-links{display:flex;gap:1.6rem;list-style:none;flex-wrap:wrap}
-.footer-links a{color:rgba(237,241,245,.72);text-decoration:none;font-size:.92rem;transition:color .2s ease}
-.footer-links a:hover{color:var(--sage-lt)}
-.footer-bottom{
-  margin-top:2.2rem;padding-top:1.6rem;border-top:1px solid rgba(255,255,255,.1);
-  display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;font-size:.84rem;color:rgba(237,241,245,.5);
-}
-.footer-bottom .ohio{display:inline-flex;align-items:center;gap:.45em}
-.footer-count{margin-top:1.5rem;text-align:center}
-.visit-counter{
-  display:inline-flex;align-items:center;gap:.55em;font-size:.8rem;
-  color:rgba(237,241,245,.55);background:rgba(255,255,255,.05);
-  border:1px solid rgba(255,255,255,.1);padding:.45em 1.1em;border-radius:999px;
-}
-.visit-counter strong{color:var(--sage-lt);font-weight:700;font-variant-numeric:tabular-nums}
-
-/* ---------- mobile polish ---------- */
-@media (max-width:640px){
-  .section{padding:3.6rem 0}
-  .section-head{margin-bottom:2.2rem}
-  .hero-content{padding:calc(var(--nav-h) + 2.2rem) 0 4.5rem}
-  .hero-ctas{flex-direction:column}
-  .hero-ctas .btn{width:100%}
-  .demo-body{padding:1.1rem}
-  .demo-block{margin-bottom:3.2rem}
-  .intake-form{flex-direction:column}
-  .intake-form .btn{width:100%}
-  /* comfortable finger-sized tap targets (Apple's 44px guideline) */
-  .btn{min-height:46px}
-  .btn-sm{min-height:44px}
-  .kcard{padding:.9rem 1rem}
-  .kcard-title{padding-right:5.4rem}
-  .kcard-move{gap:.4rem}
-  .kcard-move button{width:40px;height:40px;font-size:1rem}
-  .bk-chip{min-height:44px;display:inline-flex;align-items:center}
-  .bk-slots{grid-template-columns:repeat(3,1fr)}
-  .bk-slot{min-height:46px}
-  .bk-day{min-width:56px;padding:.6em .4em}
-  .booking-panel{min-height:0}
-  .vs-card{padding:1.7rem 1.4rem}
-  .cost-card{padding:1.8rem 1.5rem}
-  .cost-cta{padding:2.3rem 1.4rem}
-  .contact-ctas{flex-direction:column;align-items:stretch}
-  .footer-inner{flex-direction:column;text-align:center}
-  .footer-links{justify-content:center;gap:.4rem 1.4rem}
-  .footer-links a{display:inline-block;padding:.5rem .3rem}
-  .footer-bottom{flex-direction:column;align-items:center;text-align:center}
-  .treeline{height:46px}
-  /* 16px inputs so iOS doesn't zoom the page when a field is tapped */
-  input[type=text],select{font-size:1rem!important}
-  /* command center on phones */
-  .cc-tabs{overflow-x:auto;padding:.5rem .5rem 0}
-  .cc-tabs [role=tab]{white-space:nowrap;min-height:44px}
-  .cc-stats{grid-template-columns:1fr 1fr;gap:.7rem}
-  .cc-stat-num{font-size:1.55rem}
-  .cc-mid{grid-template-columns:1fr;gap:1.6rem}
-  .cc-bars{height:120px}
-  /* sticky message bar */
-  .mobile-cta{display:inline-flex}
-  .footer{padding-bottom:5.5rem}
-}
-
-/* ---------- static test mode (?static=1) — used for screenshot/QA ---------- */
-html.static-mode{scroll-behavior:auto}
-html.static-mode *{animation:none!important;transition:none!important}
-html.static-mode .hero-content > *,html.static-mode .reveal{opacity:1!important;transform:none!important}
-html.static-mode .hero{min-height:850px}
-html.static-mode .mobile-cta{transform:translate(-50%,0)}
-
-/* ---------- reduced motion ---------- */
-@media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
-  .reveal{opacity:1;transform:none}
-  .hero-content > *{opacity:1;transform:none}
-}
-</style>
 </head>
 <body>
 
-<!-- ==================== NAV ==================== -->
 <header class="nav" id="nav">
-  <div class="nav-inner">
-    <a href="#top" class="logo-link" aria-label="Stackpine — back to top">
-      <span class="logo-crop"><img src="logo.png" alt="Stackpine logo"></span>
-    </a>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
-      <span></span><span></span><span></span>
-    </button>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="#how">How It Works</a></li>
-      <li><a href="#demos">Live Demo</a></li>
-      <li><a href="#results">Results</a></li>
-      <li><a href="builds/">Builds</a></li>
-      <li><a href="#pricing">What It Costs</a></li>
-      <li><a href="https://leads.stackpine.org">Leads</a></li>
-      <li><a href="#contact" class="btn btn-primary nav-cta">Get in Touch</a></li>
-    </ul>
+  <div class="wrap nav__in">
+    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="nav__links">
+      <a href="#how">How it works</a>
+      <a href="#demo-section">Live demo</a>
+      <a href="#results">Results</a>
+      <a href="/builds/">Builds</a>
+      <a href="#pricing">Pricing</a>
+      <a class="btn btn--primary btn--sm nav__cta" href="#contact">Get in touch</a>
+    </nav>
   </div>
 </header>
 
-<!-- ==================== HERO ==================== -->
+<main>
+
 <section class="hero" id="top">
-  <div class="hero-bg" id="heroBg" aria-hidden="true"></div>
-  <div class="hero-overlay" aria-hidden="true"></div>
-  <div class="container">
-    <div class="hero-content">
-      <span class="hero-eyebrow">Custom software · Subscription simple</span>
-      <h1>Your business. Your software. <span class="accent">Built for exactly how you work.</span></h1>
-      <p class="hero-tagline">Building the Future, One Layer at a Time.</p>
-      <p class="hero-sub">Stop bending your business around off-the-shelf tools. Stackpine builds custom software, websites, and online storefronts shaped around <em>you</em> — for one affordable monthly subscription that covers everything.</p>
-      <div class="hero-ctas">
-        <a href="#demos" class="btn btn-primary">Try Our Demos</a>
-        <a href="#contact" class="btn btn-ghost">Get in Touch</a>
-      </div>
+  <div class="hero__bg"><div class="hero__grid"></div><div class="hero__glow"></div></div>
+  <div class="wrap hero__in">
+    <p class="eyebrow">Custom software · Subscription simple</p>
+    <h1>Your business. Your software. Built for <em>exactly how you work.</em></h1>
+    <p class="lede">Stop bending your business around off-the-shelf tools. We build custom software, websites and online storefronts shaped around you — for one affordable monthly subscription that covers everything.</p>
+    <div class="btn-row">
+      <a class="btn btn--primary" href="#demo-section">Try the live demo
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a class="btn btn--ghost" href="#contact">Get a free quote</a>
     </div>
-  </div>
-  <a href="#problem" class="hero-scroll" aria-label="Scroll down">
-    <span>Scroll</span>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-  </a>
-</section>
-
-<!-- ==================== THE PROBLEM ==================== -->
-<section class="section section-ice" id="problem">
-  <div class="container">
-    <div class="problem-grid">
-      <div class="problem-copy reveal from-left">
-        <span class="section-eyebrow">The Problem</span>
-        <h2>Your tools almost fit. That "almost" costs you every day.</h2>
-        <p>Most businesses run on a patchwork of spreadsheets, group texts, and off-the-shelf apps that were built for <strong>somebody else's business</strong>. You adapt to the software instead of the software adapting to you.</p>
-        <p>Custom software used to be the fix — if you had tens of thousands of dollars up front and a year to wait.</p>
-        <p class="problem-punch">Not anymore.</p>
-      </div>
-      <ul class="pain-list">
-        <li class="reveal d1">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-          The spreadsheet only one person understands — and they're on vacation.
-        </li>
-        <li class="reveal d2">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-          Paying for five different apps that each do 60% of what you need.
-        </li>
-        <li class="reveal d3">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-          Requests coming in by phone, text, email, and sticky note — and falling through the cracks.
-        </li>
-        <li class="reveal d4">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C15B4E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-          A developer quoted you $40,000 up front… then vanished after launch.
-        </li>
-      </ul>
+    <div class="hero__meta">
+      <span>No upfront build cost</span>
+      <span>Working software in weeks</span>
+      <span>Hosting &amp; support included</span>
     </div>
   </div>
 </section>
 
-<!-- treeline divider ice -> white -->
-<div class="treeline" aria-hidden="true">
-  <svg viewBox="0 0 1200 70" preserveAspectRatio="none">
-    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
-    <path fill="#A8C3AE" opacity=".35" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
-  </svg>
-</div>
+<section class="section section--tint" id="problem">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">The problem</p>
+      <h2 class="h-lg">Your tools almost fit. That “almost” costs you every day.</h2>
+      <p class="lede">Most businesses run on a patchwork of spreadsheets, group texts and off-the-shelf apps built for somebody else’s business. You adapt to the software instead of the software adapting to you.</p>
+    </div>
+    <ul class="pains reveal d1">
+      <li>The spreadsheet only one person understands — and they’re on vacation.</li>
+      <li>Paying for five different apps that each do 60% of what you need.</li>
+      <li>Requests arriving by phone, text, email and sticky note — and falling through the cracks.</li>
+      <li>A developer quoted $40,000 up front… then vanished after launch.</li>
+    </ul>
+  </div>
+</section>
 
-<!-- ==================== HOW IT WORKS ==================== -->
 <section class="section" id="how">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">How It Works</span>
-      <h2>From idea to running software in three steps</h2>
-      <p>You don't need to know anything about technology. You just need to know your business — we handle the rest.</p>
+  <div class="wrap">
+    <div class="head head--center reveal">
+      <p class="eyebrow eyebrow--center">How it works</p>
+      <h2 class="h-lg">From idea to running software in three steps</h2>
+      <p class="lede">You don’t need to know anything about technology. You just need to know your business — we handle the rest.</p>
     </div>
-    <div class="steps">
-      <article class="step reveal d1">
-        <span class="step-num" aria-hidden="true">1</span>
-        <div class="step-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
-        </div>
+    <div class="grid grid-3" style="margin-top:46px">
+      <article class="card step reveal d1">
+        <div class="step__n">01</div>
         <h3>Tell us your idea</h3>
-        <p>Describe it in plain language — "I wish I had something that…" is a perfect start. No tech knowledge needed, no jargon, no homework.</p>
+        <p>Describe it in plain language — “I wish I had something that…” is a perfect start. No tech knowledge, no jargon, no homework.</p>
       </article>
-      <article class="step reveal d2">
-        <span class="step-num" aria-hidden="true">2</span>
-        <div class="step-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>
-        </div>
+      <article class="card step reveal d2">
+        <div class="step__n">02</div>
         <h3>We build it, layer by layer</h3>
         <p>We shape the software around exactly how your business runs — your words, your workflow, your rules. You see progress fast, not in six months.</p>
       </article>
-      <article class="step reveal d3">
-        <span class="step-num" aria-hidden="true">3</span>
-        <div class="step-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-        </div>
+      <article class="card step reveal d3">
+        <div class="step__n">03</div>
         <h3>You subscribe, it keeps improving</h3>
-        <p>One affordable monthly fee covers hosting, updates, support, and ongoing improvements — forever. No surprise bills. No disappearing developer.</p>
+        <p>One monthly fee covers hosting, updates, support and ongoing improvements. No surprise bills. No disappearing developer.</p>
       </article>
     </div>
   </div>
 </section>
 
-<!-- treeline divider white -> ice -->
-<div class="treeline" aria-hidden="true" style="transform:scaleY(-1)">
-  <svg viewBox="0 0 1200 70" preserveAspectRatio="none">
-    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
-    <path fill="#A8C3AE" opacity=".35" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
-  </svg>
-</div>
-
-<!-- ==================== DEMOS ==================== -->
-<section class="section section-ice" id="demos">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">Live Demo</span>
-      <h2>Don't take our word for it — run it</h2>
-      <p>This is a working mini command center, live on this page — the kind of connected system we build. The tabs talk to each other: confirm a booking or complete a request, then watch the Dashboard react in real time.</p>
+<section class="section section--tint" id="demo-section">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Live demo</p>
+      <h2 class="h-lg">Don’t take our word for it — run it.</h2>
+      <p class="lede">A working mini command center, live on this page. The tabs talk to each other: confirm a booking or finish a request, then watch the dashboard react in real time.</p>
     </div>
 
-    <!-- ===== Flagship demo: Command Center ===== -->
-    <div class="demo-block reveal">
-      <div class="demo-frame">
-        <div class="demo-titlebar">
-          <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <h3>Your Business Command Center — live demo</h3>
-        </div>
-        <div class="cc-tabs" role="tablist" aria-label="Command center sections">
-          <button type="button" role="tab" id="ccTabDash" aria-selected="true" aria-controls="ccPanelDash" data-cctab="dash">📊 Dashboard</button>
-          <button type="button" role="tab" id="ccTabBook" aria-selected="false" aria-controls="ccPanelBook" data-cctab="book">📅 Bookings</button>
-          <button type="button" role="tab" id="ccTabReq" aria-selected="false" aria-controls="ccPanelReq" data-cctab="req">🔧 Requests</button>
-        </div>
-        <p class="cc-hint" id="ccHint">Everything below updates live. Go confirm a booking or complete a request — the Dashboard is watching. 👀</p>
-
-        <!-- ===== Tab 1: Dashboard ===== -->
-        <div class="demo-body cc-panel" id="ccPanelDash" role="tabpanel" aria-labelledby="ccTabDash">
-          <div class="cc-stats">
-            <div class="cc-stat">
-              <span class="cc-stat-label">Bookings today</span>
-              <span class="cc-stat-num" id="statBookings">7</span>
-              <span class="cc-stat-delta">▲ 2 vs yesterday</span>
-            </div>
-            <div class="cc-stat">
-              <span class="cc-stat-label">Open requests</span>
-              <span class="cc-stat-num" id="statOpen">0</span>
-              <span class="cc-stat-delta" id="statOpenDelta">live from Requests tab</span>
-            </div>
-            <div class="cc-stat">
-              <span class="cc-stat-label">Revenue this week</span>
-              <span class="cc-stat-num" id="statRev">$8,420</span>
-              <span class="cc-stat-delta">▲ 12% vs last week</span>
-            </div>
-            <div class="cc-stat">
-              <span class="cc-stat-label">Avg. response time</span>
-              <span class="cc-stat-num">14<small>min</small></span>
-              <span class="cc-stat-delta">▼ was 3 hours with sticky notes</span>
-            </div>
-          </div>
-          <div class="cc-mid">
-            <div class="cc-chart">
-              <h4>Bookings — last 7 days</h4>
-              <div class="cc-bars" aria-hidden="true">
-                <div class="cc-bar" style="--h:45%"><i>5</i><b>Mo</b></div>
-                <div class="cc-bar" style="--h:72%"><i>8</i><b>Tu</b></div>
-                <div class="cc-bar" style="--h:54%"><i>6</i><b>We</b></div>
-                <div class="cc-bar" style="--h:81%"><i>9</i><b>Th</b></div>
-                <div class="cc-bar" style="--h:63%"><i>7</i><b>Fr</b></div>
-                <div class="cc-bar" style="--h:100%"><i>11</i><b>Sa</b></div>
-                <div class="cc-bar" style="--h:63%"><i>7</i><b>Su</b></div>
-              </div>
-            </div>
-            <div class="cc-feedwrap">
-              <h4>Live activity</h4>
-              <ul class="cc-feed" id="ccFeed">
-                <li><span class="cc-ico">📅</span><span>New booking: Sarah M. — Standard appointment, 2:00 PM</span><time>2 min ago</time></li>
-                <li><span class="cc-ico">💬</span><span>Auto-reminder text sent to tomorrow's 9:00 AM booking</span><time>9 min ago</time></li>
-                <li><span class="cc-ico">✅</span><span>Request completed: "Update the front window signage"</span><time>24 min ago</time></li>
-                <li><span class="cc-ico">🧾</span><span>Invoice #1041 paid — $280</span><time>1 hr ago</time></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== Tab 2: Requests ===== -->
-        <div class="demo-body cc-panel" id="ccPanelReq" role="tabpanel" aria-labelledby="ccTabReq" hidden>
-          <form class="intake-form" id="intakeForm">
-            <input type="text" id="intakeInput" maxlength="80" placeholder='Type a request… try "URGENT: printer is broken again"' aria-label="New request description">
-            <button type="submit" class="btn btn-primary btn-sm">Add Request</button>
-          </form>
-          <div class="kanban" id="kanban">
-            <div class="kanban-col" data-col="0">
-              <div class="kanban-col-head"><span>📥 New</span><span class="kanban-count">0</span></div>
-              <div class="kanban-cards" data-cards="0"></div>
-            </div>
-            <div class="kanban-col" data-col="1">
-              <div class="kanban-col-head"><span>🔧 In Progress</span><span class="kanban-count">0</span></div>
-              <div class="kanban-cards" data-cards="1"></div>
-            </div>
-            <div class="kanban-col" data-col="2">
-              <div class="kanban-col-head"><span>✅ Done</span><span class="kanban-count">0</span></div>
-              <div class="kanban-cards" data-cards="2"></div>
-            </div>
-          </div>
-          <p class="kanban-hint">Add a request above — it gets auto-prioritized and routed. Drag cards between columns (or use the ‹ › buttons / arrow keys).</p>
-        </div>
-
-        <!-- ===== Tab 3: Bookings ===== -->
-        <div class="demo-body cc-panel" id="ccPanelBook" role="tabpanel" aria-labelledby="ccTabBook" hidden>
-          <div class="booking-wrap">
-            <div class="booking-picker">
-              <span class="bk-label" id="bkSvcLabel">1. Pick a service</span>
-              <div class="bk-services" role="group" aria-labelledby="bkSvcLabel" id="bkServices"></div>
-              <span class="bk-label" id="bkDayLabel">2. Pick a day</span>
-              <div class="bk-days" role="group" aria-labelledby="bkDayLabel" id="bkDays"></div>
-              <span class="bk-label" id="bkTimeLabel">3. Pick a time <span class="bk-open" id="bkOpenCount"></span></span>
-              <div class="bk-slots" role="group" aria-labelledby="bkTimeLabel" id="bkSlots"></div>
-            </div>
-            <div class="booking-panel" aria-live="polite">
-              <canvas class="confetti-canvas" id="confettiCanvas" aria-hidden="true"></canvas>
-              <div id="bkSummary">
-                <h4 class="bk-title">Your appointment</h4>
-                <div class="bk-row"><span>Service</span><strong id="bkOutSvc">—</strong></div>
-                <div class="bk-row"><span>Day</span><strong id="bkOutDay">—</strong></div>
-                <div class="bk-row"><span>Time</span><strong id="bkOutTime">—</strong></div>
-                <button class="btn btn-primary bk-confirm" id="bkConfirm" type="button" disabled>Confirm Booking</button>
-                <p class="bk-hint" id="bkHint">Pick a service, day &amp; time above.</p>
-              </div>
-              <div id="bkSuccess" hidden>
-                <div class="bk-check" aria-hidden="true">
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                </div>
-                <h4 class="bk-title">Booked! 🎉</h4>
-                <p class="bk-done" id="bkDoneText"></p>
-                <p class="bk-hint">In the real version, you and your customer would both get a confirmation text or email automatically.</p>
-                <button class="btn btn-ghost bk-again" id="bkAgain" type="button">Book another</button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div class="demo reveal d1" id="demo">
+      <div class="demo__chrome">
+        <div class="demo__dots"><i></i><i></i><i></i></div>
+        <div class="demo__url">app.yourbusiness.com/command-center</div>
+        <div class="demo__live">Live</div>
       </div>
-      <p class="demo-caption">Built as a working example — bookings, requests, and live stats all talking to each other. <strong>Now imagine the version wired to <em>your</em> business.</strong></p>
+      <div class="demo__tabs" role="tablist">
+        <button class="demo__tab" role="tab" aria-selected="true"  data-panel="dashboard">Dashboard</button>
+        <button class="demo__tab" role="tab" aria-selected="false" data-panel="bookings">Bookings</button>
+        <button class="demo__tab" role="tab" aria-selected="false" data-panel="requests">Requests</button>
+      </div>
+      <p class="demo__hint">Everything updates live — go confirm a booking or drag a request to Done, then come back here.</p>
+
+      <div class="demo__panel" id="panel-dashboard" role="tabpanel">
+        <div class="tiles">
+          <div class="tile"><div class="tile__k">Bookings today</div><div class="tile__v" id="stat-bookings">7</div><div class="tile__d up">▲ 2 vs yesterday</div></div>
+          <div class="tile"><div class="tile__k">Open requests</div><div class="tile__v" id="stat-open">0</div><div class="tile__d">live from Requests</div></div>
+          <div class="tile"><div class="tile__k">Revenue this week</div><div class="tile__v" id="stat-rev">$8,420</div><div class="tile__d up">▲ 12% vs last week</div></div>
+          <div class="tile"><div class="tile__k">Avg. response</div><div class="tile__v">14<span style="font-size:.9rem"> min</span></div><div class="tile__d down">▼ was 3 hours</div></div>
+        </div>
+        <div class="chart"><div class="chart__h">Bookings — last 7 days</div><div class="chart__bars" id="chart"></div></div>
+        <div class="feed"><div class="feed__h">Live activity</div><ul id="feed"></ul></div>
+      </div>
+
+      <div class="demo__panel" id="panel-bookings" role="tabpanel" hidden>
+        <div class="bk" id="bookings"></div>
+      </div>
+
+      <div class="demo__panel" id="panel-requests" role="tabpanel" hidden>
+        <form class="kb__add" id="kb-add">
+          <input id="kb-input" type="text" placeholder="Add a request — try “fix the leaking sink”" aria-label="New request">
+          <button class="btn btn--primary btn--sm" type="submit">Add request</button>
+        </form>
+        <div class="kb" id="kanban"></div>
+      </div>
+
+      <p class="demo__foot">Built as a working example — bookings, requests and live stats all talking to each other. <b>Now imagine the version wired to your business.</b></p>
     </div>
   </div>
 </section>
 
-<!-- treeline divider ice -> white -->
-<div class="treeline" aria-hidden="true">
-  <svg viewBox="0 0 1200 70" preserveAspectRatio="none" style="transform:scale(-1,1)">
-    <path fill="#EDF1F5" d="M0,0 L1200,0 L1200,20 L1150,50 L1100,20 L1050,55 L1000,25 L950,58 L900,22 L850,52 L800,18 L750,55 L700,24 L650,58 L600,20 L550,52 L500,24 L450,58 L400,18 L350,50 L300,24 L250,56 L200,20 L150,52 L100,24 L50,55 L0,22 Z"/>
-    <path fill="#7A8BA6" opacity=".25" d="M0,22 L50,55 L100,24 L150,52 L200,20 L250,56 L300,24 L350,50 L400,18 L450,58 L500,24 L550,52 L600,20 L650,58 L700,24 L750,55 L800,18 L850,52 L900,22 L950,58 L1000,25 L1050,55 L1100,20 L1150,50 L1200,20 L1200,32 L1150,60 L1100,32 L1050,64 L1000,36 L950,66 L900,34 L850,62 L800,30 L750,64 L700,36 L650,66 L600,32 L550,62 L500,36 L450,66 L400,30 L350,60 L300,36 L250,64 L200,32 L150,62 L100,36 L50,64 L0,34 Z"/>
-  </svg>
-</div>
-
-<!-- ==================== WHAT WE CAN BUILD ==================== -->
 <section class="section" id="build">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">What We Can Build</span>
-      <h2>If you can describe it, we can build it</h2>
-      <p>A few of the shapes custom software can take. Yours will look like none of these — it'll look like your business.</p>
+  <div class="wrap">
+    <div class="head head--center reveal">
+      <p class="eyebrow eyebrow--center">What we can build</p>
+      <h2 class="h-lg">If you can describe it, we can build it</h2>
+      <p class="lede">A few of the shapes custom software can take. Yours will look like none of these — it’ll look like your business.</p>
     </div>
-    <div class="build-grid">
-      <article class="build-card reveal d1">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></div>
-        <h3>Intake &amp; triage systems</h3>
-        <p>Every request in one place, auto-sorted and routed — nothing falls through the cracks again.</p>
-      </article>
-      <article class="build-card reveal d2">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-        <h3>Scheduling &amp; booking tools</h3>
-        <p>Appointments, shifts, rentals, sign-ups — booked online, confirmed automatically, synced to your calendar.</p>
-      </article>
-      <article class="build-card reveal d3">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.3 5.6.6-4.2 3.9 1.2 5.6L12 14.5 7 17.4l1.2-5.6L4 7.9l5.6-.6z"/></svg></div>
-        <h3>Event, promo &amp; giveaway tools</h3>
-        <p>Contests, drawings, RSVPs, live leaderboards — engagement tools your audience actually enjoys.</p>
-      </article>
-      <article class="build-card reveal d1">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-        <h3>Customer portals &amp; dashboards</h3>
-        <p>Give clients and staff a live window into orders, jobs, balances, and progress — no more "any update?" calls.</p>
-      </article>
-      <article class="build-card reveal d2">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg></div>
-        <h3>Inventory &amp; quoting systems</h3>
-        <p>Know what you have, what it costs, and what to charge — with quotes generated in seconds, not evenings.</p>
-      </article>
-      <article class="build-card reveal d3">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
-        <h3>Websites &amp; online storefronts</h3>
-        <p>A professional site or online store that's actually yours — built custom, then hosted and maintained by us so it never goes stale. <a href="websites/">How our website care model works →</a></p>
-      </article>
-      <article class="build-card wild reveal d2">
-        <div class="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
-        <div>
-          <h3>…and whatever you can imagine</h3>
-          <p>If you can describe it, we can build it. Seriously — that's the whole point of custom.</p>
-        </div>
-      </article>
+    <div class="grid grid-3" style="margin-top:46px">
+      <article class="card reveal d1"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg></div><h3>Intake &amp; triage systems</h3><p>Every request in one place, auto-sorted and routed — nothing falls through the cracks again.</p></article>
+      <article class="card reveal d2"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></div><h3>Scheduling &amp; booking</h3><p>Appointments, shifts, rentals and sign-ups — booked online, confirmed automatically, synced to your calendar.</p></article>
+      <article class="card reveal d3"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></div><h3>Event &amp; promo tools</h3><p>Contests, drawings, RSVPs and live leaderboards — engagement tools your audience actually enjoys.</p></article>
+      <article class="card reveal d1"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Customer portals</h3><p>Give clients and staff a live window into orders, jobs, balances and progress — no more “any update?” calls.</p></article>
+      <article class="card reveal d2"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7"/></svg></div><h3>Inventory &amp; quoting</h3><p>Know what you have, what it costs and what to charge — with quotes generated in seconds, not evenings.</p></article>
+      <article class="card reveal d3"><div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg></div><h3>Websites &amp; storefronts</h3><p>A professional site or online store that’s actually yours — built custom, then hosted and maintained so it never goes stale. <a href="/websites/" style="color:var(--accent)">See how →</a></p></article>
     </div>
   </div>
 </section>
 
-<!-- ==================== REAL RESULTS ==================== -->
-<section class="section section-ice" id="results">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">Real Results</span>
-      <h2>Built for real businesses. Working right now.</h2>
-      <p>A few recent builds — details kept anonymous, because our clients' operations are their business. Yours would be too.</p>
+<section class="section section--tint" id="results">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Real results</p>
+      <h2 class="h-lg">Built for real businesses. Working right now.</h2>
+      <p class="lede">A few recent builds — details kept anonymous, because our clients’ operations are their business. Yours would be too.</p>
     </div>
-    <div class="proof-grid">
-      <article class="proof-card reveal d1">
-        <div class="proof-shot shot-dash" aria-hidden="true">
-          <span class="ps-dots"><i></i><i></i><i></i></span>
-          <span class="ps-block ps-title"></span>
-          <span class="ps-row"><span class="ps-tile"></span><span class="ps-tile"></span><span class="ps-tile"></span></span>
-          <span class="ps-chart"><i style="--h:40%"></i><i style="--h:70%"></i><i style="--h:55%"></i><i style="--h:85%"></i><i style="--h:65%"></i></span>
-        </div>
-        <h3>Leadership dashboard — healthcare organization</h3>
-        <p>Leadership was piecing together program numbers from a dozen spreadsheets every week. Now one secure dashboard shows programs, staffing, and finances in real time — pulled together automatically.</p>
-        <span class="proof-stat">Weekly reporting: hours → minutes</span>
-      </article>
-      <article class="proof-card reveal d2">
-        <div class="proof-shot shot-store" aria-hidden="true">
-          <span class="ps-dots"><i></i><i></i><i></i></span>
-          <span class="ps-block ps-title"></span>
-          <span class="ps-row"><span class="ps-product"></span><span class="ps-product"></span><span class="ps-product"></span></span>
-          <span class="ps-btnrow"><span class="ps-btn"></span></span>
-        </div>
-        <h3>Online store — off-road parts retailer</h3>
-        <p>Needed a real online store without big-platform monthly fees eating the margin. Got a custom storefront with inventory, checkout, and an admin panel simple enough for one person to run.</p>
-        <span class="proof-stat">Full store + admin, live in weeks</span>
-      </article>
-      <article class="proof-card reveal d3">
-        <div class="proof-shot shot-app" aria-hidden="true">
-          <span class="ps-dots"><i></i><i></i><i></i></span>
-          <span class="ps-phone">
-            <span class="ps-block ps-title"></span>
-            <span class="ps-line"></span><span class="ps-line"></span><span class="ps-line short"></span>
-            <span class="ps-btn wide"></span>
-          </span>
-        </div>
-        <h3>Expense tracker — small motorsports business</h3>
-        <p>Receipts lived in a shoebox until tax season. Now every expense is snapped from a phone in seconds and sorted automatically — totals stay tax-ready all year long.</p>
-        <span class="proof-stat">Tax prep: days → one tap</span>
-      </article>
+    <div class="grid grid-3" style="margin-top:46px">
+      <article class="result reveal d1"><div class="result__kind">Healthcare organization</div><h3>Leadership dashboard</h3><p>Leadership was piecing together program numbers from a dozen spreadsheets every week. Now one secure dashboard shows programs, staffing and finances in real time — pulled together automatically.</p><div class="result__stat">Weekly reporting: hours → minutes</div></article>
+      <article class="result reveal d2"><div class="result__kind">Off-road parts retailer</div><h3>Custom online store</h3><p>Needed a real online store without big-platform monthly fees eating the margin. Got a custom storefront with inventory, checkout and an admin panel simple enough for one person to run.</p><div class="result__stat">Full store + admin, live in weeks</div></article>
+      <article class="result reveal d3"><div class="result__kind">Motorsports business</div><h3>Expense tracker</h3><p>Receipts lived in a shoebox until tax season. Now every expense is snapped from a phone in seconds and sorted automatically — totals stay tax-ready all year long.</p><div class="result__stat">Tax prep: days → one tap</div></article>
     </div>
   </div>
 </section>
 
-<!-- ==================== WHY SUBSCRIPTION ==================== -->
-<section class="section section-dark" id="why">
-  <div class="net-bg" aria-hidden="true">
-    <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
-      <g stroke="#7A8BA6" stroke-width="1" opacity=".3">
-        <line x1="80" y1="120" x2="300" y2="60"/><line x1="300" y1="60" x2="520" y2="180"/>
-        <line x1="520" y1="180" x2="760" y2="90"/><line x1="760" y1="90" x2="1020" y2="160"/>
-        <line x1="160" y1="420" x2="380" y2="520"/><line x1="380" y1="520" x2="640" y2="440"/>
-        <line x1="640" y1="440" x2="900" y2="540"/><line x1="900" y1="540" x2="1120" y2="430"/>
-        <line x1="80" y1="120" x2="160" y2="420"/><line x1="1020" y1="160" x2="1120" y2="430"/>
-        <line x1="520" y1="180" x2="640" y2="440"/>
-      </g>
-      <g fill="#A8C3AE" opacity=".45">
-        <circle cx="80" cy="120" r="4"/><circle cx="300" cy="60" r="3"/><circle cx="520" cy="180" r="4"/>
-        <circle cx="760" cy="90" r="3"/><circle cx="1020" cy="160" r="4"/><circle cx="160" cy="420" r="3"/>
-        <circle cx="380" cy="520" r="4"/><circle cx="640" cy="440" r="3"/><circle cx="900" cy="540" r="4"/>
-        <circle cx="1120" cy="430" r="3"/>
-      </g>
-    </svg>
-  </div>
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">Why Subscription</span>
-      <h2>A partner, not a project</h2>
-      <p>Traditional custom development ends the day it launches. Ours is just getting started.</p>
+<section class="section" id="why">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Why subscription</p>
+      <h2 class="h-lg">A partner, not a project</h2>
+      <p class="lede">Traditional custom development ends the day it launches. Ours is just getting started.</p>
     </div>
-    <div class="versus">
-      <div class="vs-card vs-old reveal from-left">
-        <h3>Traditional development</h3>
-        <span class="vs-tag">The old way</span>
-        <ul class="vs-list">
-          <li><span class="mark">✕</span>$20,000–$100,000+ due up front, before you've seen anything work</li>
-          <li><span class="mark">✕</span>Months of meetings and mockups before real software exists</li>
-          <li><span class="mark">✕</span>Developer disappears after launch — good luck getting changes</li>
-          <li><span class="mark">✕</span>Hosting, security, and updates become <em>your</em> problem</li>
-          <li><span class="mark">✕</span>Software frozen in time while your business keeps evolving</li>
+    <div class="compare">
+      <div class="compare__col reveal d1">
+        <p class="compare__tag">Traditional development</p>
+        <h3>The old way</h3>
+        <ul>
+          <li>$20,000–$100,000+ due up front, before you’ve seen anything work</li>
+          <li>Months of meetings and mockups before real software exists</li>
+          <li>Developer disappears after launch — good luck getting changes</li>
+          <li>Hosting, security and updates become your problem</li>
+          <li>Software frozen in time while your business keeps evolving</li>
         </ul>
       </div>
-      <div class="vs-card vs-new reveal from-right">
-        <h3>The Stackpine way</h3>
-        <span class="vs-tag">One layer at a time</span>
-        <ul class="vs-list">
-          <li><span class="mark">✓</span>Low, predictable monthly fee — no giant upfront bill</li>
-          <li><span class="mark">✓</span>Working software fast, then improved layer by layer</li>
-          <li><span class="mark">✓</span>One ongoing relationship — we're here next month and next year</li>
-          <li><span class="mark">✓</span>Hosting, security, updates, and support all included</li>
-          <li><span class="mark">✓</span>Your software grows and changes as your business does</li>
+      <div class="compare__col compare__col--win reveal d2">
+        <p class="compare__tag">The Stackpine way</p>
+        <h3>One layer at a time</h3>
+        <ul>
+          <li>Low, predictable monthly fee — no giant upfront bill</li>
+          <li>Working software fast, then improved layer by layer</li>
+          <li>One ongoing relationship — we’re here next month and next year</li>
+          <li>Hosting, security, updates and support all included</li>
+          <li>Your software grows and changes as your business does</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ==================== WHAT IT COSTS ==================== -->
-<section class="section section-ice" id="pricing">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">What It Costs</span>
-      <h2>Probably less than you're spending right now.</h2>
-      <p>Here's the honest truth most software companies hide: custom doesn't mean expensive anymore. You're likely already paying more — in apps that half-fit, hours lost to busywork, and customers who slip through the cracks.</p>
+<section class="section section--tint" id="pricing">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">What it costs</p>
+      <h2 class="h-lg">Probably less than you’re spending right now.</h2>
+      <p class="lede">Here’s the honest truth most software companies hide: custom doesn’t mean expensive anymore. You’re likely already paying more — in apps that half-fit, hours lost to busywork, and customers who slip through the cracks.</p>
     </div>
-
-    <div class="cost-grid">
-      <article class="cost-card reveal d1">
-        <div class="cost-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <h3>No big bill up front</h3>
-        <p>Forget the tens of thousands developers used to charge before you'd seen a thing. You pay a small amount each month — and only once it's working for you.</p>
-      </article>
-      <article class="cost-card reveal d2">
-        <div class="cost-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-        </div>
-        <h3>Starts small, grows with you</h3>
-        <p>A simple tool that does one job costs about what you already pay for one app that only half-fits. As it does more, it scales gently — never a surprise, never a shock.</p>
-      </article>
-      <article class="cost-card reveal d3">
-        <div class="cost-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A7D44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        </div>
-        <h3>Everything's included</h3>
-        <p>Hosting, support, updates, and future improvements are all baked into one predictable monthly fee. No add-ons. No surprise invoices. Cancel anytime.</p>
-      </article>
+    <div class="price-grid">
+      <article class="card reveal d1"><h3>No big bill up front</h3><p>Forget the tens of thousands developers used to charge before you’d seen a thing. You pay a small amount each month — and only once it’s working for you.</p></article>
+      <article class="card reveal d2"><h3>Starts small, grows with you</h3><p>A simple tool that does one job costs about what you already pay for one app that only half-fits. As it does more, it scales gently — never a surprise.</p></article>
+      <article class="card reveal d3"><h3>Everything included</h3><p>Hosting, support, updates and future improvements are baked into one predictable monthly fee. No add-ons. No surprise invoices. Cancel anytime.</p></article>
     </div>
-
-    <!-- Free-quote CTA — the whole point is to get people talking, not scare them off with a number -->
-    <div class="cost-cta reveal">
-      <div class="net-bg" aria-hidden="true">
-        <svg viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice">
-          <g stroke="#7A8BA6" stroke-width="1" opacity=".28">
-            <line x1="120" y1="300" x2="360" y2="180"/><line x1="360" y1="180" x2="620" y2="280"/>
-            <line x1="620" y1="280" x2="880" y2="150"/><line x1="880" y1="150" x2="1120" y2="250"/>
-            <line x1="240" y1="60" x2="500" y2="120"/><line x1="500" y1="120" x2="760" y2="50"/>
-          </g>
-          <g fill="#A8C3AE" opacity=".4">
-            <circle cx="120" cy="300" r="4"/><circle cx="360" cy="180" r="3"/><circle cx="620" cy="280" r="4"/>
-            <circle cx="880" cy="150" r="3"/><circle cx="1120" cy="250" r="4"/><circle cx="500" cy="120" r="3"/><circle cx="760" cy="50" r="4"/>
-          </g>
-        </svg>
+    <div class="price-cta reveal">
+      <h3>Curious what yours would cost?</h3>
+      <p>Every project is quoted custom — and most owners are pleasantly surprised. Tell us what you’re picturing and we’ll give you a straight, honest number. Free, with zero pressure.</p>
+      <div class="btn-row" style="justify-content:center">
+        <a class="btn btn--primary" href="#contact">Get my free quote</a>
       </div>
-      <div class="cost-cta-inner">
-        <h3>Curious what yours would cost?</h3>
-        <p>Every project is quoted custom — and most owners are pleasantly surprised. Tell us what you're picturing and we'll give you a straight, honest number. Free, and with zero pressure.</p>
-        <a href="#contact" class="btn btn-primary">Get my free quote</a>
-        <span class="cost-cta-sub">Takes 2 minutes · no commitment · no sales pitch</span>
-      </div>
+      <p class="fineprint">Takes 2 minutes · no commitment · no sales pitch</p>
     </div>
-
-    <p class="pricing-note">Websites and online stores work the same way — a small setup, then one low monthly fee to host, maintain, and keep them fresh. Just ask.</p>
   </div>
 </section>
 
-<!-- ==================== FAQ ==================== -->
 <section class="section" id="faq">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="section-eyebrow">Common Questions</span>
-      <h2>Answered straight, no jargon</h2>
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Common questions</p>
+      <h2 class="h-lg">Answered straight, no jargon</h2>
     </div>
-    <div class="faq-list reveal">
-      <details class="faq-item">
-        <summary>How long does a build take?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through, so there's never a six-month black box between "we talked" and "here's your software."</p></div>
-      </details>
-      <details class="faq-item">
-        <summary>Do I need to know anything about technology?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>Not a thing. You describe how your business runs in plain English — "requests come in by text and we lose track of them" is a perfect starting point. Turning that into software is our job, not yours.</p></div>
-      </details>
-      <details class="faq-item">
-        <summary>What does it cost?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>Every project is quoted custom, because every business is different — but there's no big upfront bill, and hosting, support, updates, and improvements are all included in one predictable monthly fee. Most owners are pleasantly surprised. Message us and we'll give you a straight number, free.</p></div>
-      </details>
-      <details class="faq-item">
-        <summary>What happens when I reach out?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>A normal conversation — not a sales pitch. Tell us what's slowing your business down, we'll ask a few questions, and you'll get an honest free quote. If we think you don't actually need custom software, we'll tell you that too.</p></div>
-      </details>
-      <details class="faq-item">
-        <summary>What if I need changes later?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>That's the whole point of how we work. Your subscription includes ongoing improvements — as your business changes, your software changes with it. No change-order invoices, no disappearing developer.</p></div>
-      </details>
-      <details class="faq-item">
-        <summary>Am I locked into a contract?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="faq-a"><p>No. Everything is month to month, you can cancel anytime, and your data is always yours — if you ever leave, we'll hand over an export and part as friends.</p></div>
-      </details>
+    <div class="faq reveal d1">
+      <details><summary>How long does a build take?</summary><div class="faq__a">Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through, so there’s never a six-month black box between “we talked” and “here’s your software.”</div></details>
+      <details><summary>Do I need to know anything about technology?</summary><div class="faq__a">Not a thing. You describe how your business runs in plain English — “requests come in by text and we lose track of them” is a perfect starting point. Turning that into software is our job, not yours.</div></details>
+      <details><summary>What does it cost?</summary><div class="faq__a">Every project is quoted custom, because every business is different — but there’s no big upfront bill, and hosting, support, updates and improvements are all included in one predictable monthly fee. Most owners are pleasantly surprised.</div></details>
+      <details><summary>What happens when I reach out?</summary><div class="faq__a">A normal conversation — not a sales pitch. Tell us what’s slowing your business down, we’ll ask a few questions, and you’ll get an honest free quote. If we think you don’t actually need custom software, we’ll tell you.</div></details>
     </div>
   </div>
 </section>
 
-<!-- ==================== CONTACT ==================== -->
-<section class="section section-dark" id="contact">
-  <div class="net-bg" aria-hidden="true">
-    <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
-      <g stroke="#7A8BA6" stroke-width="1" opacity=".3">
-        <line x1="100" y1="500" x2="340" y2="380"/><line x1="340" y1="380" x2="560" y2="480"/>
-        <line x1="560" y1="480" x2="820" y2="370"/><line x1="820" y1="370" x2="1080" y2="470"/>
-        <line x1="200" y1="100" x2="460" y2="180"/><line x1="460" y1="180" x2="720" y2="80"/>
-        <line x1="720" y1="80" x2="980" y2="170"/><line x1="460" y1="180" x2="560" y2="480"/>
-      </g>
-      <g fill="#A8C3AE" opacity=".45">
-        <circle cx="100" cy="500" r="4"/><circle cx="340" cy="380" r="3"/><circle cx="560" cy="480" r="4"/>
-        <circle cx="820" cy="370" r="3"/><circle cx="1080" cy="470" r="4"/><circle cx="200" cy="100" r="3"/>
-        <circle cx="460" cy="180" r="4"/><circle cx="720" cy="80" r="3"/><circle cx="980" cy="170" r="4"/>
-      </g>
-    </svg>
-  </div>
-  <div class="container">
-    <div class="contact-box reveal">
-      <span class="section-eyebrow">Contact</span>
-      <h2>Have an idea? Let's talk.</h2>
-      <p>Tell us what's slowing your business down — in plain English, no prep needed. First conversation is free, friendly, and jargon-free.</p>
-      <div class="contact-ctas">
-        <a class="btn btn-primary" data-fb-link href="#" target="_blank" rel="noopener">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-          Message us on Facebook
-        </a>
-        <a class="btn btn-ghost" data-email-link href="#">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-          Prefer email?
-        </a>
+<section class="section section--tint" id="contact">
+  <div class="wrap">
+    <div class="contact-card reveal">
+      <p class="eyebrow eyebrow--center">Contact</p>
+      <h2 class="h-lg">Have an idea? Let’s talk.</h2>
+      <p class="lede" style="margin-inline:auto">Tell us what’s slowing your business down — in plain English, no prep needed. The first conversation is free, friendly and jargon-free.</p>
+      <div class="btn-row" style="justify-content:center">
+        <a class="btn btn--primary" href="mailto:crlattimer@icloud.com?subject=Custom%20software%20enquiry">Email us</a>
+        <a class="btn btn--ghost" href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message on Facebook</a>
       </div>
-      <span class="contact-fast"><span class="pulse" aria-hidden="true"></span>Message the page — we reply fast, usually the same day.</span>
-
-      <!-- ============================================================
-           FORMSPREE-READY CONTACT FORM (hidden while running locally).
-           To activate later:
-           1. Create a form at formspree.io and copy your endpoint URL.
-           2. Set the action below to it.
-           3. Change style="display:none" to style="display:grid".
-           ============================================================ -->
-      <form class="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" style="display:none">
-        <input type="text" name="name" placeholder="Your name" required>
-        <input type="email" name="email" placeholder="Your email" required>
-        <textarea name="message" rows="4" placeholder="Tell us your idea…" required></textarea>
-        <button type="submit" class="btn btn-primary">Send it</button>
-      </form>
+      <p class="fineprint">We reply fast — usually the same day.</p>
     </div>
   </div>
 </section>
 
-<!-- Sticky mobile CTA — straight to Facebook, appears after the hero -->
-<a class="mobile-cta" id="mobileCta" data-fb-link href="#" target="_blank" rel="noopener">
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-  Message us — free quote
-</a>
+</main>
 
-<!-- ==================== FOOTER ==================== -->
 <footer class="footer">
-  <div class="container">
-    <div class="footer-inner">
-      <a href="#top" class="logo-link" aria-label="Stackpine — back to top">
-        <span class="logo-crop"><img src="logo.png" alt="Stackpine logo"></span>
-      </a>
-      <ul class="footer-links">
-        <li><a href="#how">How It Works</a></li>
-        <li><a href="#demos">Demo</a></li>
+  <div class="wrap">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <p>Custom software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
+      </div>
+      <div><h4>Explore</h4><ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#demo-section">Live demo</a></li>
         <li><a href="#results">Results</a></li>
-        <li><a href="builds/">Builds</a></li>
-        <li><a href="#faq">FAQ</a></li>
-        <li><a href="custom-software/">Software Guide</a></li>
-        <li><a href="websites/">Websites Guide</a></li>
-        <li><a href="https://leads.stackpine.org">Leads</a></li>
-        <li><a href="ohio/">Ohio</a></li>
-        <li><a data-email-link href="#">Email</a></li>
-        <li><a data-fb-link href="#" target="_blank" rel="noopener">Facebook</a></li>
-      </ul>
+        <li><a href="/builds/">Builds</a></li>
+      </ul></div>
+      <div><h4>Guides</h4><ul>
+        <li><a href="/custom-software/">Custom software guide</a></li>
+        <li><a href="/websites/">Websites guide</a></li>
+        <li><a href="/ohio/">Ohio</a></li>
+      </ul></div>
+      <div><h4>Contact</h4><ul>
+        <li><a href="mailto:crlattimer@icloud.com">Email</a></li>
+        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Facebook</a></li>
+      </ul></div>
     </div>
-    <div class="footer-bottom">
-      <span>© <span id="year"></span> Stackpine. All rights reserved.</span>
-      <span class="ohio">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6FA07A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        Proudly based in Ohio — serving businesses everywhere
-      </span>
-    </div>
-    <div class="footer-count">
-      <span class="visit-counter" id="visitCounter" aria-live="polite" hidden>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        <strong id="visitNum">—</strong> visits and counting
-      </span>
+    <div class="footer__base">
+      <span>© 2026 Stackpine. All rights reserved.</span>
+      <span>Based in Ohio · Serving businesses everywhere</span>
     </div>
   </div>
 </footer>
 
-<script>
-/* ============================================================
-   EDIT ME — contact details used everywhere on the page
-   ============================================================ */
-const CONTACT_EMAIL = "crlattimer@icloud.com";
-const FACEBOOK_URL  = "https://www.facebook.com/profile.php?id=61588702793283";
-
-/* wire contact links */
-document.querySelectorAll("[data-email-link]").forEach(a => a.href = "mailto:" + CONTACT_EMAIL + "?subject=I%20have%20an%20idea");
-document.querySelectorAll("[data-fb-link]").forEach(a => a.href = FACEBOOK_URL);
-document.getElementById("year").textContent = new Date().getFullYear();
-
-/* ============================================================
-   Nav: scrolled state + mobile menu
-   ============================================================ */
-const nav = document.getElementById("nav");
-const navToggle = document.getElementById("navToggle");
-const navLinks = document.getElementById("navLinks");
-
-function onScrollNav(){ nav.classList.toggle("scrolled", window.scrollY > 40); }
-onScrollNav();
-window.addEventListener("scroll", onScrollNav, {passive:true});
-
-navToggle.addEventListener("click", () => {
-  const open = nav.classList.toggle("menu-open");
-  navToggle.setAttribute("aria-expanded", open);
-});
-navLinks.addEventListener("click", e => {
-  if (e.target.closest("a")) { nav.classList.remove("menu-open"); navToggle.setAttribute("aria-expanded","false"); }
-});
-
-/* ============================================================
-   Hero parallax (gentle; disabled for reduced motion)
-   ============================================================ */
-const heroBg = document.getElementById("heroBg");
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-if (!reduceMotion && !coarsePointer) {
-  let ticking = false;
-  window.addEventListener("scroll", () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const y = Math.min(window.scrollY, window.innerHeight);
-      heroBg.style.transform = `translate3d(0, ${y * 0.22}px, 0)`;
-      ticking = false;
-    });
-  }, {passive:true});
-}
-
-/* ============================================================
-   Scroll-triggered reveals
-   ============================================================ */
-const io = new IntersectionObserver(entries => {
-  entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add("visible"); io.unobserve(en.target); } });
-}, {threshold:.15, rootMargin:"0px 0px -40px 0px"});
-document.querySelectorAll(".reveal").forEach(el => io.observe(el));
-
-/* ============================================================
-   DEMO 1 — Intake & Triage board
-   ============================================================ */
-const COLS = ["New","In Progress","Done"];
-const ROUTES = [
-  {kw:["invoice","bill","charge","payment","refund","price"], team:"Billing"},
-  {kw:["printer","computer","wifi","internet","email","login","password","broken","error","crash","down","bug"], team:"IT Support"},
-  {kw:["schedule","meeting","appointment","calendar","book"], team:"Front Office"},
-  {kw:["order","stock","inventory","supply","ship"], team:"Operations"},
-];
-const HIGH_KW = ["urgent","asap","emergency","broken","down","crash","today","immediately","angry","now"];
-const LOW_KW  = ["someday","eventually","minor","small","whenever","idea","nice to have","suggestion"];
-
-let cardSeq = 0;
-function triage(text){
-  const t = text.toLowerCase();
-  let prio = "med";
-  if (HIGH_KW.some(k => t.includes(k))) prio = "high";
-  else if (LOW_KW.some(k => t.includes(k))) prio = "low";
-  let team = "General Queue";
-  for (const r of ROUTES) if (r.kw.some(k => t.includes(k))) { team = r.team; break; }
-  return {prio, team};
-}
-
-function makeCard(text, col, animate){
-  const {prio, team} = triage(text);
-  const card = document.createElement("div");
-  card.className = `kcard prio-${prio}` + (animate ? " pop-in" : "");
-  card.draggable = true;
-  card.tabIndex = 0;
-  card.dataset.id = "c" + (++cardSeq);
-  card.setAttribute("role","group");
-  card.setAttribute("aria-label", `Request: ${text}. Priority ${prio}. Use left and right arrow keys to move between columns.`);
-  const prioLabel = {high:"High", med:"Medium", low:"Low"}[prio];
-  card.innerHTML = `
-    <div class="kcard-move">
-      <button type="button" data-move="-1" aria-label="Move left" title="Move left">‹</button>
-      <button type="button" data-move="1" aria-label="Move right" title="Move right">›</button>
-    </div>
-    <div class="kcard-title"></div>
-    <div class="kcard-meta">
-      <span class="badge badge-${prio}">${prioLabel}</span>
-      <span class="badge badge-route">→ ${team}</span>
-    </div>`;
-  card.querySelector(".kcard-title").textContent = text;
-  const zone = document.querySelector(`[data-cards="${col}"]`);
-  if (prio === "high" && zone.firstChild) zone.prepend(card); else zone.appendChild(card);
-  updateCounts();
-  return card;
-}
-
-function updateCounts(){
-  document.querySelectorAll(".kanban-col").forEach(col => {
-    col.querySelector(".kanban-count").textContent = col.querySelectorAll(".kcard").length;
-  });
-  // live-wire the dashboard stat to the actual board state
-  const openEl = document.getElementById("statOpen");
-  if (openEl){
-    const open = document.querySelectorAll('[data-cards="0"] .kcard, [data-cards="1"] .kcard').length;
-    if (openEl.textContent !== String(open)) { openEl.textContent = open; statBump(openEl); }
-  }
-}
-
-function moveCard(card, dir){
-  const zone = card.closest("[data-cards]");
-  const next = document.querySelector(`[data-cards="${+zone.dataset.cards + dir}"]`);
-  if (!next) return;
-  next.appendChild(card);
-  card.classList.remove("pop-in"); void card.offsetWidth; card.classList.add("pop-in");
-  updateCounts();
-  if (next.dataset.cards === "2") ccPushEvent("✅", `Request completed: "${card.querySelector(".kcard-title").textContent}"`);
-  card.focus();
-}
-
-/* seed data so the board looks alive */
-[["URGENT: front desk computer is down", 0],
- ["Customer asking about last month's invoice", 0],
- ["Set up the new hire's schedule", 1],
- ["Order more shipping supplies", 1],
- ["Fix typo on the flyer", 2]
-].forEach(([t, c]) => makeCard(t, c, false));
-
-document.getElementById("intakeForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const input = document.getElementById("intakeInput");
-  const text = input.value.trim();
-  if (!text) return;
-  makeCard(text, 0, true);
-  ccPushEvent("📥", `New request routed to ${triage(text).team}: "${text}"`);
-  input.value = "";
-  input.focus();
-});
-
-/* drag & drop */
-const kanban = document.getElementById("kanban");
-let draggedCard = null;
-kanban.addEventListener("dragstart", e => {
-  const card = e.target.closest(".kcard");
-  if (!card) return;
-  draggedCard = card;
-  card.classList.add("dragging");
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", card.dataset.id);
-});
-kanban.addEventListener("dragend", () => {
-  if (draggedCard) draggedCard.classList.remove("dragging");
-  draggedCard = null;
-  document.querySelectorAll(".kanban-col").forEach(c => c.classList.remove("drag-over"));
-});
-document.querySelectorAll(".kanban-col").forEach(col => {
-  col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("drag-over"); });
-  col.addEventListener("dragleave", e => { if (!col.contains(e.relatedTarget)) col.classList.remove("drag-over"); });
-  col.addEventListener("drop", e => {
-    e.preventDefault();
-    col.classList.remove("drag-over");
-    if (draggedCard) {
-      const zone = col.querySelector("[data-cards]");
-      zone.appendChild(draggedCard);
-      updateCounts();
-      if (zone.dataset.cards === "2") ccPushEvent("✅", `Request completed: "${draggedCard.querySelector(".kcard-title").textContent}"`);
-    }
-  });
-});
-
-/* buttons + keyboard */
-kanban.addEventListener("click", e => {
-  const btn = e.target.closest("[data-move]");
-  if (btn) moveCard(btn.closest(".kcard"), +btn.dataset.move);
-});
-kanban.addEventListener("keydown", e => {
-  const card = e.target.closest(".kcard");
-  if (!card || e.target !== card) return;
-  if (e.key === "ArrowLeft") { e.preventDefault(); moveCard(card, -1); }
-  if (e.key === "ArrowRight") { e.preventDefault(); moveCard(card, 1); }
-});
-
-/* ============================================================
-   DEMO 2 — Online booking + hand-rolled confetti
-   ============================================================ */
-const BK_SERVICES = [
-  {name:"Quick check-in", dur:"15 min"},
-  {name:"New client consult", dur:"30 min"},
-  {name:"Standard appointment", dur:"1 hr"},
-];
-const BK_TIMES = ["9:00","9:30","10:00","10:30","11:00","11:30","1:00","1:30","2:00","2:30","3:00","3:30","4:00","4:30"];
-const bkState = {svc:null, day:null, slot:null};
-const bkServices = document.getElementById("bkServices");
-const bkDays = document.getElementById("bkDays");
-const bkSlots = document.getElementById("bkSlots");
-
-BK_SERVICES.forEach((s, i) => {
-  const b = document.createElement("button");
-  b.type = "button"; b.className = "bk-chip";
-  b.textContent = `${s.name} · ${s.dur}`;
-  b.setAttribute("aria-pressed", "false");
-  b.addEventListener("click", () => { bkState.svc = i; bkSelect(bkServices, b); bkUpdate(); });
-  bkServices.appendChild(b);
-});
-
-const bkDayList = [];
-for (let i = 0; i < 7; i++) {
-  const d = new Date(); d.setDate(d.getDate() + 1 + i);
-  bkDayList.push(d);
-  const b = document.createElement("button");
-  b.type = "button"; b.className = "bk-day";
-  b.innerHTML = `<span class="dow">${d.toLocaleDateString("en-US",{weekday:"short"})}</span><span class="dom">${d.getDate()}</span>`;
-  b.setAttribute("aria-pressed", "false");
-  b.setAttribute("aria-label", d.toLocaleDateString("en-US",{weekday:"long", month:"long", day:"numeric"}));
-  b.addEventListener("click", () => { bkState.day = i; bkState.slot = null; bkSelect(bkDays, b); bkRenderSlots(); bkUpdate(); });
-  bkDays.appendChild(b);
-}
-
-function bkSelect(group, btn){
-  group.querySelectorAll("[aria-pressed]").forEach(x => x.setAttribute("aria-pressed", "false"));
-  btn.setAttribute("aria-pressed", "true");
-}
-
-/* deterministic "already booked" pattern so each day looks different */
-function bkIsTaken(dayIdx, slotIdx){ return (slotIdx * 7 + dayIdx * 3) % 4 === 0; }
-
-function bkRenderSlots(){
-  bkSlots.innerHTML = "";
-  let open = 0;
-  BK_TIMES.forEach((t, i) => {
-    const taken = bkState.day !== null && bkIsTaken(bkState.day, i);
-    if (!taken) open++;
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "bk-slot";
-    const hour = parseInt(t);
-    const label = t + (hour >= 9 && hour <= 11 ? " AM" : " PM");
-    b.textContent = label;
-    b.disabled = taken || bkState.day === null;
-    b.classList.toggle("taken", taken);
-    b.setAttribute("aria-pressed", "false");
-    b.setAttribute("aria-label", taken ? label + " — already booked" : label);
-    b.addEventListener("click", () => { bkState.slot = label; bkSelect(bkSlots, b); bkUpdate(); });
-    bkSlots.appendChild(b);
-  });
-  document.getElementById("bkOpenCount").textContent =
-    bkState.day === null ? "(pick a day first)" : `· ${open} slots open`;
-}
-bkRenderSlots();
-
-function bkUpdate(){
-  const s = bkState.svc !== null ? BK_SERVICES[bkState.svc] : null;
-  const d = bkState.day !== null ? bkDayList[bkState.day] : null;
-  document.getElementById("bkOutSvc").textContent = s ? s.name : "—";
-  document.getElementById("bkOutDay").textContent = d ? d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"}) : "—";
-  document.getElementById("bkOutTime").textContent = bkState.slot || "—";
-  const ready = s && d && bkState.slot;
-  document.getElementById("bkConfirm").disabled = !ready;
-  document.getElementById("bkHint").textContent = ready ? "Looks good? Lock it in." : "Pick a service, day & time above.";
-}
-
-document.getElementById("bkConfirm").addEventListener("click", () => {
-  const s = BK_SERVICES[bkState.svc];
-  const d = bkDayList[bkState.day];
-  document.getElementById("bkDoneText").textContent =
-    `${s.name} — ${d.toLocaleDateString("en-US",{weekday:"long", month:"long", day:"numeric"})} at ${bkState.slot}`;
-  document.getElementById("bkSummary").hidden = true;
-  document.getElementById("bkSuccess").hidden = false;
-  confettiBurst();
-  ccPushEvent("📅", `New booking: ${s.name} — ${d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"})} at ${bkState.slot}`);
-  const bEl = document.getElementById("statBookings");
-  bEl.textContent = parseInt(bEl.textContent, 10) + 1;
-  statBump(bEl);
-});
-
-document.getElementById("bkAgain").addEventListener("click", () => {
-  bkState.svc = bkState.day = bkState.slot = null;
-  document.querySelectorAll("#bkServices [aria-pressed], #bkDays [aria-pressed]").forEach(x => x.setAttribute("aria-pressed","false"));
-  bkRenderSlots();
-  bkUpdate();
-  document.getElementById("bkSuccess").hidden = true;
-  document.getElementById("bkSummary").hidden = false;
-});
-
-/* confetti — hand-rolled, no libraries */
-const cCanvas = document.getElementById("confettiCanvas");
-const cCtx = cCanvas.getContext("2d");
-const CONF_COLORS = ["#3A7D44","#6FA07A","#A8C3AE","#7A8BA6","#EDF1F5","#8FCB9B"];
-let particles = [], confettiRunning = false;
-
-function confettiBurst(){
-  if (reduceMotion) return;
-  const stage = cCanvas.parentElement;
-  cCanvas.width = stage.clientWidth;
-  cCanvas.height = stage.clientHeight;
-  const cx = cCanvas.width / 2, cy = cCanvas.height * 0.45;
-  for (let i = 0; i < 130; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 3 + Math.random() * 7;
-    particles.push({
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 3,
-      w: 5 + Math.random() * 6,
-      h: 3 + Math.random() * 5,
-      rot: Math.random() * Math.PI,
-      vr: (Math.random() - .5) * .3,
-      color: CONF_COLORS[Math.floor(Math.random() * CONF_COLORS.length)],
-      life: 90 + Math.random() * 60,
-    });
-  }
-  if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(confettiTick); }
-}
-function confettiTick(){
-  cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
-  particles = particles.filter(p => p.life > 0 && p.y < cCanvas.height + 20);
-  for (const p of particles) {
-    p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.vx *= 0.99; p.rot += p.vr; p.life--;
-    cCtx.save();
-    cCtx.translate(p.x, p.y);
-    cCtx.rotate(p.rot);
-    cCtx.globalAlpha = Math.min(1, p.life / 40);
-    cCtx.fillStyle = p.color;
-    cCtx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-    cCtx.restore();
-  }
-  if (particles.length) requestAnimationFrame(confettiTick);
-  else { confettiRunning = false; cCtx.clearRect(0,0,cCanvas.width,cCanvas.height); }
-}
-
-/* ============================================================
-   Command center — tabs, live feed, ambient activity
-   ============================================================ */
-const ccPanels = {dash:"ccPanelDash", book:"ccPanelBook", req:"ccPanelReq"};
-const ccHints = {
-  dash: "Everything below updates live. Go confirm a booking or complete a request — the Dashboard is watching. 👀",
-  book: "Confirm a booking here, then flip back to the Dashboard and watch the numbers move.",
-  req:  "Add a request or drag one to Done — the Dashboard logs it instantly.",
-};
-document.querySelectorAll(".cc-tabs [role=tab]").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".cc-tabs [role=tab]").forEach(t => t.setAttribute("aria-selected", t === tab));
-    Object.entries(ccPanels).forEach(([key, id]) => {
-      document.getElementById(id).hidden = key !== tab.dataset.cctab;
-    });
-    document.getElementById("ccHint").textContent = ccHints[tab.dataset.cctab];
-  });
-});
-
-function statBump(el){
-  if (reduceMotion) return;
-  el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
-}
-
-function ccPushEvent(icon, text){
-  const feed = document.getElementById("ccFeed");
-  if (!feed) return;
-  const li = document.createElement("li");
-  li.className = "pop-in";
-  const ico = document.createElement("span"); ico.className = "cc-ico"; ico.textContent = icon;
-  const msg = document.createElement("span"); msg.textContent = text;
-  const t = document.createElement("time"); t.textContent = "just now";
-  li.append(ico, msg, t);
-  feed.prepend(li);
-  while (feed.children.length > 8) feed.lastElementChild.remove();
-}
-
-/* ambient activity so the dashboard feels alive (only while visible) */
-const CC_AMBIENT = [
-  ["💬", "Auto-reminder text sent to tomorrow's bookings"],
-  ["⭐", "New 5-star review collected from yesterday's customer"],
-  ["🧾", "Invoice #1042 paid — $350"],
-  ["📅", "New booking: Mike R. — Quick check-in, Thursday 10:30 AM"],
-  ["📦", "Low-stock alert: reorder point reached on 2 items"],
-  ["🧾", "Invoice #1043 paid — $175"],
-];
-let ccAmbientIdx = 0, ccDemoVisible = false;
-new IntersectionObserver(es => es.forEach(e => ccDemoVisible = e.isIntersecting), {threshold:.1})
-  .observe(document.getElementById("demos"));
-setInterval(() => {
-  if (reduceMotion || document.hidden || !ccDemoVisible) return;
-  const [icon, text] = CC_AMBIENT[ccAmbientIdx++ % CC_AMBIENT.length];
-  ccPushEvent(icon, text);
-  if (text.startsWith("Invoice")) {
-    const rev = document.getElementById("statRev");
-    const amt = parseInt(text.match(/\$(\d+)/)[1], 10);
-    rev.textContent = "$" + (parseInt(rev.textContent.replace(/[$,]/g,""), 10) + amt).toLocaleString();
-    statBump(rev);
-  }
-}, 9000);
-
-/* ============================================================
-   Sticky mobile CTA — slides up once the visitor scrolls past the hero
-   ============================================================ */
-const mobileCta = document.getElementById("mobileCta");
-function onScrollCta(){ mobileCta.classList.toggle("show", window.scrollY > window.innerHeight * 0.8); }
-onScrollCta();
-window.addEventListener("scroll", onScrollCta, {passive:true});
-
-/* ============================================================
-   Visitor counter — uses the free Abacus hit-counter API
-   (https://abacus.jasoncameron.dev) so a static site with no
-   backend can keep a running total. Counts each browser at most
-   once per 12 hours. If the service is ever unreachable, the
-   counter simply stays hidden — nothing else breaks.
-   To reset the count later: bump COUNTER_KEY to a new value.
-   ============================================================ */
-(function(){
-  const COUNTER_NS  = "stackpine-org";   // your namespace
-  const COUNTER_KEY = "visits-launch";    // change this to reset the counter to 0
-  const API = "https://abacus.jasoncameron.dev";
-  const el = document.getElementById("visitCounter");
-  const num = document.getElementById("visitNum");
-  if (!el) return;
-
-  const last = parseInt(localStorage.getItem("sp_visit_ts") || "0", 10);
-  const isNewVisit = (Date.now() - last) > 12 * 60 * 60 * 1000;   // once per 12h
-  const url = `${API}/${isNewVisit ? "hit" : "get"}/${COUNTER_NS}/${COUNTER_KEY}`;
-
-  fetch(url)
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(data => {
-      if (typeof data.value !== "number") return;
-      if (isNewVisit) localStorage.setItem("sp_visit_ts", String(Date.now()));
-      el.hidden = false;
-      countUp(num, data.value);
-    })
-    .catch(() => { /* service down — leave counter hidden */ });
-
-  function countUp(node, target){
-    if (reduceMotion){ node.textContent = target.toLocaleString(); return; }
-    const dur = 900, start = performance.now();
-    (function tick(now){
-      const p = Math.min((now - start) / dur, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      node.textContent = Math.round(target * eased).toLocaleString();
-      if (p < 1) requestAnimationFrame(tick);
-    })(performance.now());
-  }
-})();
-
-</script>
+<script src="/assets/site.js" defer></script>
+<script src="/assets/demo.js" defer></script>
 </body>
 </html>
