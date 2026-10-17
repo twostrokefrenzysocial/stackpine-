@@ -1,62 +1,55 @@
 /* Stackpine — builds / portfolio page */
-.builds{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));margin-top:8px}
+.builds{display:grid;gap:clamp(14px,1.8vw,20px);grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
 .build{
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:24px;display:flex;flex-direction:column;
-  transition:border-color .22s var(--ease),transform .22s var(--ease);
+  background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);
+  padding:clamp(20px,2.4vw,28px);display:flex;flex-direction:column;
+  transition:border-color .18s ease;
 }
-.build:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+@media (hover:hover) and (pointer:fine){.build:hover{border-color:var(--rule-strong)}}
 
-/* the three strongest get weight: full width on wide screens, accent frame */
-.build--featured{
-  border-color:var(--accent-line);
-  background:linear-gradient(160deg,var(--accent-soft),transparent 42%),var(--surface);
-}
+/* the three strongest get weight: wider, set on the pine board */
+.build--featured{background:var(--board);border-color:var(--board);color:var(--routed)}
 @media (min-width:900px){
   .builds{grid-template-columns:repeat(6,1fr)}
-  .build{grid-column:span 2}
+  .build{grid-column:span 3}
   .build--featured{grid-column:span 3}
   .build--featured:nth-of-type(3){grid-column:span 6}
 }
 
-.build__kind{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--text-faint);margin-bottom:6px;
-}
-.build h3{font-size:1.14rem;letter-spacing:-.02em}
-.build--featured h3{font-size:clamp(1.2rem,2vw,1.45rem)}
+.build__kind{font-size:14.5px;font-weight:600;color:var(--ink-3);margin-bottom:6px}
+.build--featured .build__kind{color:var(--routed-dim)}
+.build h3{font-size:1.3rem}
+.build--featured h3{font-size:clamp(1.4rem,2.2vw,1.75rem);color:var(--routed)}
 
-/* the number is the point — give it the strongest treatment on the card */
+/* the number is the point: strongest treatment on the card */
 .build__metric{
-  font-family:var(--mono);font-size:12.5px;line-height:1.45;color:var(--accent);
-  margin-top:14px;padding:9px 12px;border-radius:var(--r);
-  background:var(--accent-soft);border:1px solid var(--accent-line);
-  display:inline-flex;align-self:flex-start;
+  font-family:var(--display);font-weight:800;font-size:1.1rem;line-height:1.3;color:var(--pine);
+  margin-top:14px;display:flex;gap:12px;align-items:flex-start;
 }
-.build__sum{color:var(--text-dim);font-size:14.6px;line-height:1.62;margin-top:14px;flex:1}
+.build__metric::before{content:'';flex:none;width:8px;height:20px;background:var(--blaze);border-radius:1.5px;margin-top:1px}
+.build--featured .build__metric{color:var(--routed)}
+.build__sum{color:var(--ink-2);font-size:16px;margin-top:12px;flex:1}
+.build--featured .build__sum{color:var(--routed-dim)}
 
-.build__more{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+.build__more{margin-top:18px;border-top:1px solid var(--rule)}
+.build--featured .build__more{border-top-color:var(--board-rule)}
 .build__more summary{
-  list-style:none;cursor:pointer;font-family:var(--mono);font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);
-  display:flex;align-items:center;gap:7px;transition:color .16s;
+  list-style:none;cursor:pointer;font-weight:600;font-size:15px;color:var(--pine);
+  display:flex;align-items:center;gap:9px;min-height:44px;padding-top:12px;transition:color .16s ease;
 }
+.build--featured .build__more summary{color:var(--routed)}
 .build__more summary::-webkit-details-marker{display:none}
 .build__more summary::after{
-  content:'';width:6px;height:6px;border-right:1.4px solid currentColor;
-  border-bottom:1.4px solid currentColor;transform:rotate(45deg);transition:transform .2s var(--ease);
+  content:'';width:7px;height:7px;border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s var(--ease-out);
 }
-.build__more summary:hover,.build__more[open] summary{color:var(--accent)}
-.build__more[open] summary::after{transform:rotate(-135deg)}
-.build__body{padding-top:16px}
-.build__body h4{
-  font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--accent);margin:17px 0 6px;font-weight:500;
-}
+.build__more[open] summary::after{transform:translateY(2px) rotate(-135deg)}
+.build__body{padding-top:10px}
+.build__body h4{font-size:1rem;color:var(--ink);margin:18px 0 6px}
+.build--featured .build__body h4{color:var(--routed)}
 .build__body h4:first-child{margin-top:0}
-.build__body p{font-size:13.9px;color:var(--text-dim);line-height:1.66}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.chips li{
-  font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:3px;
-  background:var(--bg-2);border:1px solid var(--line);color:var(--text-faint);
-}
+.build__body p{font-size:15.5px;color:var(--ink-2);line-height:1.65}
+.build--featured .build__body p{color:var(--routed-dim)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips li{font-size:13.5px;padding:3px 9px;border-radius:var(--r);background:var(--land);color:var(--ink-2)}
+.build--featured .chips li{background:rgba(241,235,207,.1);color:var(--routed-dim)}
