@@ -6,7 +6,7 @@
 <title>Get a Free Quote | Stackpine</title>
 <meta name="description" content="Tell us what’s slowing your business down, in plain English. The first conversation is free, friendly and jargon-free, and you’ll get an honest quote.">
 <link rel="canonical" href="https://stackpine.org/contact/">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="Get a Free Quote | Stackpine">
 <meta name="twitter:description" content="Tell us what’s slowing your business down, in plain English. The first conversation is free, friendly and jargon-free, and you’ll get an honest quote.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -54,12 +54,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -70,12 +71,10 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>Contact</p>
-    <p class="eyebrow">Contact</p>
     <h1>Have an idea? Let’s talk.</h1>
     <p class="lede">Tell us what’s slowing your business down — in plain English, no prep needed. The first conversation is free, friendly and jargon-free.</p>
   </div>
@@ -85,7 +84,7 @@
   <div class="wrap">
     <div class="form-layout">
 
-      <div class="form-card reveal">
+      <div class="form-card">
         <form class="form" id="enquiry" novalidate>
           <div class="form__grid">
             <div class="f"><label for="f-name">Your name <i>*</i></label>
@@ -144,13 +143,13 @@
 
         <div class="form__done" id="form-done" hidden>
           <div class="form__tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg></div>
-          <h2 class="h-lg">Thanks &mdash; it&rsquo;s with us.</h2>
-          <p class="lede" style="margin-top:12px">We read every enquiry personally and reply by email, usually the same day. Keep an eye on your inbox, and check spam just in case.</p>
+          <h2 class="h-lg" tabindex="-1">Thanks, it&rsquo;s with us.</h2>
+          <p class="lede">We read every enquiry personally and reply by email, usually the same day. Keep an eye on your inbox, and check spam just in case.</p>
         </div>
       </div>
 
-      <aside class="form-aside reveal d1">
-        <h3>What happens next</h3>
+      <aside class="form-aside">
+        <h2>What happens next</h2>
         <ol class="steps-mini">
           <li><b>We read it.</b> Properly, not skimmed by a bot.</li>
           <li><b>We reply by email</b> with a few questions, or to book a short call.</li>
@@ -168,7 +167,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

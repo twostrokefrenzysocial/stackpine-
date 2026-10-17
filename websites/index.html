@@ -6,7 +6,7 @@
 <title>Custom Websites & Online Stores | Stackpine</title>
 <meta name="description" content="A custom website or online store for your small business — designed for you, then hosted, maintained and kept fresh for one small monthly fee.">
 <link rel="canonical" href="https://stackpine.org/websites/index.html">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="Custom Websites & Online Stores | Stackpine">
 <meta name="twitter:description" content="A custom site or store, designed for you then hosted and maintained for one monthly fee.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -127,12 +127,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -143,12 +144,10 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>Websites</p>
-    <p class="eyebrow">Plain-English guide</p>
     <h1>Custom Websites &amp; Online Stores — Built for You, Then Cared For</h1>
     <p class="lede">A professional site that’s actually yours, kept fast, secure and fresh — for one small monthly fee.</p>
   </div>
@@ -186,7 +185,7 @@
 <h2>What it looks like to start</h2>
 <p>Tell us two things: what your business does, and what you want the site to accomplish — more calls? online orders? bookings? You’ll get an honest free quote and a straight answer about what you do and don’t need.</p>
 
-<div class="endcap">
+<div class="endcap board">
   <h2>Want a site that stays good?</h2>
   <p>Built custom, then hosted, maintained and kept fresh — for one predictable monthly fee. Free quote, no pressure.</p>
   <div class="btn-row">
@@ -208,7 +207,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

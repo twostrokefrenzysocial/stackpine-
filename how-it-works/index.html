@@ -6,7 +6,7 @@
 <title>How Custom Software Gets Built | Stackpine</title>
 <meta name="description" content="How we turn a plain-English description of your business into working custom software in weeks, not months — and what to expect at every step.">
 <link rel="canonical" href="https://stackpine.org/how-it-works/">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="How Custom Software Gets Built | Stackpine">
 <meta name="twitter:description" content="How we turn a plain-English description of your business into working custom software in weeks, not months — and what to expect at every step.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -111,12 +111,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -127,43 +128,33 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>How it works</p>
-    <p class="eyebrow">How it works</p>
     <h1>From idea to running software in three steps</h1>
     <p class="lede">You don’t need to know anything about technology. You just need to know your business — we handle the rest.</p>
   </div>
 </section>
 
 <section class="section">
-  <div class="wrap">
-    <div class="grid grid-3" style="margin-top:46px">
-      <article class="card step reveal d1">
-        <div class="step__n">01</div>
-        <h3>Tell us your idea</h3>
-        <p>Describe it in plain language — “I wish I had something that…” is a perfect start. No tech knowledge, no jargon, no homework.</p>
-      </article>
-      <article class="card step reveal d2">
-        <div class="step__n">02</div>
-        <h3>We build it, layer by layer</h3>
-        <p>We shape the software around exactly how your business runs — your words, your workflow, your rules. You see progress fast, not in six months.</p>
-      </article>
-      <article class="card step reveal d3">
-        <div class="step__n">03</div>
-        <h3>You subscribe, it keeps improving</h3>
-        <p>One monthly fee covers hosting, updates, support and ongoing improvements. No surprise bills. No disappearing developer.</p>
-      </article>
+  <div class="wrap trail-layout">
+    <div class="head">
+      <h2 class="h-lg">Three steps, and the third one never ends</h2>
+      <p class="lede">Most first versions are working in a few weeks. After that, the software keeps growing with your business, one layer at a time.</p>
     </div>
+    <ol class="trail">
+      <li><span class="trail__n">Step 1</span><h3>Tell us your idea</h3><p>Describe it in plain language. “I wish I had something that…” is a perfect start. No tech knowledge, no jargon, no homework.</p></li>
+      <li><span class="trail__n">Step 2</span><h3>We build it, layer by layer</h3><p>We shape the software around exactly how your business runs: your words, your workflow, your rules. You see progress fast, not in six months.</p></li>
+      <li><span class="trail__n">Step 3</span><h3>You subscribe, it keeps improving</h3><p>One monthly fee covers hosting, updates, support and ongoing improvements. No surprise bills. No disappearing developer.</p></li>
+    </ol>
   </div>
 </section>
 
 <section class="section section--tint">
   <div class="wrap">
-    <div class="head reveal"><p class="eyebrow">Common questions</p><h2 class="h-lg">Answered straight, no jargon</h2></div>
-    <div class="faq reveal d1">
+    <div class="head"><h2 class="h-lg">Answered straight, no jargon</h2></div>
+    <div class="faq">
       <details><summary>How long does a build take?</summary><div class="faq__a">Most first versions are up and working in a few weeks — not months. Simple tools can take days. You see progress the whole way through, so there’s never a six-month black box between “we talked” and “here’s your software.”</div></details>
       <details><summary>Do I need to know anything about technology?</summary><div class="faq__a">Not a thing. You describe how your business runs in plain English — “requests come in by text and we lose track of them” is a perfect starting point. Turning that into software is our job, not yours.</div></details>
       <details><summary>What does it cost?</summary><div class="faq__a">Every project is quoted custom, because every business is different — but there’s no big upfront bill, and hosting, support, updates and improvements are all included in one predictable monthly fee. Most owners are pleasantly surprised.</div></details>
@@ -174,7 +165,7 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="endcap reveal" style="margin-top:0">
+    <div class="endcap board">
       <h2>Have an idea? Let’s talk.</h2>
       <p>Tell us what’s slowing your business down, in plain English. The first conversation is free, friendly and jargon-free.</p>
       <div class="btn-row"><a class="btn btn--primary" href="/contact/">Get a free quote</a></div>
@@ -187,7 +178,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

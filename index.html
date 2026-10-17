@@ -6,7 +6,7 @@
 <title>Custom Software for Small Business | Stackpine</title>
 <meta name="description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs — one monthly fee, hosting and support included.">
 <link rel="canonical" href="https://stackpine.org/">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="Custom Software for Small Business | Stackpine">
 <meta name="twitter:description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs — one monthly fee, hosting and support incl">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -117,12 +117,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -133,83 +134,69 @@
   </div>
 </header>
 
-<main>
+<main id="main">
 
-<section class="hero" id="top">
-  <div class="hero__bg"><div class="hero__grid"></div><div class="hero__glow"></div></div>
-  <div class="wrap hero__in">
-    <p class="eyebrow">Custom software · Subscription simple</p>
-    <h1>Your business. Your software. Built for <em>exactly how you work.</em></h1>
-    <p class="lede">Stop bending your business around off-the-shelf tools. We build custom business software, business apps, websites and online storefronts shaped around you — for one affordable monthly subscription that covers everything.</p>
-    <div class="btn-row">
-      <a class="btn btn--primary" href="/contact/">Get a free quote
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="btn btn--ghost" href="/what-we-build/">See what we build</a>
+<section class="hero board">
+  <div class="wrap">
+    <div class="hero__in">
+      <div>
+        <h1>Software built around how your business already works.</h1>
+        <p class="lede">Stop bending your business around off-the-shelf tools. We build custom business software, apps, websites and online stores shaped around you, for one monthly subscription that covers the build, hosting, support and every improvement after.</p>
+      </div>
+      <form class="start" action="/contact/" method="get">
+        <label for="start-problem">What’s slowing your business down?</label>
+        <p class="hint">One sentence is plenty. You’ll finish the rest on the next page.</p>
+        <textarea id="start-problem" name="problem" maxlength="3000" placeholder="“Requests come in by text and we lose track of them.”"></textarea>
+        <button class="btn btn--primary" type="submit">Start my free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <p class="fine">No upfront build cost · Working software in weeks</p>
+      </form>
     </div>
-    <div class="hero__meta">
-      <span>No upfront build cost</span>
-      <span>Working software in weeks</span>
-      <span>Hosting &amp; support included</span>
-    </div>
+    <nav class="dest" aria-label="Where to start">
+      <a href="/how-it-works/"><em><span class="blaze" aria-hidden="true"></span><b>How it works</b></em><span>Three steps, plain English</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a href="/what-we-build/"><em><span class="blaze" aria-hidden="true"></span><b>What we build</b></em><span>Intake, booking, portals, stores</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a href="/pricing/"><em><span class="blaze" aria-hidden="true"></span><b>What it costs</b></em><span>One predictable monthly fee</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a href="/results/"><em><span class="blaze" aria-hidden="true"></span><b>Real results</b></em><span>Three builds, before and after</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </nav>
   </div>
 </section>
 
-<section class="section section--tint" id="problem">
-
+<section class="section" id="problem">
   <div class="wrap">
-    <div class="head reveal">
-      <p class="eyebrow">The problem</p>
+    <div class="head">
       <h2 class="h-lg">Your tools almost fit. That “almost” costs you every day.</h2>
-      <p class="lede">Most businesses run on a patchwork of spreadsheets, group texts and off-the-shelf apps built for somebody else’s business. You adapt to the software instead of the software adapting to you.</p>
+      <p class="lede">Most businesses run on a patchwork of spreadsheets, group texts and off-the-shelf apps built for somebody else’s business. You end up adapting to the software instead of the other way round.</p>
     </div>
-    <ul class="pains reveal d1">
-      <li>The spreadsheet only one person understands — and they’re on vacation.</li>
+    <ul class="pains">
+      <li>The spreadsheet only one person understands, and they’re on vacation.</li>
       <li>Paying for five different apps that each do 60% of what you need.</li>
-      <li>Requests arriving by phone, text, email and sticky note — and falling through the cracks.</li>
+      <li>Requests arriving by phone, text, email and sticky note, then falling through the cracks.</li>
       <li>A developer quoted $40,000 up front… then vanished after launch.</li>
     </ul>
   </div>
 </section>
 
-<section class="section" id="explore">
-  <div class="wrap">
-    <div class="head head--center reveal">
-      <p class="eyebrow eyebrow--center">Where to start</p>
-      <h2 class="h-lg">Four short reads, not one long scroll</h2>
-      <p class="lede">Everything you'd want to know, split into pages you can actually finish.</p>
+<section class="section section--tint">
+  <div class="wrap trail-layout">
+    <div class="head">
+      <h2 class="h-lg">One layer at a time, not one giant bill</h2>
+      <p class="lede">You start with the one tool that would help most, in use within weeks. It grows from there, and we stay with it.</p>
+      <div class="btn-row"><a class="btn btn--ghost" href="/how-it-works/">How it works in detail</a></div>
     </div>
-    <div class="grid grid-2" style="margin-top:46px">
-      <a class="card reveal d1" href="/how-it-works/">
-        <div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg></div>
-        <h3>How it works →</h3>
-        <p>From a plain-English description to working software in three steps — plus the questions every owner asks first.</p>
-      </a>
-      <a class="card reveal d2" href="/what-we-build/">
-        <div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
-        <h3>What we build →</h3>
-        <p>Intake and triage boards, booking tools, customer portals, quoting systems, online stores — and whatever you can describe.</p>
-      </a>
-      <a class="card reveal d3" href="/pricing/">
-        <div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-        <h3>What it costs →</h3>
-        <p>No big bill up front. One predictable monthly fee covering the build, hosting, support and every improvement after.</p>
-      </a>
-      <a class="card reveal d4" href="/results/">
-        <div class="card__ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg></div>
-        <h3>Real results →</h3>
-        <p>A leadership dashboard, a custom storefront and an expense tracker — what each replaced, and what changed after.</p>
-      </a>
-    </div>
+    <ol class="trail">
+      <li><span class="trail__n">Step 1</span><h3>Tell us what’s slowing you down</h3><p>Describe it the way you’d explain it to a friend. No tech knowledge, no jargon, no homework.</p></li>
+      <li><span class="trail__n">Step 2</span><h3>We build the first layer</h3><p>Shaped around your words, your workflow and your rules. You see working software in weeks, not months.</p></li>
+      <li><span class="trail__n">Step 3</span><h3>It keeps improving</h3><p>One monthly fee covers hosting, updates, support and new layers as your business changes. No surprise bills, no disappearing developer.</p></li>
+    </ol>
   </div>
 </section>
 
-<section class="section section--tint">
+<section class="section">
   <div class="wrap">
-    <div class="endcap reveal" style="margin-top:0">
+    <div class="endcap board">
       <h2>Have an idea? Let’s talk.</h2>
-      <p>Tell us what’s slowing your business down, in plain English. The first conversation is free, friendly and jargon-free — and if we think you don’t need custom software, we’ll say so.</p>
+      <p>Tell us what’s slowing your business down, in plain English. The first conversation is free, and if we think you don’t need custom software, we’ll say so.</p>
       <div class="btn-row">
-        <a class="btn btn--primary" href="/contact/">Get a free quote</a>
+        <a class="btn btn--primary" href="/contact/">Get a free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="btn btn--ghost" href="/builds/">See our builds</a>
       </div>
     </div>
@@ -222,7 +209,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

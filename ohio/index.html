@@ -6,7 +6,7 @@
 <title>Custom Software Development in Ohio | Stackpine</title>
 <meta name="description" content="Ohio custom software company building business apps, websites and online stores for small businesses — subscription pricing, no five-figure upfront bill.">
 <link rel="canonical" href="https://stackpine.org/ohio/index.html">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="Custom Software Development in Ohio | Stackpine">
 <meta name="twitter:description" content="Ohio-based custom software: business apps, websites and online stores on a monthly subscription.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -111,12 +111,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -127,12 +128,10 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>Ohio</p>
-    <p class="eyebrow">Ohio</p>
     <h1>Custom Software Development in Ohio</h1>
     <p class="lede">Business apps, websites and online stores — built in Ohio, priced like a subscription, explained in plain English.</p>
   </div>
@@ -183,7 +182,7 @@
 <h2>See what we’ve built</h2>
 <p>Our <a href="/builds/">builds page</a> walks through real systems in daily use — internal AI assistants, autonomous email triage, live operational dashboards and custom storefronts — with the problem each one solved and the stack behind it.</p>
 
-<div class="endcap">
+<div class="endcap board">
   <h2>Have an idea? Let’s talk.</h2>
   <p>Tell us what’s slowing your business down. Free quote, plain English, zero pressure — usually a same-day reply.</p>
   <div class="btn-row">
@@ -205,7 +204,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

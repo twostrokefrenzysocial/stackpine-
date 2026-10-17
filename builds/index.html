@@ -6,7 +6,7 @@
 <title>Builds — AI Systems &amp; Software Portfolio | Stackpine</title>
 <meta name="description" content="A portfolio of AI systems and custom software: internal RAG assistants, autonomous email triage, live dashboards, SaaS products and on-prem AI infrastructure.">
 <link rel="canonical" href="https://stackpine.org/builds/">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="Builds — AI Systems &amp; Software Portfolio | Stackpine">
 <meta name="twitter:description" content="AI systems and custom software: RAG assistants, email triage, dashboards, SaaS and on-prem AI.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/builds.css">
 <script type="application/ld+json">
@@ -145,12 +145,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -161,12 +162,10 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>Builds</p>
-    <p class="eyebrow">Builds</p>
     <h1>Systems that pay for themselves.</h1>
     <p class="lede">Selected systems in production use — autonomous agents, on-prem LLM inference, a live SaaS platform and internal AI tooling. Each one replaced hours of manual work with something that runs itself.</p>
   </div>
@@ -174,7 +173,8 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="builds reveal d1" id="builds">
+    <h2 class="sr-only">Selected builds</h2>
+    <div class="builds" id="builds">
       <article class="build build--featured">
         <p class="build__kind">Autonomous inbox management</p>
         <h3>Email Triage Agent</h3>
@@ -227,12 +227,12 @@
       </article>
     </div>
 
-    <div class="endcap" style="margin-top:52px">
+    <div class="endcap board">
       <h2>Want systems like these in your organization?</h2>
       <p>Tell us what&rsquo;s slowing you down. Free quote, plain English, zero pressure.</p>
       <div class="btn-row">
         <a class="btn btn--primary" href="/contact/">Get a free quote</a>
-        <a class="btn btn--ghost" href="/builds/">See our work</a>
+        <a class="btn btn--ghost" href="/results/">See client results</a>
       </div>
     </div>
   </div>
@@ -243,7 +243,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>

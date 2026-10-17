@@ -6,7 +6,7 @@
 <title>What Custom Software Costs | Stackpine</title>
 <meta name="description" content="No big bill up front. One predictable monthly fee covers the build, hosting, support and improvements — and it starts small, then grows with your business.">
 <link rel="canonical" href="https://stackpine.org/pricing/">
-<meta name="theme-color" content="#080B0A">
+<meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
@@ -18,10 +18,10 @@
 <meta name="twitter:title" content="What Custom Software Costs | Stackpine">
 <meta name="twitter:description" content="No big bill up front. One predictable monthly fee covers the build, hosting, support and improvements — and it starts small, then grows with your busi">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
@@ -67,12 +67,13 @@
 </script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="wrap nav__in">
-    <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
-    <button class="nav__burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="nav__links">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
       <a href="/how-it-works/">How it works</a>
       <a href="/what-we-build/">What we build</a>
       <a href="/pricing/">Pricing</a>
@@ -83,12 +84,10 @@
   </div>
 </header>
 
-<main>
-<section class="page-hero">
-  <div class="page-hero__bg"></div>
+<main id="main">
+<section class="page-hero board">
   <div class="wrap">
     <p class="crumbs"><a href="/">Home</a><span></span>Pricing</p>
-    <p class="eyebrow">What it costs</p>
     <h1>Probably less than you’re spending right now.</h1>
     <p class="lede">Custom doesn’t mean expensive anymore. You’re likely already paying more — in apps that half-fit, hours lost to busywork, and customers who slip through the cracks.</p>
   </div>
@@ -96,27 +95,28 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="price-grid">
-      <article class="card reveal d1"><h3>No big bill up front</h3><p>Forget the tens of thousands developers used to charge before you’d seen a thing. You pay a small amount each month — and only once it’s working for you.</p></article>
-      <article class="card reveal d2"><h3>Starts small, grows with you</h3><p>A simple tool that does one job costs about what you already pay for one app that only half-fits. As it does more, it scales gently — never a surprise.</p></article>
-      <article class="card reveal d3"><h3>Everything included</h3><p>Hosting, support, updates and future improvements are baked into one predictable monthly fee. No add-ons. No surprise invoices. Cancel anytime.</p></article>
+    <h2 class="h-lg entries-title">How the monthly fee works</h2>
+    <div class="entries entries--3">
+      <article class="entry"><h3>No big bill up front</h3><p>Forget the tens of thousands developers used to charge before you’d seen a thing. You pay a small amount each month — and only once it’s working for you.</p></article>
+      <article class="entry"><h3>Starts small, grows with you</h3><p>A simple tool that does one job costs about what you already pay for one app that only half-fits. As it does more, it scales gently — never a surprise.</p></article>
+      <article class="entry"><h3>Everything included</h3><p>Hosting, support, updates and future improvements are baked into one predictable monthly fee. No add-ons. No surprise invoices. Cancel anytime.</p></article>
     </div>
-    <div class="price-cta reveal">
-      <h3>Curious what yours would cost?</h3>
-      <p>Every project is quoted custom — and most owners are pleasantly surprised. Tell us what you’re picturing and we’ll give you a straight, honest number. Free, with zero pressure.</p>
-      <div class="btn-row" style="justify-content:center">
-        <a class="btn btn--primary" href="#contact">Get my free quote</a>
+    <div class="price-cta board">
+      <div>
+        <h2>Curious what yours would cost?</h2>
+        <p>Every project is quoted custom — and most owners are pleasantly surprised. Tell us what you’re picturing and we’ll give you a straight, honest number. Free, with zero pressure.</p>
+        <p class="fineprint">Takes 2 minutes · No commitment · No sales pitch</p>
       </div>
-      <p class="fineprint">Takes 2 minutes · no commitment · no sales pitch</p>
+      <div class="btn-row"><a class="btn btn--primary" href="/contact/">Get my free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
     </div>
   </div>
 </section>
 
 <section class="section section--tint">
   <div class="wrap">
-    <div class="head reveal"><p class="eyebrow">Why subscription</p><h2 class="h-lg">A partner, not a project</h2><p class="lede">Traditional custom development ends the day it launches. Ours is just getting started.</p></div>
+    <div class="head"><h2 class="h-lg">A partner, not a project</h2><p class="lede">Traditional custom development ends the day it launches. Ours is just getting started.</p></div>
     <div class="compare">
-      <div class="compare__col reveal d1">
+      <div class="compare__col">
         <p class="compare__tag">Traditional development</p>
         <h3>The old way</h3>
         <ul>
@@ -127,7 +127,7 @@
           <li>Software frozen in time while your business keeps evolving</li>
         </ul>
       </div>
-      <div class="compare__col compare__col--win reveal d2">
+      <div class="compare__col compare__col--win">
         <p class="compare__tag">The Stackpine way</p>
         <h3>One layer at a time</h3>
         <ul>
@@ -144,7 +144,7 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="endcap reveal" style="margin-top:0">
+    <div class="endcap board">
       <h2>Have an idea? Let’s talk.</h2>
       <p>Tell us what’s slowing your business down, in plain English. The first conversation is free, friendly and jargon-free.</p>
       <div class="btn-row"><a class="btn btn--primary" href="/contact/">Get a free quote</a></div>
@@ -157,7 +157,7 @@
   <div class="wrap">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26">Stackpine</a>
+        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
         <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
       </div>
       <div><h4>Company</h4><ul>
