@@ -1,55 +1,38 @@
-/* Stackpine — builds / portfolio page */
-.builds{display:grid;gap:clamp(14px,1.8vw,20px);grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
-.build{
-  background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);
-  padding:clamp(20px,2.4vw,28px);display:flex;flex-direction:column;
-  transition:border-color .18s ease;
+/* Stackpine — builds / portfolio page: a ruled log, one row per build */
+.builds{border-top:2px solid var(--ink)}
+.build{display:grid;gap:12px 48px;padding:30px 0 32px;border-bottom:1px solid var(--rule)}
+@media (min-width:860px){
+  .build{grid-template-columns:minmax(0,.95fr) minmax(0,1.35fr);align-items:start}
+  .build__id{grid-row:1 / span 2}
 }
-@media (hover:hover) and (pointer:fine){.build:hover{border-color:var(--rule-strong)}}
+.build h3{font-size:1.35rem}
+.build--featured h3{font-size:clamp(1.55rem,2.4vw,1.9rem)}
+.build__kind{font-size:15px;color:var(--ink-3);margin-top:4px}
 
-/* the three strongest get weight: wider, set on the pine board */
-.build--featured{background:var(--board);border-color:var(--board);color:var(--routed)}
-@media (min-width:900px){
-  .builds{grid-template-columns:repeat(6,1fr)}
-  .build{grid-column:span 3}
-  .build--featured{grid-column:span 3}
-  .build--featured:nth-of-type(3){grid-column:span 6}
-}
-
-.build__kind{font-size:14.5px;font-weight:600;color:var(--ink-3);margin-bottom:6px}
-.build--featured .build__kind{color:var(--routed-dim)}
-.build h3{font-size:1.3rem}
-.build--featured h3{font-size:clamp(1.4rem,2.2vw,1.75rem);color:var(--routed)}
-
-/* the number is the point: strongest treatment on the card */
+/* the number is the point: strongest treatment in the row */
 .build__metric{
   font-family:var(--display);font-weight:800;font-size:1.1rem;line-height:1.3;color:var(--pine);
   margin-top:14px;display:flex;gap:12px;align-items:flex-start;
 }
 .build__metric::before{content:'';flex:none;width:8px;height:20px;background:var(--blaze);border-radius:1.5px;margin-top:1px}
-.build--featured .build__metric{color:var(--routed)}
-.build__sum{color:var(--ink-2);font-size:16px;margin-top:12px;flex:1}
-.build--featured .build__sum{color:var(--routed-dim)}
+.build--featured .build__metric{font-size:1.25rem}
+.build__sum{color:var(--ink-2);font-size:16.5px}
+.build--featured .build__sum{color:var(--ink);font-size:clamp(1.05rem,1.4vw,1.15rem)}
 
-.build__more{margin-top:18px;border-top:1px solid var(--rule)}
-.build--featured .build__more{border-top-color:var(--board-rule)}
 .build__more summary{
-  list-style:none;cursor:pointer;font-weight:600;font-size:15px;color:var(--pine);
-  display:flex;align-items:center;gap:9px;min-height:44px;padding-top:12px;transition:color .16s ease;
+  list-style:none;cursor:pointer;font-weight:600;font-size:15.5px;color:var(--pine);
+  display:inline-flex;align-items:center;gap:9px;min-height:44px;transition:color .16s ease;
 }
-.build--featured .build__more summary{color:var(--routed)}
 .build__more summary::-webkit-details-marker{display:none}
 .build__more summary::after{
   content:'';width:7px;height:7px;border-right:2px solid currentColor;
   border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s var(--ease-out);
 }
 .build__more[open] summary::after{transform:translateY(2px) rotate(-135deg)}
-.build__body{padding-top:10px}
-.build__body h4{font-size:1rem;color:var(--ink);margin:18px 0 6px}
-.build--featured .build__body h4{color:var(--routed)}
+@media (hover:hover) and (pointer:fine){.build__more summary:hover{color:var(--pine-deep);text-decoration:underline;text-underline-offset:3px}}
+.build__body{padding:6px 0 0}
+.build__body h4{font-size:1.05rem;color:var(--ink);margin:18px 0 6px}
 .build__body h4:first-child{margin-top:0}
 .build__body p{font-size:15.5px;color:var(--ink-2);line-height:1.65}
-.build--featured .build__body p{color:var(--routed-dim)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .chips li{font-size:13.5px;padding:3px 9px;border-radius:var(--r);background:var(--land);color:var(--ink-2)}
-.build--featured .chips li{background:rgba(241,235,207,.1);color:var(--routed-dim)}

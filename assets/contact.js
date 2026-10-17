@@ -34,10 +34,23 @@
     statusEl.className = 'form__status' + (isError ? ' is-error' : '');
   }
 
-  function flag(el) {
+  // Mark a field invalid and say why right under it; cleared as they type.
+  function flag(el, msg) {
+    var id = el.id + '-err';
+    var note = document.getElementById(id);
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'f__err';
+      note.id = id;
+      el.insertAdjacentElement('afterend', note);
+    }
+    note.textContent = msg;
     el.setAttribute('aria-invalid', 'true');
+    el.setAttribute('aria-describedby', id);
     el.addEventListener('input', function clear() {
       el.removeAttribute('aria-invalid');
+      el.removeAttribute('aria-describedby');
+      note.remove();
       el.removeEventListener('input', clear);
     });
     el.focus();
@@ -50,9 +63,9 @@
     say('');
 
     var name = val('name'), email = val('email'), problem = val('problem');
-    if (!name) { say('Please tell us your name.', true); flag(form.elements.name); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { say('That email address doesn’t look right. Check it and try again.', true); flag(form.elements.email); return; }
-    if (problem.length < 15) { say('Please tell us a little more about what’s slowing your business down (a sentence or two is plenty).', true); flag(form.elements.problem); return; }
+    if (!name) { var m = 'Please tell us your name.'; say(m, true); flag(form.elements.name, m); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { var m = 'That email address doesn’t look right. Check it and try again.'; say(m, true); flag(form.elements.email, m); return; }
+    if (problem.length < 15) { var m = 'Please tell us a little more about what’s slowing your business down (a sentence or two is plenty).'; say(m, true); flag(form.elements.problem, m); return; }
 
     var url = endpoint();
     if (!url) {
