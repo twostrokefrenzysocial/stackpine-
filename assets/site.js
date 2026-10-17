@@ -1,4 +1,4 @@
-/* Stackpine — site chrome: nav, scroll state, fail-safe reveals */
+/* Stackpine — site chrome: nav, the trail draw */
 (function () {
   'use strict';
 
@@ -6,59 +6,61 @@
   var nav = document.getElementById('nav');
   var burger = document.querySelector('.nav__burger');
 
+  function setOpen(open) {
+    nav.classList.toggle('is-open', open);
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  }
+
   if (burger && nav) {
     burger.addEventListener('click', function () {
-      var open = nav.classList.toggle('is-open');
-      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      setOpen(!nav.classList.contains('is-open'));
     });
     nav.querySelectorAll('.nav__links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        nav.classList.remove('is-open');
-        burger.setAttribute('aria-expanded', 'false');
-      });
+      a.addEventListener('click', function () { setOpen(false); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && nav.classList.contains('is-open')) {
+        setOpen(false);
+        burger.focus();
+      }
     });
   }
 
-  if (nav) {
-    var onScroll = function () {
-      nav.classList.toggle('is-stuck', window.scrollY > 8);
-    };
-    addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-  }
+  /* mark the current page in the nav */
+  var here = location.pathname.replace(/index\.html$/, '');
+  document.querySelectorAll('.nav__links a:not(.btn)').forEach(function (a) {
+    if (a.getAttribute('href') === here) a.setAttribute('aria-current', 'page');
+  });
 
-  /* ---- reveal on scroll ----
-     Fails SAFE: .reveal is visible in CSS by default. We only opt into the
-     hidden-then-animate behaviour when IntersectionObserver exists, and a
-     watchdog force-reveals everything if anything goes wrong. Content must
-     never be permanently invisible. */
-  var nodes = document.querySelectorAll('.reveal');
+  /* ---- the trail draws once when it comes into view ----
+     Fails SAFE: the trail is fully visible in CSS. We only hide it first when
+     motion is allowed and IntersectionObserver exists, and a watchdog shows
+     it regardless. Content is never permanently invisible. */
+  var trails = document.querySelectorAll('.trail');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!trails.length || reduce || !('IntersectionObserver' in window)) return;
 
-  function showAll() {
-    nodes.forEach(function (n) { n.classList.add('is-in'); });
-  }
-
-  if (!nodes.length) return;
-
-  if (!('IntersectionObserver' in window) || reduce) {
-    return; // CSS already renders them visible
-  }
-
-  document.documentElement.classList.add('js-reveal');
+  document.documentElement.classList.add('js-motion');
 
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) {
-        e.target.classList.add('is-in');
+        e.target.classList.remove('is-pending');
         io.unobserve(e.target);
       }
     });
-  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 });
+  }, { rootMargin: '0px 0px -15% 0px', threshold: 0.15 });
 
-  nodes.forEach(function (n) { io.observe(n); });
+  trails.forEach(function (t) {
+    var r = t.getBoundingClientRect();
+    // already on screen at load: no point hiding it
+    if (r.top < innerHeight * 0.85) return;
+    t.classList.add('is-pending');
+    io.observe(t);
+  });
 
-  // Watchdog: nothing stays hidden past 2.5s.
-  setTimeout(showAll, 2500);
-  addEventListener('load', function () { setTimeout(showAll, 600); });
+  setTimeout(function () {
+    trails.forEach(function (t) { t.classList.remove('is-pending'); });
+  }, 8000);
 })();

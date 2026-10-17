@@ -20,6 +20,10 @@
   var shownAt = Date.now();
   var FALLBACK = 'chris@stackpine.org';
 
+  // Carry over what was typed into the homepage "start" box.
+  var carried = new URLSearchParams(location.search).get('problem');
+  if (carried && !form.elements.problem.value) form.elements.problem.value = carried.slice(0, 3000);
+
   function endpoint() {
     var e = (typeof window.STACKPINE_ANALYTICS_ENDPOINT === 'string') ? window.STACKPINE_ANALYTICS_ENDPOINT : '';
     return e.replace(/\/$/, '');
@@ -30,6 +34,15 @@
     statusEl.className = 'form__status' + (isError ? ' is-error' : '');
   }
 
+  function flag(el) {
+    el.setAttribute('aria-invalid', 'true');
+    el.addEventListener('input', function clear() {
+      el.removeAttribute('aria-invalid');
+      el.removeEventListener('input', clear);
+    });
+    el.focus();
+  }
+
   function val(name) { return (form.elements[name].value || '').trim(); }
 
   form.addEventListener('submit', function (ev) {
@@ -37,9 +50,9 @@
     say('');
 
     var name = val('name'), email = val('email'), problem = val('problem');
-    if (!name) { say('Please tell us your name.', true); form.elements.name.focus(); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { say('That email address doesn’t look right.', true); form.elements.email.focus(); return; }
-    if (problem.length < 15) { say('Please tell us a little more about what’s slowing your business down.', true); form.elements.problem.focus(); return; }
+    if (!name) { say('Please tell us your name.', true); flag(form.elements.name); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { say('That email address doesn’t look right. Check it and try again.', true); flag(form.elements.email); return; }
+    if (problem.length < 15) { say('Please tell us a little more about what’s slowing your business down (a sentence or two is plenty).', true); flag(form.elements.problem); return; }
 
     var url = endpoint();
     if (!url) {
@@ -67,7 +80,9 @@
         if (!res.ok) throw new Error(data.error || 'Something went wrong.');
         form.hidden = true;
         done.hidden = false;
-        done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        done.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+        done.querySelector('h2').focus();
       });
     }).catch(function (err) {
       var network = err instanceof TypeError;
