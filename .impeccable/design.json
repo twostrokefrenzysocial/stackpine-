@@ -1,0 +1,166 @@
+{
+ "schemaVersion": 2,
+ "generatedAt": "2026-10-17T23:43:26.342166Z",
+ "title": "Design System: Stackpine",
+ "extensions": {
+  "colorMeta": {
+   "board": {
+    "role": "primary",
+    "displayName": "Sign Board Pine"
+   },
+   "routed": {
+    "role": "primary",
+    "displayName": "Routed Lettering"
+   },
+   "pine": {
+    "role": "primary",
+    "displayName": "Brand Pine"
+   },
+   "blaze": {
+    "role": "secondary",
+    "displayName": "Buckeye Blaze"
+   },
+   "rose": {
+    "role": "tertiary",
+    "displayName": "Error Rose"
+   },
+   "ground": {
+    "role": "neutral",
+    "displayName": "Map White"
+   },
+   "land": {
+    "role": "neutral",
+    "displayName": "Land Tint"
+   },
+   "ink": {
+    "role": "neutral",
+    "displayName": "Logo Navy"
+   }
+  },
+  "typographyMeta": {
+   "display": {
+    "displayName": "Display",
+    "purpose": "Home hero H1 only."
+   },
+   "headline": {
+    "displayName": "Headline",
+    "purpose": "Section H2s."
+   },
+   "body": {
+    "displayName": "Body",
+    "purpose": "All running text."
+   }
+  },
+  "shadows": [
+   {
+    "name": "start-lift",
+    "value": "0 1px 0 #123019, 0 18px 40px -16px rgba(0,0,0,.45)",
+    "purpose": "The hero start box lifting off the board; the only shadow."
+   }
+  ],
+  "motion": [
+   {
+    "name": "ease-out",
+    "value": "cubic-bezier(.23,1,.32,1)",
+    "purpose": "Press feedback, arrow nudges, trail stops."
+   },
+   {
+    "name": "ease-in-out",
+    "value": "cubic-bezier(.77,0,.175,1)",
+    "purpose": "The trail line draw (1.1s)."
+   },
+   {
+    "name": "ease-drawer",
+    "value": "cubic-bezier(.32,.72,0,1)",
+    "purpose": "Mobile menu (240ms)."
+   },
+   {
+    "name": "press",
+    "value": "transform scale(.97) 160ms ease-out",
+    "purpose": "Every button on :active."
+   }
+  ],
+  "breakpoints": [
+   {
+    "name": "phone",
+    "value": "520px"
+   },
+   {
+    "name": "tablet",
+    "value": "760px"
+   },
+   {
+    "name": "nav",
+    "value": "900px"
+   },
+   {
+    "name": "desktop",
+    "value": "960px"
+   }
+  ]
+ },
+ "components": [
+  {
+   "name": "Primary Button",
+   "kind": "button",
+   "refersTo": "button-primary",
+   "description": "Main action on the light ground.",
+   "html": "<a class=\"ds-btn\" href=\"#\">Get a free quote <span aria-hidden=\"true\">→</span></a>",
+   "css": ".ds-btn{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:12px 22px;border-radius:3px;background:#2F6E3D;color:#fff;font:700 16px Overpass,system-ui,sans-serif;text-decoration:none;transition:background-color .18s ease,transform .16s cubic-bezier(.23,1,.32,1)}.ds-btn:hover{background:#245730}.ds-btn:active{transform:scale(.97)}"
+  },
+  {
+   "name": "Field",
+   "kind": "input",
+   "refersTo": "input",
+   "description": "Text input with pine focus and rose invalid state.",
+   "html": "<label class=\"ds-l\">Your name<input class=\"ds-in\"></label>",
+   "css": ".ds-l{display:block;font:600 15.5px 'Public Sans',system-ui;color:#1E2D42}.ds-in{display:block;width:100%;margin-top:8px;min-height:48px;padding:11px 14px;border:1.5px solid #A3B3A6;border-radius:3px;background:#F5F8F4;font:16px 'Public Sans',system-ui}.ds-in:focus{outline:none;border-color:#2F6E3D;box-shadow:0 0 0 3px rgba(47,110,61,.15)}"
+  },
+  {
+   "name": "Closing Board",
+   "kind": "custom",
+   "refersTo": "board",
+   "description": "The last sign on every page.",
+   "html": "<div class=\"ds-board\"><h2>Have an idea? Let’s talk.</h2><p>Free quote, plain English.</p></div>",
+   "css": ".ds-board{background:#1B4428;color:#F1EBCF;border-radius:10px;padding:32px}.ds-board h2{font:800 1.8rem Overpass,system-ui;margin:0 0 10px;display:flex;gap:14px;align-items:center}.ds-board h2::before{content:'';width:12px;height:.9em;background:#3B87CC;border-radius:2px}.ds-board p{color:#C9DCCB;margin:0;padding-left:26px}"
+  }
+ ],
+ "narrative": {
+  "northStar": "Trailhead",
+  "overview": "Custom software as a trail walked one marker at a time. Pine sign boards head and close each page on a light map ground; blue Buckeye Trail blazes are the only markers; logo navy carries the text.",
+  "keyCharacteristics": [
+   "Pine boards only at page heads and closing boards",
+   "Blazes as the single marker system",
+   "Ruled lists instead of card grids",
+   "One authored motion moment: the trail draw"
+  ],
+  "rules": [
+   {
+    "name": "The Board Rule",
+    "body": "Pine fills page heads and closing boards only.",
+    "section": "colors"
+   },
+   {
+    "name": "One Marker",
+    "body": "The blaze is the only bullet, step and metric marker.",
+    "section": "colors"
+   },
+   {
+    "name": "No Eyebrows",
+    "body": "Context goes under the heading, never above it.",
+    "section": "typography"
+   }
+  ],
+  "dos": [
+   "Start the enquiry in place",
+   "Keep feedback fast (100–260ms) on strong ease-out curves",
+   "Respect prefers-reduced-motion"
+  ],
+  "donts": [
+   "No eyebrows, icon tiles, glyph bullets, glow or monospace costume",
+   "No coloured side stripes",
+   "No board-filled content cards",
+   "No section scroll-reveals"
+  ]
+ }
+}
