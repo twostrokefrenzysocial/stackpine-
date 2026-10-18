@@ -103,6 +103,7 @@ export async function handle(request: Request, env: HandlerEnv, deps: HandlerDep
     if (method === 'POST' && isOpenAI) return await forward('openai_chat', request, url, env, deps);
     if (method === 'GET' && path === '/usage') return json(await ledgerCall(() => deps.ledger.usage()));
     if (method === 'PUT' && path === '/cap') return await putCap(request, deps.ledger);
+    if (method === 'PUT' && path === '/usage') return await putSpent(request, deps.ledger);
   } catch (err) {
     if (err instanceof LedgerError) {
       return errorResponse(503, 'optimus_ledger_unavailable', 'Spending ledger is temporarily unavailable.');
@@ -136,6 +137,21 @@ async function putCap(request: Request, ledger: LedgerApi): Promise<Response> {
     return errorResponse(400, 'optimus_invalid_cap', `capUsd must be a number greater than 0 and at most ${MAX_CAP_USD}.`);
   }
   return json(await ledgerCall(() => ledger.setCap(capUsd)));
+}
+
+/** Lets the owner correct this month's total to match the provider's bill. */
+async function putSpent(request: Request, ledger: LedgerApi): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse(400, 'optimus_invalid_spent', 'Body must be JSON like {"spentUsd": 0.12}.');
+  }
+  const spentUsd = (body as { spentUsd?: unknown } | null)?.spentUsd;
+  if (typeof spentUsd !== 'number' || !Number.isFinite(spentUsd) || spentUsd < 0 || spentUsd > MAX_CAP_USD) {
+    return errorResponse(400, 'optimus_invalid_spent', `spentUsd must be a number from 0 to ${MAX_CAP_USD}.`);
+  }
+  return json(await ledgerCall(() => ledger.setSpent(spentUsd)));
 }
 
 async function forward(route: Route, request: Request, url: URL, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {

@@ -55,6 +55,8 @@ export interface LedgerApi {
   record(costUsd: number): Promise<UsageSnapshot>;
   usage(): Promise<UsageSnapshot>;
   setCap(capUsd: number): Promise<UsageSnapshot>;
+  /** Overwrites this month's spend, e.g. to match the provider's own bill. */
+  setSpent(spentUsd: number): Promise<UsageSnapshot>;
 }
 
 interface MonthTotals {
@@ -145,6 +147,17 @@ export class LedgerCore implements LedgerApi {
     await this.storage.put(CAP_KEY, capUsd);
     const month = monthOf(this.now());
     return this.snapshot(month, await this.totals(month), capUsd);
+  }
+
+  async setSpent(spentUsd: number): Promise<UsageSnapshot> {
+    if (typeof spentUsd !== 'number' || !Number.isFinite(spentUsd) || spentUsd < 0 || spentUsd > MAX_CAP_USD) {
+      throw new RangeError(`spentUsd must be a number in [0, ${MAX_CAP_USD}]`);
+    }
+    const month = monthOf(this.now());
+    const totals = await this.totals(month);
+    const next: MonthTotals = { spentUsd, requests: totals.requests };
+    await this.storage.put(spendKey(month), next);
+    return this.snapshot(month, next, await this.cap());
   }
 
   private async cap(): Promise<number> {

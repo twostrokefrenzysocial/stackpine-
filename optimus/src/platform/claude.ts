@@ -124,5 +124,6 @@ async function proxyJson(proxyUrl: string, token: string, path: string, init?: R
 
 export const proxyApi = {
   usage: (url: string, token: string) => proxyJson(url, token, '/usage'),
+  setSpent: (url: string, token: string, spentUsd: number) => proxyJson(url, token, '/usage', { method: 'PUT', body: JSON.stringify({ spentUsd }) }),
   setCap: (url: string, token: string, capUsd: number) => proxyJson(url, token, '/cap', { method: 'PUT', body: JSON.stringify({ capUsd }) }),
 };

@@ -13,6 +13,7 @@ export type OptimusErrorType =
   | 'optimus_model_not_allowed'
   | 'optimus_max_tokens_too_large'
   | 'optimus_invalid_cap'
+  | 'optimus_invalid_spent'
   | 'optimus_spending_cap_reached'
   | 'optimus_rate_limited'
   | 'optimus_misconfigured'

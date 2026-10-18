@@ -54,6 +54,8 @@ export default function Settings() {
   const [usage, setUsage] = useState<ProxyUsage | null>(null);
   const [connMsg, setConnMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [cap, setCap] = useState(String(settings.spendingCapUsd));
+  const [actual, setActual] = useState('');
+  const [usageMsg, setUsageMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [passphrase, setPassphrase] = useState('');
   const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -119,16 +121,34 @@ export default function Settings() {
   const saveCap = async () => {
     const v = Number(cap);
     if (!Number.isFinite(v) || v <= 0 || v > 1000) {
-      setConnMsg({ ok: false, text: 'Enter a cap between $1 and $1000.' });
+      setUsageMsg({ ok: false, text: 'Enter a cap between $1 and $1000.' });
       return;
     }
     const t = await proxyToken.get();
     try {
       if (settings.proxyUrl && t) setUsage(await proxyApi.setCap(settings.proxyUrl, t, v));
       await updateSettings({ spendingCapUsd: v });
-      setConnMsg({ ok: true, text: `Monthly cap set to $${v}.` });
+      setUsageMsg({ ok: true, text: `Monthly cap set to $${v}.` });
     } catch (e) {
-      setConnMsg({ ok: false, text: friendlyError(e).body });
+      setUsageMsg({ ok: false, text: friendlyError(e).body });
+    }
+  };
+
+  /** Replace this month's estimate with the real figure from the provider's usage page. */
+  const correctSpent = async () => {
+    const v = Number(actual.replace(/[$,\s]/g, ''));
+    if (!actual.trim() || !Number.isFinite(v) || v < 0 || v > 1000) {
+      setUsageMsg({ ok: false, text: 'Enter the amount shown on your AI account’s usage page, for example 0.12.' });
+      return;
+    }
+    const t = await proxyToken.get();
+    if (!settings.proxyUrl || !t) return;
+    try {
+      setUsage(await proxyApi.setSpent(settings.proxyUrl, t, v));
+      setActual('');
+      setUsageMsg({ ok: true, text: `This month’s total is now $${v.toFixed(2)}. New requests are added on top at real prices.` });
+    } catch (e) {
+      setUsageMsg({ ok: false, text: friendlyError(e).body });
     }
   };
 
@@ -256,6 +276,17 @@ export default function Settings() {
           )}
           <Field label="Monthly spending cap (USD)" value={cap} onChangeText={setCap} keyboardType="decimal-pad" />
           <Button label="Set cap" variant="secondary" onPress={saveCap} />
+          {usage && (
+            <>
+              <Field label="Correct this month’s total (USD)" value={actual} onChangeText={setActual} keyboardType="decimal-pad" placeholder={`From ${settings.provider === 'openai' ? 'platform.openai.com › Usage' : 'console.anthropic.com › Usage'}`} />
+              <Button label="Match my bill" variant="secondary" onPress={correctSpent} />
+            </>
+          )}
+          {usageMsg && (
+            <Txt variant="small" color={usageMsg.ok ? p.text : p.redGlow}>
+              {usageMsg.text}
+            </Txt>
+          )}
         </Section>
 
         <Section title="Data">

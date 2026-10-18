@@ -298,6 +298,17 @@ describe('/usage and /cap', () => {
     });
   });
 
+  it('corrects this month\'s spend to match the provider bill, keeping the request count', async () => {
+    const { call, ledger } = setup();
+    await ledger.record(5.71);
+    const res = await call(authed('/usage', { method: 'PUT', body: JSON.stringify({ spentUsd: 0.12 }) }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ spentUsd: 0.12, requests: 1, remainingUsd: 19.88 });
+    const bad = await call(authed('/usage', { method: 'PUT', body: JSON.stringify({ spentUsd: -1 }) }));
+    expect(bad.status).toBe(400);
+    expect((await call(new Request(`${BASE}/usage`, { method: 'PUT', body: '{"spentUsd":0}' }))).status).toBe(401);
+  });
+
   it('updates the cap', async () => {
     const { call } = setup();
     const res = await call(authed('/cap', { method: 'PUT', body: JSON.stringify({ capUsd: 50 }) }));

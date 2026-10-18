@@ -48,4 +48,8 @@ export class Ledger extends DurableObject<LedgerEnv> implements LedgerApi {
   setCap(capUsd: number): Promise<UsageSnapshot> {
     return this.core.setCap(capUsd);
   }
+
+  setSpent(spentUsd: number): Promise<UsageSnapshot> {
+    return this.core.setSpent(spentUsd);
+  }
 }
