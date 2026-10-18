@@ -236,8 +236,8 @@ export default function Settings() {
           />
           {provider === 'openai' && (
             <>
-              <Field label="OpenAI model" value={oaModel} onChangeText={setOaModel} placeholder="Model id from platform.openai.com" autoCapitalize="none" autoCorrect={false} />
-              <Field label="Background model (optional)" value={oaBgModel} onChangeText={setOaBgModel} placeholder="A cheaper model for memory and summaries" autoCapitalize="none" autoCorrect={false} />
+              <Field label="OpenAI model" value={oaModel} onChangeText={setOaModel} placeholder="gpt-5 (recommended)" autoCapitalize="none" autoCorrect={false} />
+              <Field label="Background model (optional)" value={oaBgModel} onChangeText={setOaBgModel} placeholder="gpt-5-mini (cheaper, for memory and summaries)" autoCapitalize="none" autoCorrect={false} />
             </>
           )}
           <Field label="Proxy URL" value={url} onChangeText={setUrl} placeholder="https://optimus-proxy.example.workers.dev" autoCapitalize="none" autoCorrect={false} keyboardType="url" />

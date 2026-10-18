@@ -93,3 +93,13 @@ export async function notifyBriefReady(headline: string): Promise<void> {
     trigger: null,
   });
 }
+
+/** An urgent proactive suggestion; tapping it opens Home, where it can be done in one tap. */
+export async function notifyInsight(i: { title: string; why: string }): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await setupNotifications();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: i.title, body: i.why, data: { url: 'optimus://home' } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: CHANNELS.reminders },
+  });
+}

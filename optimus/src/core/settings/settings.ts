@@ -9,6 +9,8 @@ export interface Settings {
   /** OpenAI model ids (must be in the proxy's OPENAI_MODELS list). */
   openaiModel: string;
   openaiBackgroundModel: string;
+  /** Bumped when the recommended models change, to upgrade once. */
+  modelDefaultsVersion?: number;
   // proxyToken lives in secure storage, not here.
   theme: 'light';
   voiceReplies: boolean;
@@ -79,4 +81,24 @@ export async function kvSet(db: Db, key: string, value: string): Promise<void> {
     key,
     value,
   ]);
+}
+
+/** Recommended OpenAI models: the full model for conversation, mini for background work. */
+export const RECOMMENDED_OPENAI = { main: 'gpt-5', background: 'gpt-5-mini' };
+export const MODEL_DEFAULTS_VERSION = 1;
+
+/**
+ * One-time upgrade of the OpenAI model choice. Someone running the budget
+ * model for chat moves to the full model, keeping the budget one for
+ * background jobs. A model the user typed themselves is left alone.
+ */
+export function upgradeModelDefaults(s: Settings): Partial<Settings> | null {
+  if ((s.modelDefaultsVersion ?? 0) >= MODEL_DEFAULTS_VERSION) return null;
+  const patch: Partial<Settings> = { modelDefaultsVersion: MODEL_DEFAULTS_VERSION };
+  const main = s.openaiModel.trim();
+  if (!main || main === 'gpt-5-mini') {
+    patch.openaiModel = RECOMMENDED_OPENAI.main;
+    if (!s.openaiBackgroundModel.trim()) patch.openaiBackgroundModel = RECOMMENDED_OPENAI.background;
+  }
+  return patch;
 }

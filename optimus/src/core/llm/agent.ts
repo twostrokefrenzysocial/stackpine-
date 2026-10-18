@@ -13,6 +13,7 @@ import type { ToolContext, ToolDef } from '../tools/types';
 import type { ChatCard, ChatMessage } from '../types';
 import { describeNow } from '../util/time';
 import { MAIN_MODEL, MAX_TOOL_CALLS_PER_REQUEST, OPTIMUS_SYSTEM_PROMPT } from './prompts';
+import { buildSituation } from './situation';
 import { LlmError, type LlmTransport } from './transport';
 
 export type TurnEvent =
@@ -121,6 +122,7 @@ export function buildSystem(parts: {
   dataMode: string;
   unavailable: string[];
   rollingSummary?: string;
+  situation?: string;
 }): BetaTextBlockParam[] {
   const blocks: BetaTextBlockParam[] = [{ type: 'text', text: OPTIMUS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
   if (parts.coreMemory) {
@@ -129,6 +131,7 @@ export function buildSystem(parts: {
   const dynamic = [
     `# Right now\n${describeNow(parts.now)}. ${parts.dataMode === 'mock' ? 'Data mode: MOCK (demo data, not the user’s real phone). Behave exactly as you would with real data.' : 'Data mode: real device data.'}`,
     parts.unavailable.length ? `Optimus cannot currently see: ${parts.unavailable.join(', ')}. If a question needs them, say so.` : '',
+    parts.situation ?? '',
     parts.rollingSummary ? `# Earlier in this conversation (summary)\n${parts.rollingSummary}` : '',
     parts.relevantMemory ? `# Relevant memories\n${parts.relevantMemory}` : '',
   ]
@@ -148,7 +151,10 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     .slice(-6)
     .map((m) => m.text)
     .join('\n');
-  const memory = await buildMemoryContext(ctx.memory, { query: input.userText, recentText, now });
+  const [memory, situation] = await Promise.all([
+    buildMemoryContext(ctx.memory, { query: input.userText, recentText, now }),
+    buildSituation(ctx.sources, now).catch(() => ''),
+  ]);
 
   const system = buildSystem({
     coreMemory: memory.core,
@@ -157,6 +163,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     dataMode: ctx.sources.mode,
     unavailable: input.unavailableSources,
     rollingSummary: input.rollingSummary,
+    situation,
   });
 
   const messages = await buildHistory(input.history, input.actions);

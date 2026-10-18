@@ -278,6 +278,15 @@ export class HeuristicBackgroundLlm implements BackgroundLlm {
         episode: { summary: `The user asked: ${userLines.slice(0, 3).join(' / ').slice(0, 300)}`, decisions: [], open_tasks: [], topics: [...new Set(first.match(/\b[A-Z][a-z]+\b/g) ?? [])].slice(0, 5) },
       });
     }
+    if (task.name === 'insights') {
+      // Offline demo: missed calls and people waiting become suggestions.
+      const m = task.prompt.match(/\{[\s\S]*\}/);
+      const data = (m ? JSON.parse(m[0]) : {}) as { missed_calls?: { from: string }[]; waiting_texts?: { from: string; text: string }[] };
+      const out: { title: string; why: string; ask: string; priority: 'high' | 'normal' }[] = [];
+      for (const c of (data.missed_calls ?? []).slice(0, 1)) out.push({ title: `Call ${c.from} back`, why: `You missed a call from ${c.from}.`, ask: `Call ${c.from}`, priority: 'normal' });
+      for (const t of (data.waiting_texts ?? []).slice(0, 2)) out.push({ title: `Reply to ${t.from}`, why: `${t.from} texted: “${t.text.slice(0, 80)}”`, ask: `Draft a reply to ${t.from}`, priority: 'normal' });
+      return task.schema.parse({ suggestions: out });
+    }
     if (task.name === 'daily_routine') {
       // Offline demo: no writing model, so repeat the instruction itself.
       const p = JSON.parse(task.prompt) as { instruction: string; days_needed: number };

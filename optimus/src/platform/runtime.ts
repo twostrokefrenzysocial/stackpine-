@@ -9,7 +9,7 @@ import { HeuristicBackgroundLlm, ScriptedTransport } from '../core/llm/scripted'
 import { MAIN_MODEL } from '../core/llm/prompts';
 import { LlmError, type LlmTransport } from '../core/llm/transport';
 import { createMockSources, type MockDataSources } from '../core/mock/sources';
-import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../core/settings/settings';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, upgradeModelDefaults, type Settings } from '../core/settings/settings';
 import type { DataSources, SourceName } from '../core/sources/types';
 import { z } from 'zod';
 import { OpenAIBackgroundLlm, OpenAITransport, type OpenAIConfig } from '../core/llm/openai';
@@ -58,6 +58,8 @@ export function boot(): Promise<Runtime> {
 async function doBoot(): Promise<Runtime> {
   const db = await openDatabase();
   let settings = await loadSettings(db).catch(() => DEFAULT_SETTINGS);
+  const upgrade = upgradeModelDefaults(settings);
+  if (upgrade) settings = await saveSettings(db, upgrade).catch(() => ({ ...settings, ...upgrade }));
   let client: Anthropic | null = null;
   let transport: LlmTransport;
   let background: BackgroundLlm;

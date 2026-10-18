@@ -21,8 +21,10 @@ export function useAppLifecycle() {
         const { ensureTodaysBrief } = await import('../platform/briefRunner');
         await ensureTodaysBrief(rt).catch(() => null);
         await rt.engine.refillRoutines().catch(() => 0);
+        const { ensureInsights } = await import('../platform/insightsRunner');
+        const suggestions = await ensureInsights(rt).catch(() => []);
         const n = await rt.engine.processIdleConversations(activeConversation.id ?? undefined).catch(() => 0);
-        if (n) bump();
+        if (n || suggestions.length) bump();
       } finally {
         running.current = false;
       }

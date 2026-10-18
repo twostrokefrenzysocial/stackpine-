@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BriefStore, generateBrief } from '../core/brief/brief';
+import { currentInsights, dismissInsight } from '../core/insights/insights';
 import type { DailyBrief } from '../core/types';
 import { formatDay, formatTime, isoDay, relativeTime } from '../core/util/time';
 import { ensureTodaysBrief } from '../platform/briefRunner';
@@ -55,8 +56,8 @@ export default function Home() {
         offline = true;
       }
     }
-    const [name, reminders, pendingMemories] = await Promise.all([userName(rt, settings.userName), rt.engine.reminders.upcoming(5), rt.engine.memory.listPending()]);
-    return { brief, offline, name, reminders, pendingMemories: pendingMemories.length };
+    const [name, reminders, pendingMemories, suggestions] = await Promise.all([userName(rt, settings.userName), rt.engine.reminders.upcoming(5), rt.engine.memory.listPending(), currentInsights(rt.db)]);
+    return { brief, offline, name, reminders, pendingMemories: pendingMemories.length, suggestions };
   }, [settings.dataMode, settings.userName]);
 
   const brief = data?.brief;
@@ -117,6 +118,38 @@ export default function Home() {
 
         <View style={{ gap: space.md }}>
           {data?.offline && <Banner icon="offline" title="Offline" body={`Showing your last brief from ${brief ? formatDay(brief.generatedAt) : 'earlier'}. Conversations and memories still work.`} />}
+
+          {!!data?.suggestions.length && (
+            <Panel label="Suggested for you" tone="inset" index={0}>
+              <View style={{ gap: space.lg }}>
+                {data.suggestions.map((s) => (
+                  <View key={s.id} style={{ gap: space.sm }}>
+                    <View style={styles.rowTop}>
+                      {s.priority === 'high' && <View style={[styles.liveDot, { backgroundColor: p.red }]} />}
+                      <Txt variant="bodyStrong" style={{ flex: 1 }}>
+                        {s.title}
+                      </Txt>
+                    </View>
+                    <Txt variant="small" color={p.textSecondary}>
+                      {s.why}
+                    </Txt>
+                    <View style={styles.row}>
+                      <Button label="Do it" compact onPress={() => router.push(`/chat/new?q=${encodeURIComponent(s.ask)}&from=suggestion`)} accessibilityHint={s.ask} />
+                      <Button
+                        label="Not now"
+                        variant="ghost"
+                        compact
+                        onPress={async () => {
+                          await dismissInsight(rt.db, s.id);
+                          bump();
+                        }}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Panel>
+          )}
 
           {brief && <EventsCard events={brief.schedule} label="Schedule" index={0} />}
 
@@ -250,6 +283,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   tick: { width: 8, height: 1 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   ask: { position: 'absolute', left: GUTTER, right: GUTTER, flexDirection: 'row', gap: space.sm, alignItems: 'center' },
   askField: { flex: 1, minHeight: TOUCH + 8, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.lg },

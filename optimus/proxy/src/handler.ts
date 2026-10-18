@@ -11,7 +11,7 @@
 import { isAuthorized } from './auth';
 import { errorResponse, json } from './http';
 import { isValidCap, MAX_CAP_USD, type LedgerApi } from './ledgerCore';
-import { costUsd, openAICostUsd, parseOpenAIPrices } from './pricing';
+import { costUsd, DEFAULT_OPENAI_PRICES, openAICostUsd, parseOpenAIPrices } from './pricing';
 import { readUsage } from './usage';
 
 export const ANTHROPIC_API_ORIGIN = 'https://api.anthropic.com';
@@ -63,11 +63,17 @@ export function allowedModels(env: HandlerEnv): string[] {
   return list.length > 0 ? list : DEFAULT_ALLOWED_MODELS;
 }
 
+/**
+ * OpenAI models the app may use: the ones in OPENAI_MODELS, plus the common
+ * models the proxy has prices for (so switching to e.g. gpt-5 needs no
+ * proxy change). OpenAI stays off until OPENAI_API_KEY is set.
+ */
 export function allowedOpenAIModels(env: HandlerEnv): string[] {
-  return (env.OPENAI_MODELS ?? '')
+  const listed = (env.OPENAI_MODELS ?? '')
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean);
+  return [...new Set([...listed, ...Object.keys(DEFAULT_OPENAI_PRICES)])];
 }
 
 export async function handle(request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
@@ -169,9 +175,7 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
   const openai = route === 'openai_chat';
   const model = payload.model;
   const allowed = openai ? allowedOpenAIModels(env) : allowedModels(env);
-  if (openai && allowed.length === 0) {
-    return errorResponse(400, 'optimus_model_not_allowed', 'OpenAI is not enabled on this proxy. Set OPENAI_MODELS in wrangler.toml.', { allowedModels: [] });
-  }
+
   if (typeof model !== 'string' || !allowed.includes(model)) {
     return errorResponse(400, 'optimus_model_not_allowed', `Model must be one of: ${allowed.join(', ')}.`, {
       allowedModels: allowed,

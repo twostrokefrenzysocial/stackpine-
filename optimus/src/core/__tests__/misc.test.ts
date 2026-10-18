@@ -104,3 +104,13 @@ describe('markdown in replies', () => {
     expect(parseInline('5 * 3 = 15 and snake_case_name')).toEqual([{ text: '5 * 3 = 15 and snake_case_name' }]);
   });
 });
+
+describe('model upgrade', () => {
+  const { upgradeModelDefaults, DEFAULT_SETTINGS } = jest.requireActual<typeof import('../settings/settings')>('../settings/settings');
+  it('moves chat from gpt-5-mini to gpt-5 once, keeping mini for background', () => {
+    const p = upgradeModelDefaults({ ...DEFAULT_SETTINGS, provider: 'openai', openaiModel: 'gpt-5-mini', openaiBackgroundModel: '' });
+    expect(p).toEqual({ modelDefaultsVersion: 1, openaiModel: 'gpt-5', openaiBackgroundModel: 'gpt-5-mini' });
+    expect(upgradeModelDefaults({ ...DEFAULT_SETTINGS, modelDefaultsVersion: 1, openaiModel: 'gpt-5-mini' })).toBeNull();
+    expect(upgradeModelDefaults({ ...DEFAULT_SETTINGS, openaiModel: 'my-custom-model' })).toEqual({ modelDefaultsVersion: 1 });
+  });
+});

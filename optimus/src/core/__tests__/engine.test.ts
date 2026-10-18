@@ -1,6 +1,7 @@
 import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import { OptimusEngine } from '../engine';
 import { OpenAITransport } from '../llm/openai';
+import { MAX_TOOL_CALLS_PER_REQUEST } from '../llm/prompts';
 import { HeuristicBackgroundLlm, ScriptedTransport } from '../llm/scripted';
 import type { ChatRequest, LlmTransport } from '../llm/transport';
 import { createMockSources } from '../mock/sources';
@@ -152,7 +153,7 @@ describe('engine (phase acceptance)', () => {
     expect(result.content.filter((b) => b.type === 'image')).toHaveLength(2);
   });
 
-  it('enforces the 8 tool-call limit per request', async () => {
+  it('enforces the tool-call limit per request', async () => {
     const db = await createMigratedDb();
     let n = 0;
     const fake = new FakeTransport((req) =>
@@ -163,10 +164,10 @@ describe('engine (phase acceptance)', () => {
     const { engine } = makeEngine(db, fake);
     const conv = await engine.conversations.create();
     const r = await engine.send(conv.id, 'loop forever', () => {});
-    expect(r.result.toolCalls).toBe(8);
+    expect(r.result.toolCalls).toBe(MAX_TOOL_CALLS_PER_REQUEST);
     expect(r.result.text).toBe('Here is what I found.');
     expect(fake.requests[fake.requests.length - 1].toolChoice).toEqual({ type: 'none' });
-    expect((await engine.activity.list({ kind: 'memory' })).length + (await engine.activity.list({ kind: 'read' })).length).toBe(8);
+    expect((await engine.activity.list({ kind: 'memory' })).length + (await engine.activity.list({ kind: "read" })).length).toBe(MAX_TOOL_CALLS_PER_REQUEST);
   });
 
   it('caches the stable system prompt and wraps third-party data as untrusted', async () => {
@@ -268,5 +269,19 @@ describe('daily routines end to end', () => {
     expect(await engine.routines.list()).toHaveLength(1);
     const items = await db.all<{ date: string }>('SELECT date FROM routine_items');
     expect(items).toHaveLength(7);
+  });
+});
+
+describe('situational awareness', () => {
+  it('gives the model a quick, untrusted-wrapped look at the day on every turn', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport(() => ({ content: [{ type: 'text', text: 'ok', citations: null }] }));
+    const { engine } = makeEngine(db, fake);
+    const conv = await engine.conversations.create();
+    await engine.send(conv.id, 'Anything I should know?', () => {});
+    const system = fake.requests[0].system.map((b) => b.text).join('\n');
+    expect(system).toContain('# Situation');
+    expect(system).toMatch(/<untrusted_data[^>]*situation/);
+    expect(system).toMatch(/next_24h|missed_calls_12h|texted_you_last_6h/);
   });
 });
