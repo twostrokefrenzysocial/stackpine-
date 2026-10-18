@@ -1,7 +1,7 @@
 import { BarlowSemiCondensed_300Light, BarlowSemiCondensed_500Medium, BarlowSemiCondensed_600SemiBold } from '@expo-google-fonts/barlow-semi-condensed';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, useFonts } from '@expo-google-fonts/inter';
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
@@ -9,7 +9,10 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { registerBackgroundWork } from '../platform/backgroundTask';
+import { routeNotificationTaps, scheduleDailyBrief } from '../platform/notify';
 import { boot, type Runtime } from '../platform/runtime';
+import { handleShortcuts, installShortcuts } from '../platform/shortcuts';
 import { AppProvider, useApp } from '../ui/AppContext';
 import { BootSplash } from '../ui/components/BootSplash';
 import { LockGate } from '../ui/LockGate';
@@ -20,6 +23,19 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 function Shell() {
   const { palette, settings } = useApp();
   useAppLifecycle();
+  useEffect(() => {
+    registerBackgroundWork().catch(() => undefined);
+    installShortcuts();
+    const a = handleShortcuts();
+    const b = routeNotificationTaps((href) => router.push(href as never));
+    return () => {
+      a();
+      b();
+    };
+  }, []);
+  useEffect(() => {
+    scheduleDailyBrief(settings.briefEnabled, settings.briefTime).catch(() => undefined);
+  }, [settings.briefEnabled, settings.briefTime]);
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(palette.bg).catch(() => undefined);
   }, [palette.bg]);

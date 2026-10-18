@@ -32,13 +32,16 @@ export class BriefStore {
   }
 }
 
-/** Is it time for today's brief, and is it missing? */
-export function briefDue(briefTime: string, now: Date, existing: DailyBrief | null): boolean {
+/**
+ * Is it time for today's brief, and is it missing? `leadMinutes` lets the
+ * background task build it shortly before its notification fires.
+ */
+export function briefDue(briefTime: string, now: Date, existing: DailyBrief | null, leadMinutes = 0): boolean {
   if (existing && existing.date === isoDay(now)) return false;
   const [h, m] = briefTime.split(':').map(Number);
   const due = new Date(now);
   due.setHours(h || 0, m || 0, 0, 0);
-  return now.getTime() >= due.getTime();
+  return now.getTime() >= due.getTime() - leadMinutes * 60_000;
 }
 
 const NarrativeSchema = z.object({ headline: z.string(), narrative: z.string() });

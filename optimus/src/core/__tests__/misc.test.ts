@@ -43,6 +43,9 @@ describe('daily brief', () => {
     expect(briefDue('07:00', now, null)).toBe(true);
     expect(briefDue('08:00', now, null)).toBe(false);
     expect(briefDue('07:00', now, { date: '2026-10-18' } as never)).toBe(false);
+    // The background task may build it up to 45 minutes early, ahead of the notification.
+    expect(briefDue('08:00', now, null, 45)).toBe(true);
+    expect(briefDue('08:30', now, null, 45)).toBe(false);
   });
 
   it('builds schedule, people waiting and missed calls, skipping suspicious senders', async () => {

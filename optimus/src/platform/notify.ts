@@ -35,6 +35,39 @@ export const notificationScheduler: ReminderScheduler = {
   },
 };
 
+const BRIEF_ID = 'optimus-daily-brief';
+
+/**
+ * The morning brief notification: a daily local alarm at the chosen time.
+ * The background task builds the brief shortly before; if Samsung delayed
+ * it, opening the notification builds it instantly.
+ */
+export async function scheduleDailyBrief(enabled: boolean, time: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await setupNotifications();
+  await Notifications.cancelScheduledNotificationAsync(BRIEF_ID).catch(() => undefined);
+  if (!enabled) return;
+  const [hour, minute] = time.split(':').map(Number);
+  await Notifications.scheduleNotificationAsync({
+    identifier: BRIEF_ID,
+    content: { title: 'Your brief is ready', body: 'Schedule, people waiting on you, and anything you missed.', data: { url: 'optimus://brief' } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: hour || 7, minute: minute || 0, channelId: CHANNELS.brief },
+  });
+}
+
+/** Opens the screen a tapped notification points at. Returns an unsubscribe. */
+export function routeNotificationTaps(go: (href: string) => void): () => void {
+  if (Platform.OS === 'web') return () => undefined;
+  const open = (url: unknown) => {
+    if (typeof url !== 'string') return;
+    go(url.includes('voice') ? '/chat/new?voice=1' : '/');
+  };
+  const last = Notifications.getLastNotificationResponse();
+  if (last) open(last.notification.request.content.data?.url);
+  const sub = Notifications.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data?.url));
+  return () => sub.remove();
+}
+
 /** Fires immediately: used when the background task finishes today's brief. */
 export async function notifyBriefReady(headline: string): Promise<void> {
   if (Platform.OS === 'web') return;
