@@ -308,14 +308,28 @@ export class OpenAIBackgroundLlm implements BackgroundLlm {
     this.label = `OpenAI ${cfg.backgroundModel || cfg.model}`;
   }
 
-  async json<T>(task: { name: string; system: string; prompt: string; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+  json<T>(task: { name: string; system: string; prompt: string; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+    return this.run(task, task.prompt);
+  }
+
+  /** Photos go as low-detail images: cheap, and enough to describe people, places and text. */
+  vision<T>(task: { name: string; system: string; prompt: string; images: { label: string; base64: string; mediaType: 'image/jpeg' }[]; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+    const parts: OaContentPart[] = [{ type: 'text', text: task.prompt }];
+    for (const img of task.images) {
+      parts.push({ type: 'text', text: img.label });
+      parts.push({ type: 'image_url', image_url: { url: `data:${img.mediaType};base64,${img.base64}`, detail: 'low' } });
+    }
+    return this.run(task, parts);
+  }
+
+  private async run<T>(task: { name: string; system: string; schema: z.ZodType<T>; maxTokens?: number }, content: string | OaContentPart[]): Promise<T> {
     const model = this.cfg.backgroundModel || this.cfg.model;
     if (!model) throw new LlmError('not-configured', 'No OpenAI model set');
     const res = await post(this.cfg, {
       model,
       messages: [
         { role: 'system', content: task.system },
-        { role: 'user', content: task.prompt },
+        { role: 'user', content },
       ],
       max_completion_tokens: task.maxTokens ?? 4000,
       reasoning_effort: 'low',

@@ -174,7 +174,7 @@ export type ChatCard =
   | { type: 'events'; events: CalendarEvent[] }
   | { type: 'texts'; messages: SmsMessage[] }
   | { type: 'emails'; emails: EmailMessage[] }
-  | { type: 'photos'; photos: PhotoAsset[] }
+  | { type: 'photos'; photos: PhotoAsset[]; title?: string }
   | { type: 'calls'; calls: CallLogEntry[] }
   | { type: 'notifications'; notifications: CapturedNotification[] }
   | { type: 'confirm'; actionId: string }

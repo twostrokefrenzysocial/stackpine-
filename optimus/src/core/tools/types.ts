@@ -2,6 +2,7 @@ import type { BetaToolResultBlockParam } from '@anthropic-ai/sdk/resources/beta/
 import type { ActionStore } from '../actions/actions';
 import type { ActivityLog } from '../activity/log';
 import type { ConversationStore, EpisodeStore } from '../conversations/store';
+import type { Db } from '../db/types';
 import type { MemoryStore } from '../memory/store';
 import type { RoutineStore } from '../routines/routines';
 import type { ReminderStore } from '../reminders/reminders';
@@ -20,6 +21,8 @@ export interface ToolContext {
   activity: ActivityLog;
   reminders: ReminderStore;
   routines: RoutineStore;
+  /** The on-phone database (photo index and other lookups). */
+  db: Db;
   conversationId: string;
   now: () => Date;
   locationEnabled: boolean;

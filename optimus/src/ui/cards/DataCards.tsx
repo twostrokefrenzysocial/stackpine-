@@ -7,6 +7,7 @@ import { mockPhotoSource } from '../../platform/sources/mockPhotos';
 import { useApp } from '../AppContext';
 import { Icon, type IconName } from '../components/Icon';
 import { Panel } from '../components/Panel';
+import { PhotoViewer } from '../components/PhotoViewer';
 import { Txt } from '../components/Txt';
 import { space } from '../theme';
 import { ConfirmCard } from './ConfirmCard';
@@ -155,13 +156,21 @@ export function NotificationsCard({ notifications, index }: { notifications: Cap
   );
 }
 
-export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: number }) {
+export function PhotoGrid({ photos, title, index }: { photos: PhotoAsset[]; title?: string; index?: number }) {
   const { palette: p } = useApp();
+  const [open, setOpen] = useState<number | null>(null);
   return (
-    <Panel label={`${photos.length} photo${photos.length === 1 ? '' : 's'} reviewed`} index={index}>
+    <Panel label={title || `${photos.length} photo${photos.length === 1 ? '' : 's'}`} index={index}>
       <View style={styles.grid}>
-        {photos.map((ph) => (
-          <Pressable key={ph.id} style={[styles.thumb, { borderColor: p.line }]} accessibilityRole="image" accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}>
+        {photos.map((ph, i) => (
+          <Pressable
+            key={ph.id}
+            onPress={() => setOpen(i)}
+            style={[styles.thumb, { borderColor: p.line }]}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}
+            accessibilityHint="Opens full screen"
+          >
             <Image source={ph.uri.startsWith('mock://') ? mockPhotoSource(ph) : { uri: ph.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={120} />
             <View style={styles.thumbMeta}>
               <Txt variant="mono" color="#FFFFFF" style={{ fontSize: 10 }} numberOfLines={1} maxFontSizeMultiplier={1.2}>
@@ -171,6 +180,7 @@ export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: num
           </Pressable>
         ))}
       </View>
+      {open !== null && <PhotoViewer photos={photos} start={open} onClose={() => setOpen(null)} />}
     </Panel>
   );
 }
@@ -219,7 +229,7 @@ export function ChatCardView({ card, index }: { card: ChatCard; index?: number }
     case 'notifications':
       return <NotificationsCard notifications={card.notifications} index={index} />;
     case 'photos':
-      return <PhotoGrid photos={card.photos} index={index} />;
+      return <PhotoGrid photos={card.photos} title={card.title} index={index} />;
     case 'confirm':
       return <ConfirmCard actionId={card.actionId} />;
     case 'suspicious':

@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import { ensureTodaysBrief } from './briefRunner';
 import { ensureInsights } from './insightsRunner';
+import { runPhotoIndexing } from './photoIndexRunner';
 import { boot } from './runtime';
 import { syncNotifications } from './sync';
 
@@ -21,6 +22,7 @@ TaskManager.defineTask(BACKGROUND_TASK, async () => {
     await ensureTodaysBrief(rt, { lead: true }).catch(() => null);
     await rt.engine.refillRoutines().catch(() => 0);
     await ensureInsights(rt, { notify: true }).catch(() => []);
+    await runPhotoIndexing(rt, { maxBatches: 3 }).catch(() => undefined);
     await rt.engine.processIdleConversations().catch(() => 0);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {

@@ -285,3 +285,26 @@ describe('situational awareness', () => {
     expect(system).toMatch(/next_24h|missed_calls_12h|texted_you_last_6h/);
   });
 });
+
+describe('finding photos', () => {
+  it('searches the photo index and shows only the matches, tappable full screen', async () => {
+    const db = await createMigratedDb();
+    const { indexNextBatch } = jest.requireActual<typeof import('../photos/photoIndex')>('../photos/photoIndex');
+    const fake = new FakeTransport((req, n) => {
+      if (n === 0) return { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 's1', name: 'search_photos', input: { query: 'parking garage level sign car' } }] };
+      if (n === 1) {
+        const last = req.messages[req.messages.length - 1].content as { content: string }[];
+        const id = /"id": "([^"]+)"/.exec(last[0].content)?.[1] ?? 'none';
+        return { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 's2', name: 'show_photos', input: { ids: [id], title: 'Found it' } }] };
+      }
+      return { content: [{ type: 'text', text: 'Here it is.', citations: null }] };
+    });
+    const { engine, sources } = makeEngine(db, fake);
+    while (await indexNextBatch({ db, photos: sources.photos }));
+    const conv = await engine.conversations.create();
+    const { result } = await engine.send(conv.id, 'Find the photo of where I parked', () => {});
+    const card = result.cards.find((c) => c.type === 'photos');
+    expect(card).toMatchObject({ type: 'photos', title: 'Found it' });
+    expect((card as { photos: unknown[] }).photos).toHaveLength(1);
+  });
+});

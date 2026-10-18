@@ -25,6 +25,8 @@ export function useAppLifecycle() {
         const suggestions = await ensureInsights(rt).catch(() => []);
         const n = await rt.engine.processIdleConversations(activeConversation.id ?? undefined).catch(() => 0);
         if (n || suggestions.length) bump();
+        const { runPhotoIndexing } = await import('../platform/photoIndexRunner');
+        void runPhotoIndexing(rt);
       } finally {
         running.current = false;
       }

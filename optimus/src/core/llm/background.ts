@@ -7,6 +7,8 @@ import { MEMORY_CATEGORIES, type ChatMessage, type Conversation, type MemorySour
 export interface BackgroundLlm {
   readonly label: string;
   json<T>(task: { name: string; system: string; prompt: string; schema: z.ZodType<T>; maxTokens?: number }): Promise<T>;
+  /** Same, with images (for describing photos). Optional: not every backend can see. */
+  vision?<T>(task: { name: string; system: string; prompt: string; images: { label: string; base64: string; mediaType: 'image/jpeg' }[]; schema: z.ZodType<T>; maxTokens?: number }): Promise<T>;
 }
 
 export const ExtractionSchema = z.object({

@@ -25,6 +25,8 @@ export interface Settings {
   excludedNotificationApps: string[];
   notificationCaptureEnabled: boolean;
   locationEnabled: boolean;
+  /** Describe photos in the background so search finds anything in the library. */
+  photoIndexEnabled: boolean;
   spendingCapUsd: number;
   onboardingDone: boolean;
   emailAccounts: ('gmail' | 'outlook')[];
@@ -50,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   excludedNotificationApps: [],
   notificationCaptureEnabled: true,
   locationEnabled: false,
+  photoIndexEnabled: true,
   spendingCapUsd: 20,
   onboardingDone: false,
   emailAccounts: [],

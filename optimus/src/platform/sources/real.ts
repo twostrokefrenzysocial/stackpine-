@@ -290,6 +290,16 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
         }
         return out;
       },
+      async page(cursor, size) {
+        const perm = await MediaLibrary.getPermissionsAsync();
+        if (!perm.granted) throw new AccessError('photos', 'permission-denied');
+        const r = await MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: size, after: cursor });
+        return {
+          photos: r.assets.map((a) => ({ id: a.id, uri: a.uri, filename: a.filename, takenAt: new Date(a.creationTime).toISOString(), width: a.width, height: a.height, screenshot: /screenshot|screen_?record|screen ?capture/i.test(`${a.filename} ${a.uri}`) })),
+          next: r.hasNextPage ? r.endCursor : undefined,
+          total: r.totalCount,
+        };
+      },
       async get(id) {
         const a = await MediaLibrary.getAssetInfoAsync(id).catch(() => null);
         if (!a) return null;

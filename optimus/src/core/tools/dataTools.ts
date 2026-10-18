@@ -1,5 +1,6 @@
 import type { BetaImageBlockParam, BetaTextBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { CalendarEvent, CallLogEntry, CapturedNotification, EmailMessage, PhotoAsset, SmsMessage } from '../types';
+import { photoIndexStats, searchPhotoIndex } from '../photos/photoIndex';
 import { DAY, HOUR, addDays, endOfDay, formatTime, startOfDay } from '../util/time';
 import { errorOutcome, isoOrUndefined, num, resolveContact, scanItems, str, truncate, untrustedContent } from './helpers';
 import type { ToolContext, ToolDef, ToolOutcome } from './types';
@@ -519,7 +520,50 @@ export const lookAtPhotos: ToolDef = {
         shown.push(p);
       }
       if (!shown.length) return { content: 'None of those photo ids exist.', isError: true, activity: 'look_at_photos: no valid ids' };
-      return { content: blocks, cards: [{ type: 'photos', photos: shown }], activity: `Sent ${shown.length} photo(s) to vision (resized to ${VISION_EDGE}px)` };
+      blocks.push({ type: 'text', text: 'Only you see these. To show the user the ones that match, call show_photos with their ids.' });
+      return { content: blocks, activity: `Looked at ${shown.length} photo(s) (resized to ${VISION_EDGE}px)` };
+    }),
+};
+
+export const searchPhotos: ToolDef = {
+  name: 'search_photos',
+  kind: 'read',
+  description:
+    'Search every photo on the phone by what is in it (people and their ages, where they are, setting, objects, text, old scanned prints), using descriptions Optimus wrote ahead of time. Instant and works across the whole library regardless of date. Use this first for any "find the photo of…" request, with the user\'s words plus useful synonyms (e.g. "boy grandma elderly woman cousin grass outdoors old print"). Then confirm the best few with look_at_photos if needed, and show the matches with show_photos.',
+  input_schema: {
+    type: 'object',
+    properties: { query: { type: 'string' }, ...rangeProps, limit: { type: 'integer', maximum: 40 } },
+    required: ['query'],
+  },
+  run: (input, ctx) =>
+    guarded('search_photos', async () => {
+      const [hits, stats] = await Promise.all([
+        searchPhotoIndex(ctx.db, String(input.query ?? ''), { since: isoOrUndefined(input.since), until: isoOrUndefined(input.until), limit: num(input.limit) ?? 20 }),
+        photoIndexStats(ctx.db),
+      ]);
+      const coverage = stats.complete ? `All ${stats.indexed} photos are searchable.` : `${stats.indexed}${stats.total ? ` of ${stats.total}` : ''} photos are searchable so far; the rest are still being described in the background.`;
+      return {
+        content: `${coverage}\n${hits.length ? untrustedContent('photo_index', hits.map((h) => ({ id: h.id, taken: h.takenAt.slice(0, 10), description: h.caption })), []) : 'No matching descriptions.'}`,
+        activity: `Searched photos for “${truncate(String(input.query ?? ''), 40)}” (${hits.length})`,
+      };
+    }),
+};
+
+export const showPhotos: ToolDef = {
+  name: 'show_photos',
+  kind: 'read',
+  description: 'Show the user the photos that answer their request, as a grid they can tap to see full screen. Only include real matches, best first.',
+  input_schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' }, maxItems: 24 }, title: { type: 'string', description: 'e.g. "Found 3 photos"' } }, required: ['ids'] },
+  run: (input, ctx) =>
+    guarded('show_photos', async () => {
+      const ids = (Array.isArray(input.ids) ? input.ids.map(String) : []).slice(0, 24);
+      const shown: PhotoAsset[] = [];
+      for (const id of ids) {
+        const p = (await ctx.sources.photos.get?.(id).catch(() => null)) ?? (await ctx.sources.photos.list({ limit: 600 })).find((x) => x.id === id);
+        if (p) shown.push(p);
+      }
+      if (!shown.length) return { content: 'None of those photo ids exist.', isError: true, activity: 'show_photos: no valid ids' };
+      return { content: `Showing ${shown.length} photo(s) to the user.`, cards: [{ type: 'photos', photos: shown, title: str(input.title) }], activity: `Showed ${shown.length} photo(s)` };
     }),
 };
 
@@ -639,8 +683,10 @@ export const DATA_TOOLS = [
   searchEmail,
   readEmail,
   proposeSendEmail,
+  searchPhotos,
   findPhotos,
   lookAtPhotos,
+  showPhotos,
   getLocation,
   proposeReminder,
   listReminders,

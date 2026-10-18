@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { MAIN_MODEL, BACKGROUND_MODEL } from '../core/llm/prompts';
 import { friendlyError } from '../core/llm/transport';
+import { photoIndexStats } from '../core/photos/photoIndex';
 import { proxyApi, type ProxyUsage } from '../platform/claude';
 import { exportBackup, importBackup } from '../platform/backupFiles';
 import { proxyToken, oauthTokens } from '../platform/secrets';
@@ -64,6 +65,13 @@ export default function Settings() {
   const [newPkg, setNewPkg] = useState('');
 
   const { data: routines } = useData(() => rt.engine.routines.list(), []);
+  const { data: photoStats, reload: refreshPhotoStats } = useData(() => photoIndexStats(rt.db), []);
+  useEffect(() => {
+    // Live progress while indexing runs.
+    const t = setInterval(refreshPhotoStats, 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: apps } = useData(async () => {
     const seen = settings.dataMode === 'mock' ? rt.mock.dataset.notifications.map((n) => ({ packageName: n.packageName, appName: n.appName })) : await rt.engine.notifications.apps();
@@ -306,6 +314,32 @@ export default function Settings() {
           </Txt>
           <Button label="Data sources and permissions" icon="chevronRight" variant="secondary" onPress={() => router.push('/onboarding')} />
           <Toggle label="Location" hint="Off by default. Only for context like “when I get home”." value={settings.locationEnabled} onChange={(v) => updateSettings({ locationEnabled: v })} />
+        </Section>
+
+        <Section title="Photo search">
+          <Toggle
+            label="Make my photos searchable"
+            hint="I describe each photo once in the background (sent small, through your proxy) and keep the descriptions on this phone, so I can find any photo by what’s in it. By my estimate about 5–20 cents per thousand photos, counted in Usage."
+            value={settings.photoIndexEnabled}
+            onChange={async (v) => {
+              await updateSettings({ photoIndexEnabled: v });
+              const r = await import('../platform/photoIndexRunner');
+              if (v) void r.runPhotoIndexing(rt, { onProgress: refreshPhotoStats });
+              else r.stopPhotoIndexing();
+            }}
+          />
+          {photoStats && (
+            <Txt variant="mono" color={p.textSecondary}>
+              {photoStats.complete
+                ? `ALL ${photoStats.indexed.toLocaleString()} PHOTOS SEARCHABLE`
+                : `${photoStats.indexed.toLocaleString()}${photoStats.total ? ` OF ${photoStats.total.toLocaleString()}` : ''} PHOTOS SEARCHABLE${settings.photoIndexEnabled ? ' · WORKING WHILE THE APP IS OPEN' : ''}`}
+            </Txt>
+          )}
+          {settings.dataMode !== 'real' && (
+            <Txt variant="small" color={p.textSecondary}>
+              Switch to Real data to index your own photos.
+            </Txt>
+          )}
         </Section>
 
         <Section title="Email">

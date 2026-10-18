@@ -125,7 +125,7 @@ function planFromUser(text: string, now: Date): Plan {
   return { text: 'I’m running on the offline demo brain right now, so I can only handle the basics: your schedule, what you missed, texts, email, photos, reminders and memory. Connect the proxy in Settings for full conversation.' };
 }
 
-function planFromResults(tool: string, results: BetaToolResultBlockParam[], userQ: string, captions: (id: string) => string | undefined): Plan {
+function planFromResults(tool: string, results: BetaToolResultBlockParam[], userQ: string, captions: (id: string) => string | undefined, toolInput: Record<string, unknown> = {}): Plan {
   const raw = results.map(resultText).join('\n');
   if (results.some((r) => r.is_error)) {
     const msg = raw.replace(/^(ACCESS_UNAVAILABLE|TOOL_FAILED): /, '').split(' Tell the user')[0];
@@ -190,8 +190,10 @@ function planFromResults(tool: string, results: BetaToolResultBlockParam[], user
     case 'look_at_photos': {
       const ids = [...raw.matchAll(/Photo (\S+) —/g)].map((m) => m[1]);
       const best = ids[0];
-      return { text: best ? `Found it — ${captions(best) ?? 'this one'}.` : 'I couldn’t find a match.' };
+      return best ? { tool: 'show_photos', input: { ids: [best], title: 'Found it', note: captions(best) ?? 'this one' } } : { text: 'I couldn’t find a match.' };
     }
+    case 'show_photos':
+      return { text: `Found it — ${String(toolInput.note ?? 'here it is')}.` };
     case 'propose_send_text':
     case 'propose_send_email':
     case 'propose_create_event':
@@ -221,7 +223,13 @@ export class ScriptedTransport implements LlmTransport {
       const prev = req.messages[req.messages.length - 2];
       const toolUse = Array.isArray(prev?.content) ? prev.content.find((b) => b.type === 'tool_use') : undefined;
       const toolName = toolUse && 'name' in toolUse ? String(toolUse.name) : '';
-      plan = planFromResults(toolName, last.content.filter((b): b is BetaToolResultBlockParam => b.type === 'tool_result'), userText(req.messages), this.opts.captions ?? (() => undefined));
+      plan = planFromResults(
+        toolName,
+        last.content.filter((b): b is BetaToolResultBlockParam => b.type === 'tool_result'),
+        userText(req.messages),
+        this.opts.captions ?? (() => undefined),
+        toolUse && 'input' in toolUse ? (toolUse.input as Record<string, unknown>) : {},
+      );
       if (req.toolChoice?.type === 'none' && 'tool' in plan) plan = { text: 'I’ve hit my lookup limit for this request — here’s what I have so far.' };
     } else {
       plan = planFromUser(userText(req.messages), now);

@@ -166,6 +166,19 @@ export const MIGRATIONS: string[] = [
   );
   CREATE UNIQUE INDEX IF NOT EXISTS routine_items_day ON routine_items(routine_id, date);
   `,
+  // v-next: searchable photo descriptions, written once per photo in the background.
+  `
+  CREATE TABLE IF NOT EXISTS photo_index (
+    id TEXT PRIMARY KEY,
+    taken_at TEXT NOT NULL,
+    caption TEXT NOT NULL,
+    indexed_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS photo_index_taken ON photo_index(taken_at);
+  CREATE VIRTUAL TABLE IF NOT EXISTS photo_index_fts USING fts5(
+    caption, photo_id UNINDEXED, tokenize = 'porter unicode61'
+  );
+  `,
 ];
 
 /** True when SQLite was built with FTS5 (the Android build is; the browser preview isn't). */

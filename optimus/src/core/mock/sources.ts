@@ -309,6 +309,15 @@ export function createMockSources(opts: MockSourcesOptions = {}): MockDataSource
         .sort((a, b) => time(b.takenAt) - time(a.takenAt))
         .slice(0, q.limit ?? DEFAULT_LIMITS.photos);
     },
+    async page(cursor, size) {
+      const all = [...dataset.photos].sort((a, b) => time(b.takenAt) - time(a.takenAt));
+      const start = cursor ? Number(cursor) : 0;
+      const next = start + size < all.length ? String(start + size) : undefined;
+      return { photos: all.slice(start, start + size), next, total: all.length };
+    },
+    async get(id) {
+      return dataset.photos.find((p) => p.id === id) ?? null;
+    },
     async loadForVision(id, maxEdge) {
       const photo = dataset.photos.find((p) => p.id === id);
       if (!photo || !opts.photoLoader) return null;

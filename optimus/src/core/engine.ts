@@ -94,6 +94,7 @@ export class OptimusEngine {
         activity: this.activity,
         reminders: this.reminders,
         routines: this.routines,
+        db: this.deps.db,
         conversationId,
         now: this.now,
         locationEnabled: this.deps.locationEnabled?.() ?? false,

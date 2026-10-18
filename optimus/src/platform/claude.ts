@@ -81,13 +81,25 @@ export class ProxyBackgroundLlm implements BackgroundLlm {
   readonly label = 'Claude Haiku';
   constructor(private readonly client: Anthropic) {}
 
-  async json<T>(task: { name: string; system: string; prompt: string; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+  json<T>(task: { name: string; system: string; prompt: string; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+    return this.run(task, task.prompt);
+  }
+
+  vision<T>(task: { name: string; system: string; prompt: string; images: { label: string; base64: string; mediaType: 'image/jpeg' }[]; schema: z.ZodType<T>; maxTokens?: number }): Promise<T> {
+    const content: Anthropic.ContentBlockParam[] = [{ type: 'text', text: task.prompt }];
+    for (const img of task.images) {
+      content.push({ type: 'text', text: img.label }, { type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } });
+    }
+    return this.run(task, content);
+  }
+
+  private async run<T>(task: { name: string; system: string; schema: z.ZodType<T>; maxTokens?: number }, content: string | Anthropic.ContentBlockParam[]): Promise<T> {
     try {
       const res = await this.client.messages.parse({
         model: BACKGROUND_MODEL,
         max_tokens: task.maxTokens ?? 4000,
         system: task.system,
-        messages: [{ role: 'user', content: task.prompt }],
+        messages: [{ role: 'user', content }],
         output_config: { effort: 'low', format: zodOutputFormat(task.schema as never) },
       });
       if (res.parsed_output == null) throw new LlmError('unknown', `${task.name}: no structured output (${res.stop_reason})`);
