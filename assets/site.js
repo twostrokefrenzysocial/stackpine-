@@ -77,10 +77,12 @@
     el.classList.add('is-pending');
   });
 
+  // A shutter picture is clipped to nothing until it opens, and a clipped
+  // element never reports as visible, so watch its container instead.
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) {
-        e.target.classList.remove('is-pending');
+        (e.target._reveal || [e.target]).forEach(function (el) { el.classList.remove('is-pending'); });
         io.unobserve(e.target);
       }
     });
@@ -89,7 +91,11 @@
   // two frames so the held-back state paints before it animates in
   requestAnimationFrame(function () {
     requestAnimationFrame(function () {
-      targets.forEach(function (el) { io.observe(el); });
+      targets.forEach(function (el) {
+        var watch = el.classList.contains('shutter') ? el.parentElement : el;
+        watch._reveal = (watch._reveal || []).concat(el);
+        io.observe(watch);
+      });
     });
   });
 
