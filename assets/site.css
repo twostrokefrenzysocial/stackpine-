@@ -257,7 +257,7 @@ p{max-width:68ch}
 @media (hover:hover) and (pointer:fine){.stage:not(.is-open) .stage__tab:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.2em}}
 @media (max-width:760px){
   .stages{flex-direction:column;height:auto;margin-top:40px}
-  .stage{min-width:0;transition:none}
+  .stage{flex:none;min-width:0;transition:none}
   .stage__tab,.stage.is-open .stage__tab{position:static;writing-mode:horizontal-tb;transform:none;display:flex;align-items:center;min-height:64px;padding:0 20px;font-size:var(--step-lead);letter-spacing:-.02em;width:100%}
   .stage.is-open .stage__tab{padding-top:20px}
   .stage__body{position:static;display:none;padding:12px 20px 24px}
@@ -266,8 +266,9 @@ p{max-width:68ch}
 }
 /* without script every stage is open and readable */
 html:not(.js) .stages{flex-direction:column;height:auto}
+html:not(.js) .stage{flex:none}
 html:not(.js) .stage__tab{position:static;writing-mode:horizontal-tb;transform:none;padding:24px 24px 0}
-html:not(.js) .stage__body{position:static;opacity:1;visibility:visible;padding:12px 24px 24px}
+html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:visible;padding:12px 24px 24px}
 
 /* ---------- names as one paragraph ---------- */
 .names{padding-block:clamp(96px,11vw,176px)}
