@@ -1,0 +1,109 @@
+# Deploys the Optimus proxy (optimus/proxy) to your Cloudflare account and
+# stores its secrets there, so the whole setup can be done from a phone.
+#
+# Repository secrets (Settings › Secrets and variables › Actions › Secrets):
+#   CLOUDFLARE_API_TOKEN   token from the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  your Cloudflare account ID
+#   APP_TOKEN              a long random password; the same goes into the app
+#   OPENAI_API_KEY         optional, for the OpenAI provider
+#   ANTHROPIC_API_KEY      optional, for the Anthropic provider
+# Repository variables (same page, Variables tab):
+#   OPENAI_MODELS          e.g. "model-a,model-b" (ids from platform.openai.com/docs/models)
+#   OPENAI_PRICES          optional JSON, USD per million tokens, see proxy/wrangler.toml
+#
+# The keys only ever travel from GitHub's secret store to Cloudflare's. They
+# are never printed, committed, or put in the app.
+name: Optimus proxy
+
+on:
+  push:
+    branches: [ccr-2690ea4f-9czthr]
+    paths: ['optimus/proxy/**', '.github/workflows/optimus-proxy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: optimus-proxy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: optimus/proxy
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APP_TOKEN: ${{ secrets.APP_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_MODELS: ${{ vars.OPENAI_MODELS }}
+      OPENAI_PRICES: ${{ vars.OPENAI_PRICES }}
+    steps:
+      - name: Check the setup
+        working-directory: .
+        run: |
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "$APP_TOKEN" ] || missing="$missing APP_TOKEN"
+          [ -n "$OPENAI_API_KEY$ANTHROPIC_API_KEY" ] || missing="$missing OPENAI_API_KEY(or ANTHROPIC_API_KEY)"
+          if [ -n "$OPENAI_API_KEY" ] && [ -z "$OPENAI_MODELS" ]; then missing="$missing OPENAI_MODELS(variable)"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Add these in GitHub › Settings › Secrets and variables › Actions, then re-run this job:$missing"
+            exit 1
+          fi
+          if [ ${#APP_TOKEN} -lt 24 ]; then echo "::error::APP_TOKEN must be at least 24 characters."; exit 1; fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: optimus/proxy/package-lock.json
+
+      - name: Install and typecheck
+        run: |
+          npm ci
+          npm run typecheck
+
+      - name: Put the OpenAI model list and prices into wrangler.toml
+        run: |
+          node -e '
+            const fs = require("fs");
+            const models = process.env.OPENAI_MODELS || "";
+            let prices = process.env.OPENAI_PRICES || "{}";
+            try { JSON.parse(prices); } catch { console.error("::error::OPENAI_PRICES is not valid JSON"); process.exit(1); }
+            let t = fs.readFileSync("wrangler.toml", "utf8");
+            t = t.replace(/^OPENAI_MODELS = .*$/m, "OPENAI_MODELS = " + JSON.stringify(models));
+            t = t.replace(/^OPENAI_PRICES = .*$/m, "OPENAI_PRICES = " + JSON.stringify(prices));
+            fs.writeFileSync("wrangler.toml", t);
+          '
+          grep -E "^OPENAI_MODELS" wrangler.toml
+
+      - name: Deploy the Worker
+        run: npx wrangler deploy 2>&1 | tee deploy.log
+
+      - name: Store secrets on Cloudflare
+        run: |
+          printf '%s' "$APP_TOKEN" | npx wrangler secret put APP_TOKEN
+          if [ -n "$OPENAI_API_KEY" ]; then printf '%s' "$OPENAI_API_KEY" | npx wrangler secret put OPENAI_API_KEY; fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY; fi
+
+      - name: Check it is running
+        run: |
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          if [ -z "$url" ]; then echo "::error::Couldn't find the workers.dev address. Open Workers & Pages in the Cloudflare dashboard once to create your workers.dev subdomain, then re-run."; exit 1; fi
+          sleep 5
+          curl -fsS "$url/health"
+          echo
+          {
+            echo "## Optimus proxy is live"
+            echo
+            echo "Proxy URL for the app (Settings › Connection): **$url**"
+            echo
+            echo "App token: the APP_TOKEN secret you saved in GitHub."
+            echo "OpenAI models allowed: \`${OPENAI_MODELS:-none}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
