@@ -10,7 +10,7 @@ import { proxyApi, type ProxyUsage } from '../platform/claude';
 import { exportBackup, importBackup } from '../platform/backupFiles';
 import { proxyToken, oauthTokens } from '../platform/secrets';
 import { connectGmail, connectOutlook, disconnectGmail, disconnectOutlook, icloudStatus } from '../platform/sources/email';
-import { speak } from '../platform/voice';
+import { speakNatural } from '../platform/voice';
 import { useApp, useData } from '../ui/AppContext';
 import { Banner } from '../ui/components/Banner';
 import { Button } from '../ui/components/Button';
@@ -492,7 +492,26 @@ export default function Settings() {
 
         <Section title="Voice and feedback">
           <Toggle label="Spoken replies" hint="When you talk to me, I answer out loud in a low, steady voice." value={settings.voiceReplies} onChange={(v) => updateSettings({ voiceReplies: v })} />
-          <Button label="Test voice" icon="speaker" variant="ghost" compact onPress={() => speak('Optimus online. Standing by.', { rate: settings.voiceRate, pitch: settings.voicePitch })} style={{ alignSelf: 'flex-start' }} />
+          <Segmented
+            label="Accent"
+            value={settings.voiceAccent ?? 'british'}
+            onChange={(v) => updateSettings({ voiceAccent: v })}
+            options={[
+              { value: 'british', label: 'British' },
+              { value: 'american', label: 'American' },
+            ]}
+          />
+          <Button
+            label="Test voice"
+            icon="speaker"
+            variant="ghost"
+            compact
+            onPress={async () => {
+              const token = settings.provider === 'openai' ? await proxyToken.get().catch(() => null) : null;
+              await speakNatural('Optimus online. Standing by.', { proxyUrl: settings.provider === 'openai' ? settings.proxyUrl : undefined, token, accent: settings.voiceAccent ?? 'british', rate: settings.voiceRate, pitch: settings.voicePitch });
+            }}
+            style={{ alignSelf: 'flex-start' }}
+          />
           <Toggle label="Haptics" hint="Light ticks on confirm, send and when I start answering." value={settings.hapticsEnabled} onChange={(v) => updateSettings({ hapticsEnabled: v })} />
           <Toggle label="Sound effects" hint="Subtle clicks. Off by default." value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
         </Section>

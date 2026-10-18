@@ -31,6 +31,8 @@ export interface Settings {
   webSearchEnabled: boolean;
   /** How long the model thinks before answering: fast replies by default. */
   thinking: 'fast' | 'balanced' | 'deep';
+  /** The spoken voice's accent (British male by default). */
+  voiceAccent: 'british' | 'american';
   spendingCapUsd: number;
   onboardingDone: boolean;
   emailAccounts: ('gmail' | 'outlook' | 'icloud')[];
@@ -59,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   photoIndexEnabled: true,
   webSearchEnabled: true,
   thinking: 'fast',
+  voiceAccent: 'british',
   spendingCapUsd: 20,
   onboardingDone: false,
   emailAccounts: [],

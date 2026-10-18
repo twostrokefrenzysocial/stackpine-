@@ -117,30 +117,46 @@ export function useVoiceInput(onFinal: (text: string) => void) {
   return { listening, partial, error, level, start, stop };
 }
 
-let chosenVoice: string | null | undefined;
+export type VoiceAccent = 'british' | 'american';
 
-/** Prefer a lower, steady English voice when the device has one. */
-async function pickVoice(): Promise<string | null> {
-  if (chosenVoice !== undefined) return chosenVoice;
+/** OpenAI voice and delivery notes per accent. */
+export const NATURAL_VOICE: Record<VoiceAccent, { voice: string; instructions: string }> = {
+  british: { voice: 'fable', instructions: 'A British English (received pronunciation) male voice. Calm, warm, confident and unhurried, like a trusted personal assistant. Natural conversational pacing.' },
+  american: { voice: 'onyx', instructions: 'Calm, warm, confident and unhurried, like a trusted personal assistant. Natural conversational pacing.' },
+};
+
+const chosenVoices: Partial<Record<VoiceAccent, string | null>> = {};
+
+/** Prefer a lower, steady male voice in the chosen accent when the device has one. */
+async function pickVoice(accent: VoiceAccent = 'british'): Promise<string | null> {
+  const cached = chosenVoices[accent];
+  if (cached !== undefined) return cached;
+  let chosenVoice: string | null = null;
   try {
     const voices = await Speech.getAvailableVoicesAsync();
     const en = voices.filter((v) => v.language?.toLowerCase().startsWith('en'));
-    const prefs = [/en-us-x-iom/i, /en-us-x-iol/i, /en-gb-x-rjs/i, /en-us-x-tpd/i, /male/i];
+    const prefs =
+      accent === 'british'
+        ? [/en-gb-x-rjs/i, /en-gb-x-gbb/i, /en-gb.*male/i, /en-gb/i, /en-us-x-iom/i, /male/i]
+        : [/en-us-x-iom/i, /en-us-x-iol/i, /en-gb-x-rjs/i, /en-us-x-tpd/i, /male/i];
     for (const re of prefs) {
       const v = en.find((x) => re.test(x.identifier) || re.test(x.name));
-      if (v) return (chosenVoice = v.identifier);
+      if (v) {
+        chosenVoice = v.identifier;
+        break;
+      }
     }
-    chosenVoice = null;
   } catch {
     chosenVoice = null;
   }
+  chosenVoices[accent] = chosenVoice;
   return chosenVoice;
 }
 
 /** Speaks a reply. Strips list markers so it sounds natural. */
-export async function speak(text: string, opts: { rate: number; pitch: number; onStart?: () => void; onDone?: () => void }) {
+export async function speak(text: string, opts: { rate: number; pitch: number; accent?: VoiceAccent; onStart?: () => void; onDone?: () => void }) {
   const clean = text.replace(/[•*_#>`]/g, '').replace(/\n+/g, '. ').slice(0, 1200);
-  const voice = await pickVoice();
+  const voice = await pickVoice(opts.accent);
   Speech.stop();
   Speech.speak(clean, {
     language: 'en-US',
@@ -164,7 +180,7 @@ let speechToken = 0;
  */
 export async function speakNatural(
   text: string,
-  opts: { proxyUrl?: string; token?: string | null; voice?: string; rate: number; pitch: number; onStart?: () => void; onDone?: () => void; onLevel?: (v: number) => void },
+  opts: { proxyUrl?: string; token?: string | null; accent?: VoiceAccent; rate: number; pitch: number; onStart?: () => void; onDone?: () => void; onLevel?: (v: number) => void },
 ): Promise<void> {
   const my = ++speechToken;
   stopSpeaking();
@@ -185,7 +201,7 @@ export async function speakNatural(
       const res = await fetch(`${opts.proxyUrl.replace(/\/+$/, '')}/openai/v1/audio/speech`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-optimus-token': opts.token },
-        body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice: opts.voice ?? 'onyx', input: clean, instructions: 'Calm, warm, confident and unhurried, like a trusted personal assistant. Natural conversational pacing.', response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'gpt-4o-mini-tts', ...NATURAL_VOICE[opts.accent ?? 'british'], input: clean, response_format: 'mp3' }),
       });
       if (!res.ok) throw new Error(`tts ${res.status}`);
       const bytes = await res.arrayBuffer();
@@ -216,7 +232,7 @@ export async function speakNatural(
     }
   }
   if (my !== speechToken) return;
-  await speak(clean, { rate: opts.rate, pitch: opts.pitch, onStart: startPulse, onDone: done });
+  await speak(clean, { rate: opts.rate, pitch: opts.pitch, accent: opts.accent, onStart: startPulse, onDone: done });
 }
 
 export function stopSpeaking() {

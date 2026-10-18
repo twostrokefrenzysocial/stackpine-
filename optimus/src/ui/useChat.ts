@@ -86,6 +86,7 @@ export function useChat(conversationId: string | null) {
           await speakNatural(assistant.text, {
             proxyUrl: settings.provider === 'openai' ? settings.proxyUrl : undefined,
             token,
+            accent: settings.voiceAccent ?? 'british',
             rate: settings.voiceRate,
             pitch: settings.voicePitch,
             onLevel: (v) => speechLevel.set(v),
@@ -115,7 +116,7 @@ export function useChat(conversationId: string | null) {
         abortRef.current = null;
       }
     },
-    [conversationId, streaming, rt, reload, bump, settings.voiceReplies, settings.voiceRate, settings.voicePitch, settings.provider, settings.proxyUrl, speechLevel],
+    [conversationId, streaming, rt, reload, bump, settings.voiceReplies, settings.voiceRate, settings.voicePitch, settings.voiceAccent, settings.provider, settings.proxyUrl, speechLevel],
   );
 
   const stop = useCallback(() => {
