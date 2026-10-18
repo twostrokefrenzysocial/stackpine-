@@ -1,0 +1,16 @@
+{
+  "name": "optimus-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker that holds Optimus's Anthropic API key, enforces a monthly spending cap and rate limit, and forwards requests to the Anthropic API.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261016.1",
+    "typescript": "~6.0.3",
+    "wrangler": "^4.151.1"
+  }
+}

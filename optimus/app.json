@@ -1,0 +1,93 @@
+{
+  "expo": {
+    "name": "Optimus",
+    "slug": "optimus",
+    "scheme": "optimus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/brand/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0E1114",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_WITH_EAS_PROJECT_ID",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "android": {
+      "package": "com.optimus.assistant",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#0E1114",
+        "foregroundImage": "./assets/brand/adaptive-foreground.png",
+        "monochromeImage": "./assets/brand/adaptive-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION", "android.permission.SYSTEM_ALERT_WINDOW"]
+    },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.optimus.assistant" },
+    "web": { "favicon": "./assets/brand/favicon.png", "output": "single" },
+    "extra": {
+      "googleWebClientId": "",
+      "microsoftClientId": "",
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-sqlite", { "useSQLCipher": true, "enableFTS": true }],
+      "expo-secure-store",
+      "expo-font",
+      "expo-audio",
+      "expo-sharing",
+      "expo-background-task",
+      [
+        "expo-splash-screen",
+        { "image": "./assets/brand/splash-emblem.png", "imageWidth": 160, "backgroundColor": "#0E1114", "dark": { "backgroundColor": "#0E1114" } }
+      ],
+      "expo-web-browser",
+      "expo-image",
+      "expo-asset",
+      ["expo-build-properties", { "android": { "minSdkVersion": 29 } }],
+      ["expo-calendar", { "calendarPermission": "Optimus reads your schedule and adds events you approve." }],
+      ["expo-contacts", { "contactsPermission": "Optimus looks up people you mention by name." }],
+      ["expo-media-library", { "photosPermission": "Optimus finds photos you ask about.", "savePhotosPermission": false, "isAccessMediaLocationEnabled": true }],
+      ["expo-location", { "locationWhenInUsePermission": "Optional: lets Optimus use your location for context like “when I get home”." }],
+      ["expo-local-authentication", { "faceIDPermission": "Unlock Optimus with your face." }],
+      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#22D3EE" }],
+      ["expo-speech-recognition", { "microphonePermission": "Speak to Optimus.", "speechRecognitionPermission": "Turn your voice into text for Optimus." }],
+      "@react-native-google-signin/google-signin",
+      "expo-quick-actions",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "OptimusVoice",
+              "label": "Optimus",
+              "description": "Tap the mic to talk to Optimus",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "previewImage": "./assets/brand/widget-preview.png",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
+      ],
+      "./modules/optimus-android/app.plugin.js"
+    ]
+  }
+}

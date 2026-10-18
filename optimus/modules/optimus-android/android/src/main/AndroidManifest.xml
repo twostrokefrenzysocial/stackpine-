@@ -1,0 +1,6 @@
+<manifest>
+  <!--
+    Permissions, <queries> and the OptimusNotificationListener <service> are added to the
+    app manifest by the config plugin (plugin/withOptimusAndroid.js) during prebuild.
+  -->
+</manifest>

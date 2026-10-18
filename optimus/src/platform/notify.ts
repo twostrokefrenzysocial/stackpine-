@@ -1,0 +1,46 @@
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import type { ReminderScheduler } from '../core/reminders/reminders';
+
+export const CHANNELS = { reminders: 'reminders', brief: 'brief' } as const;
+
+let ready = false;
+
+export async function setupNotifications(): Promise<void> {
+  if (ready || Platform.OS === 'web') return;
+  ready = true;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+  });
+  if (Platform.OS === 'android') {
+    // eslint-disable-next-line import/namespace -- AndroidImportance is a re-exported enum the import plugin can't see
+    await Notifications.setNotificationChannelAsync(CHANNELS.reminders, { name: 'Reminders', importance: Notifications.AndroidImportance.HIGH, lightColor: '#22D3EE' });
+    // eslint-disable-next-line import/namespace
+    await Notifications.setNotificationChannelAsync(CHANNELS.brief, { name: 'Daily brief', importance: Notifications.AndroidImportance.DEFAULT, lightColor: '#22D3EE' });
+  }
+}
+
+/** Reminders become scheduled local notifications. */
+export const notificationScheduler: ReminderScheduler = {
+  async schedule(r) {
+    if (Platform.OS === 'web') return `web-${r.id}`;
+    await setupNotifications();
+    return Notifications.scheduleNotificationAsync({
+      content: { title: 'Reminder', body: r.text, data: { url: 'optimus://home', reminderId: r.id } },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(r.dueAt), channelId: CHANNELS.reminders },
+    });
+  },
+  async cancel(id) {
+    if (Platform.OS !== 'web') await Notifications.cancelScheduledNotificationAsync(id);
+  },
+};
+
+/** Fires immediately: used when the background task finishes today's brief. */
+export async function notifyBriefReady(headline: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await setupNotifications();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Your brief is ready', body: headline, data: { url: 'optimus://brief' } },
+    trigger: null,
+  });
+}

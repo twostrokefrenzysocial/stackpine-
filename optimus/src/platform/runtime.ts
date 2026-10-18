@@ -1,0 +1,142 @@
+import type Anthropic from '@anthropic-ai/sdk';
+import { PermissionsAndroid, Platform } from 'react-native';
+import * as Native from '../../modules/optimus-android';
+import { OptimusEngine } from '../core/engine';
+import type { Db } from '../core/db/types';
+import type { BackgroundLlm } from '../core/llm/background';
+import { HeuristicBackgroundLlm, ScriptedTransport } from '../core/llm/scripted';
+import type { LlmTransport } from '../core/llm/transport';
+import { createMockSources, type MockDataSources } from '../core/mock/sources';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../core/settings/settings';
+import type { DataSources, SourceName } from '../core/sources/types';
+import { createClient, ProxyBackgroundLlm, ProxyTransport } from './claude';
+import { openDatabase } from './db';
+import { proxyToken } from './secrets';
+import { loadMockPhoto } from './sources/mockPhotos';
+import { createRealSources } from './sources/real';
+import { notificationScheduler } from './notify';
+
+/**
+ * Process-wide app runtime: database, settings, engine, and the switches
+ * between Mock/Real data and Claude/offline demo brain.
+ */
+export interface Runtime {
+  db: Db;
+  engine: OptimusEngine;
+  settings: Settings;
+  updateSettings(patch: Partial<Settings>): Promise<Settings>;
+  sources(): DataSources;
+  transportLabel(): string;
+  background(): BackgroundLlm;
+  isDemoBrain(): boolean;
+  refreshClient(): Promise<void>;
+  mock: MockDataSources;
+}
+
+let runtime: Runtime | null = null;
+let booting: Promise<Runtime> | null = null;
+
+export function getRuntime(): Runtime | null {
+  return runtime;
+}
+
+export function boot(): Promise<Runtime> {
+  if (runtime) return Promise.resolve(runtime);
+  booting ??= doBoot();
+  return booting;
+}
+
+async function doBoot(): Promise<Runtime> {
+  const db = await openDatabase();
+  let settings = await loadSettings(db).catch(() => DEFAULT_SETTINGS);
+  let client: Anthropic | null = null;
+  let transport: LlmTransport;
+  let background: BackgroundLlm;
+
+  const mock = createMockSources({ photoLoader: loadMockPhoto });
+  const demoTransport = new ScriptedTransport({
+    delayMs: 18,
+    captions: (id) => mock.dataset.photos.find((p) => p.id === id)?.mockCaption,
+  });
+  const heuristics = new HeuristicBackgroundLlm();
+
+  async function refreshClient() {
+    const token = await proxyToken.get();
+    if (settings.proxyUrl && token) {
+      client = createClient(settings.proxyUrl, token);
+      transport = new ProxyTransport(client);
+      background = new ProxyBackgroundLlm(client);
+    } else {
+      client = null;
+      transport = demoTransport;
+      background = heuristics;
+    }
+  }
+  await refreshClient();
+
+  // Real sources are created lazily so Mock mode never touches permissions.
+  let real: DataSources | null = null;
+  const engineRef: { engine?: OptimusEngine } = {};
+  const sources = (): DataSources => {
+    if (settings.dataMode === 'mock') return mock;
+    real ??= createRealSources({ db, notifications: engineRef.engine!.notifications, locationEnabled: () => settings.locationEnabled });
+    return real;
+  };
+
+  const engine = new OptimusEngine({
+    db,
+    sources,
+    transport: () => transport,
+    background: () => background,
+    scheduler: notificationScheduler,
+    locationEnabled: () => settings.locationEnabled,
+    unavailableSources: () => unavailableSources(settings),
+  });
+  engineRef.engine = engine;
+
+  runtime = {
+    db,
+    engine,
+    get settings() {
+      return settings;
+    },
+    async updateSettings(patch) {
+      settings = await saveSettings(db, patch);
+      if ('proxyUrl' in patch) await refreshClient();
+      if ('excludedNotificationApps' in patch || 'notificationCaptureEnabled' in patch) {
+        Native.setNotificationCaptureConfig({ enabled: settings.notificationCaptureEnabled, excludedPackages: settings.excludedNotificationApps });
+      }
+      return settings;
+    },
+    sources,
+    transportLabel: () => transport.label,
+    background: () => background,
+    isDemoBrain: () => transport === demoTransport,
+    refreshClient,
+    mock,
+  } as Runtime;
+  Native.setNotificationCaptureConfig({ enabled: settings.notificationCaptureEnabled, excludedPackages: settings.excludedNotificationApps });
+  return runtime;
+}
+
+/** Which real sources lack permission (empty in Mock mode). */
+export async function unavailableSources(settings: Settings): Promise<SourceName[]> {
+  if (settings.dataMode === 'mock') return [];
+  const out: SourceName[] = [];
+  if (Platform.OS === 'android' && Native.isAvailable()) {
+    const P = (PermissionsAndroid?.PERMISSIONS ?? {}) as typeof PermissionsAndroid.PERMISSIONS;
+    if (!(await PermissionsAndroid.check(P.READ_SMS))) out.push('texts');
+    if (!(await PermissionsAndroid.check(P.READ_CALL_LOG))) out.push('calls');
+    if (!Native.getDeviceStatus()?.notificationAccessGranted) out.push('notifications');
+  } else {
+    out.push('texts', 'calls', 'notifications');
+  }
+  const { getPermissionStates } = await import('./permissions');
+  const states = await getPermissionStates();
+  if (!states.calendar) out.push('calendar');
+  if (!states.contacts) out.push('contacts');
+  if (!states.photos) out.push('photos');
+  if (!settings.emailAccounts.length) out.push('email');
+  if (!settings.locationEnabled || !states.location) out.push('location');
+  return out;
+}

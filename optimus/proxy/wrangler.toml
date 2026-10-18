@@ -1,0 +1,38 @@
+# Optimus proxy - Cloudflare Worker configuration.
+#
+# Secrets are NOT stored in this file. After the first deploy, set them with:
+#
+#   npx wrangler secret put ANTHROPIC_API_KEY   # your key from console.anthropic.com
+#   npx wrangler secret put APP_TOKEN           # a long random string, e.g. `openssl rand -hex 32`
+#
+# The same APP_TOKEN goes into the Optimus app's Settings screen. For local
+# development with `npx wrangler dev`, put both in a `.dev.vars` file instead
+# (it is git-ignored):
+#
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   APP_TOKEN=...
+
+name = "optimus-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Log lines contain only model names, token counts and costs - never bodies.
+[observability]
+enabled = true
+
+[vars]
+# Monthly spending cap in USD used until one is set from the app (PUT /cap).
+DEFAULT_CAP_USD = "20"
+# Maximum requests per rolling minute across /v1/messages and count_tokens.
+RATE_LIMIT_PER_MINUTE = "30"
+# Comma-separated list of models the app may use.
+ALLOWED_MODELS = "claude-sonnet-5-5,claude-haiku-5-5"
+
+# The Ledger Durable Object tracks monthly spend and the rate limit.
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]

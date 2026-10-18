@@ -1,0 +1,12 @@
+{
+  "name": "optimus-android",
+  "version": "1.0.0",
+  "description": "Optimus local Expo module: SMS, call log, notification capture and device status on Android.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}
