@@ -2,7 +2,7 @@ import { wrapUntrusted } from '../safety/untrusted';
 import type { DataSources } from '../sources/types';
 import { DAY, HOUR, formatTime } from '../util/time';
 
-function quick<T>(p: Promise<T>, ms = 1500): Promise<T | null> {
+function quick<T>(p: Promise<T>, ms = 700): Promise<T | null> {
   return new Promise((resolve) => {
     const t = setTimeout(() => resolve(null), ms);
     p.then(
@@ -26,7 +26,19 @@ function quick<T>(p: Promise<T>, ms = 1500): Promise<T | null> {
  * third-party data, so they go in an untrusted block. Every source is
  * optional and time-boxed so a slow one never delays the reply.
  */
+const cache = new WeakMap<DataSources, { at: number; text: string }>();
+/** How long one look at the phone stays good for (keeps follow-up turns instant). */
+export const SITUATION_TTL_MS = 90_000;
+
 export async function buildSituation(sources: DataSources, now: Date): Promise<string> {
+  const hit = cache.get(sources);
+  if (hit && now.getTime() - hit.at < SITUATION_TTL_MS && now.getTime() >= hit.at) return hit.text;
+  const text = await buildSituationNow(sources, now);
+  cache.set(sources, { at: now.getTime(), text });
+  return text;
+}
+
+async function buildSituationNow(sources: DataSources, now: Date): Promise<string> {
   const [events, texts, calls, emails] = await Promise.all([
     quick(sources.calendar.list({ since: now.toISOString(), until: new Date(now.getTime() + DAY).toISOString() })),
     quick(sources.texts.recentThreads(8)),

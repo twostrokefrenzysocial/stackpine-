@@ -5,6 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
  */
 export type IconName =
   | 'mic'
+  | 'headset'
   | 'send'
   | 'stop'
   | 'home'
@@ -50,6 +51,7 @@ const PATHS: Record<IconName, string> = {
   chat: 'M4 5h16l1 1v10l-1 1h-9l-5 4v-4H4l-1-1V6zM8 10h8M8 13h5',
   core: 'M9 3h6M9 21h6M3 9v6M21 9v6M7 7h10v10H7zM10 10h4v4h-4zM12 3v4M12 17v4M3 12h4M17 12h4',
   activity: 'M2 12h4l3-7 4 14 3-7h6',
+  headset: 'M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H5l-1-1zM20 15h-3v5h2l1-1z',
   settings: 'M12 2l2 3 3.5-.5 1 3.5L22 10l-1.5 2 1.5 2-3.5 2-1 3.5L14 19l-2 3-2-3-3.5.5-1-3.5L2 14l1.5-2L2 10l3.5-2 1-3.5L10 5zM12 9a3 3 0 1 0 .01 0',
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3M13 14h3M8 17h3',
   message: 'M5 4h14l2 2v9l-2 2h-7l-5 4v-4H5l-2-2V6zM8 10h.01M12 10h.01M16 10h.01',

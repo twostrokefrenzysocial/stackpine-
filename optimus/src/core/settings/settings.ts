@@ -29,6 +29,8 @@ export interface Settings {
   photoIndexEnabled: boolean;
   /** Let Optimus search the web for facts, news, weather, places. */
   webSearchEnabled: boolean;
+  /** How long the model thinks before answering: fast replies by default. */
+  thinking: 'fast' | 'balanced' | 'deep';
   spendingCapUsd: number;
   onboardingDone: boolean;
   emailAccounts: ('gmail' | 'outlook' | 'icloud')[];
@@ -56,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
   locationEnabled: false,
   photoIndexEnabled: true,
   webSearchEnabled: true,
+  thinking: 'fast',
   spendingCapUsd: 20,
   onboardingDone: false,
   emailAccounts: [],

@@ -24,6 +24,8 @@ export interface EngineDeps {
   locationEnabled?: () => boolean;
   /** Web search on (Settings). */
   webSearch?: () => boolean;
+  /** Reasoning effort for chat (Settings › Thinking). */
+  effort?: () => 'low' | 'medium' | 'high';
   /** Sources the user hasn't granted (shown to the model so it can say what it can't see). */
   unavailableSources?: () => Promise<SourceName[]>;
 }
@@ -109,6 +111,7 @@ export class OptimusEngine {
       signal,
       voice: opts.voice,
       webSearch: this.deps.webSearch?.() ?? false,
+      effort: this.deps.effort?.(),
     });
 
     const assistant = await this.conversations.addMessage(

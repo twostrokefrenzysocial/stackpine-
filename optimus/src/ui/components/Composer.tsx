@@ -49,6 +49,8 @@ export interface ComposerProps {
   bottomInset?: number;
   /** Open the keyboard straight away (coming from the Home "Ask Optimus" field). */
   autoFocus?: boolean;
+  /** Hands-free voice mode (the brain screen that talks back). */
+  onVoiceMode?: () => void;
 }
 
 /**
@@ -56,7 +58,7 @@ export interface ComposerProps {
  * grey field. The mic turns solid red while listening (a live signal) and
  * the field becomes a waveform.
  */
-export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0, autoFocus }: ComposerProps) {
+export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0, autoFocus, onVoiceMode }: ComposerProps) {
   const { palette: p, reduceMotion } = useApp();
   const [text, setText] = useState('');
   const shown = useSharedValue(0);
@@ -77,6 +79,11 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
   return (
     <View style={[styles.bar_, { backgroundColor: p.bg, borderTopColor: p.line, paddingBottom: bottomInset + space.sm }]}>
       <View style={styles.row}>
+        {onVoiceMode && !listening && !busy && (
+          <Pressable onPress={onVoiceMode} accessibilityRole="button" accessibilityLabel="Voice mode: talk and hear Optimus answer" style={[styles.mic, { backgroundColor: p.surface }]}>
+            <Icon name="headset" size={22} color={p.text} />
+          </Pressable>
+        )}
         <View style={[styles.field, { backgroundColor: p.surface }]}>
           <Animated.View style={inputStyle} pointerEvents={listening ? 'none' : 'auto'}>
             <TextInput

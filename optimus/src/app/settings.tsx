@@ -326,6 +326,22 @@ export default function Settings() {
           <Toggle label="Location" hint="Off by default. Only for context like “when I get home”." value={settings.locationEnabled} onChange={(v) => updateSettings({ locationEnabled: v })} />
         </Section>
 
+        <Section title="Thinking">
+          <Segmented
+            label="How hard it thinks"
+            value={settings.thinking ?? 'fast'}
+            onChange={(v) => updateSettings({ thinking: v })}
+            options={[
+              { value: 'fast', label: 'Fast' },
+              { value: 'balanced', label: 'Balanced' },
+              { value: 'deep', label: 'Deep' },
+            ]}
+          />
+          <Txt variant="small" color={p.textSecondary}>
+            Fast answers in a few seconds and handles everyday tasks. Balanced and Deep think longer before replying and cost a little more. Voice mode always stays fast.
+          </Txt>
+        </Section>
+
         <Section title="Web">
           <Toggle
             label="Search the web"

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +33,8 @@ export default function Voice() {
   const { rt, palette: p } = useApp();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [convId, setConvId] = useState<string | null>(null);
+  const { conv } = useLocalSearchParams<{ conv?: string }>();
+  const [convId, setConvId] = useState<string | null>(conv ?? null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [cards, setCards] = useState<ChatCard[]>([]);
   const chat = useChat(convId);
@@ -61,7 +62,7 @@ export default function Voice() {
   }, [mic.start]);
 
   useEffect(() => {
-    rt.engine.conversations.create().then((c) => setConvId(c.id));
+    if (!conv) rt.engine.conversations.create().then((c) => setConvId(c.id));
     return () => {
       open.current = false;
       stopSpeaking();

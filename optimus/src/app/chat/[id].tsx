@@ -173,6 +173,7 @@ export default function Chat() {
             autoFocus={focus === '1'}
             onSend={(t) => chat.send(t)}
             onMic={mic.start}
+            onVoiceMode={() => router.push(convId ? `/voice?conv=${convId}` : '/voice')}
             onStopMic={mic.stop}
             listening={mic.listening}
             partial={mic.partial}

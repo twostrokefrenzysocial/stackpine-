@@ -120,6 +120,7 @@ async function doBoot(): Promise<Runtime> {
     routineScheduler,
     locationEnabled: () => settings.locationEnabled,
     webSearch: () => settings.webSearchEnabled,
+    effort: () => ({ fast: 'low', balanced: 'medium', deep: 'high' } as const)[settings.thinking ?? 'fast'],
     unavailableSources: () => unavailableSources(settings),
   });
   engineRef.engine = engine;

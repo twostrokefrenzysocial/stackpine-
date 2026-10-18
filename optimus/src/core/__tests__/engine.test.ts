@@ -11,7 +11,7 @@ import type { Db } from '../db/types';
 
 const NOW = new Date('2026-10-18T16:00:00');
 
-function makeEngine(db: Db, transport: LlmTransport = new ScriptedTransport({ now: () => NOW })) {
+function makeEngine(db: Db, transport: LlmTransport = new ScriptedTransport({ now: () => NOW }), extra: Partial<ConstructorParameters<typeof OptimusEngine>[0]> = {}) {
   const sources = createMockSources({ now: () => NOW });
   const engine = new OptimusEngine({
     db,
@@ -19,6 +19,7 @@ function makeEngine(db: Db, transport: LlmTransport = new ScriptedTransport({ no
     transport: () => transport,
     background: () => new HeuristicBackgroundLlm(),
     now: () => NOW,
+    ...extra,
   });
   return { engine, sources };
 }
@@ -283,6 +284,21 @@ describe('situational awareness', () => {
     expect(system).toContain('# Situation');
     expect(system).toMatch(/<untrusted_data[^>]*situation/);
     expect(system).toMatch(/next_24h|missed_calls_12h|texted_you_last_6h/);
+  });
+
+  it('keeps replies fast: low effort by default, the Thinking setting raises it, voice stays low', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport(() => ({ content: [{ type: 'text', text: 'ok', citations: null }] }));
+    let effort: 'low' | 'medium' | 'high' = 'low';
+    const { engine } = makeEngine(db, fake, { effort: () => effort });
+    const conv = await engine.conversations.create();
+    await engine.send(conv.id, 'hi', () => {});
+    expect(fake.requests[0].effort).toBe('low');
+    effort = 'high';
+    await engine.send(conv.id, 'again', () => {});
+    expect(fake.requests[1].effort).toBe('high');
+    await engine.send(conv.id, 'spoken', () => {}, undefined, { voice: true });
+    expect(fake.requests[2].effort).toBe('low');
   });
 });
 

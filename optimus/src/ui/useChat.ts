@@ -59,7 +59,9 @@ export function useChat(conversationId: string | null) {
           }
           // No TTS amplitude while streaming: pulse once per chunk.
           speechLevel.set(withSequence(withTiming(0.6 + Math.random() * 0.4, { duration: 60 }), withTiming(0, { duration: 320 })));
-          setStreaming((s) => (s ? { ...s, text: s.text + e.delta } : s));
+          setStreaming((s) => (s ? { ...s, text: s.text + e.delta, activity: undefined } : s));
+        } else if (e.type === 'thinking') {
+          setStreaming((s) => (s && !s.text ? { ...s, activity: 'Thinking' } : s));
         } else if (e.type === 'tool-start') {
           setAvatar('thinking');
           firstText = true;

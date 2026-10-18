@@ -37,6 +37,8 @@ export interface TurnInput {
   tools?: ToolDef[];
   /** The user is talking in voice mode and will hear the reply, not read it. */
   voice?: boolean;
+  /** Reasoning effort; voice always stays low. */
+  effort?: 'low' | 'medium' | 'high';
   /** Let the model search the web (server-side, through the proxy). */
   webSearch?: boolean;
 }
@@ -250,8 +252,9 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         tools: input.webSearch ? [...apiTools(tools), WEB_SEARCH_TOOL] : apiTools(tools),
         toolChoice: budgetLeft <= 0 ? { type: 'none' } : { type: 'auto' },
         maxTokens: 16000,
-        // Medium for everyday multi-step work; low keeps voice replies quick.
-        effort: input.voice ? 'low' : 'medium',
+        // Low by default: GPT-5 at low effort answers in seconds and still plans
+        // multi-step work well. Settings › Thinking raises it; voice stays quick.
+        effort: input.voice ? 'low' : (input.effort ?? 'low'),
       },
       (delta) => {
         // Separate text from different rounds with a paragraph break.
