@@ -147,6 +147,25 @@ export const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  // v-next: daily routines and their pre-written, scheduled notifications.
+  `
+  CREATE TABLE IF NOT EXISTS routines (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    instruction TEXT NOT NULL,
+    time TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS routine_items (
+    id TEXT PRIMARY KEY,
+    routine_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    notification_id TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS routine_items_day ON routine_items(routine_id, date);
+  `,
 ];
 
 /** True when SQLite was built with FTS5 (the Android build is; the browser preview isn't). */

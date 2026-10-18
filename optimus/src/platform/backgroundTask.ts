@@ -18,6 +18,7 @@ TaskManager.defineTask(BACKGROUND_TASK, async () => {
     const rt = await boot();
     await syncNotifications(rt).catch(() => 0);
     await ensureTodaysBrief(rt, { lead: true }).catch(() => null);
+    await rt.engine.refillRoutines().catch(() => 0);
     await rt.engine.processIdleConversations().catch(() => 0);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {

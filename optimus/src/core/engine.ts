@@ -9,6 +9,7 @@ import type { LlmTransport } from './llm/transport';
 import { MemoryStore } from './memory/store';
 import { NotificationStore } from './notifications/store';
 import { ReminderStore, type ReminderScheduler } from './reminders/reminders';
+import { RoutineStore, type RoutineScheduler } from './routines/routines';
 import type { DataSources, SourceName } from './sources/types';
 import type { ChatMessage } from './types';
 
@@ -18,6 +19,7 @@ export interface EngineDeps {
   transport: () => LlmTransport;
   background: () => BackgroundLlm;
   scheduler?: ReminderScheduler;
+  routineScheduler?: RoutineScheduler;
   now?: () => Date;
   locationEnabled?: () => boolean;
   /** Sources the user hasn't granted (shown to the model so it can say what it can't see). */
@@ -35,6 +37,7 @@ export class OptimusEngine {
   readonly actions: ActionStore;
   readonly activity: ActivityLog;
   readonly reminders: ReminderStore;
+  readonly routines: RoutineStore;
   readonly notifications: NotificationStore;
   private readonly now: () => Date;
 
@@ -45,9 +48,17 @@ export class OptimusEngine {
     this.episodes = new EpisodeStore(deps.db);
     this.activity = new ActivityLog(deps.db);
     this.reminders = new ReminderStore(deps.db, deps.scheduler);
+    this.routines = new RoutineStore(deps.db, deps.routineScheduler);
     this.notifications = new NotificationStore(deps.db);
     this.actions = new ActionStore(deps.db);
-    this.actions.setHandlers(createActionHandlers({ sources: deps.sources, memory: this.memory, reminders: this.reminders }));
+    this.actions.setHandlers(
+      createActionHandlers({ sources: deps.sources, memory: this.memory, reminders: this.reminders, routines: this.routines, onRoutinesChanged: () => this.refillRoutines() }),
+    );
+  }
+
+  /** Writes and schedules the coming week of every daily routine. */
+  refillRoutines(): Promise<number> {
+    return this.routines.refillAll(this.deps.background(), this.now());
   }
 
   get db(): Db {
@@ -82,6 +93,7 @@ export class OptimusEngine {
         actions: this.actions,
         activity: this.activity,
         reminders: this.reminders,
+        routines: this.routines,
         conversationId,
         now: this.now,
         locationEnabled: this.deps.locationEnabled?.() ?? false,

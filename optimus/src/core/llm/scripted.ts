@@ -278,6 +278,11 @@ export class HeuristicBackgroundLlm implements BackgroundLlm {
         episode: { summary: `The user asked: ${userLines.slice(0, 3).join(' / ').slice(0, 300)}`, decisions: [], open_tasks: [], topics: [...new Set(first.match(/\b[A-Z][a-z]+\b/g) ?? [])].slice(0, 5) },
       });
     }
+    if (task.name === 'daily_routine') {
+      // Offline demo: no writing model, so repeat the instruction itself.
+      const p = JSON.parse(task.prompt) as { instruction: string; days_needed: number };
+      return task.schema.parse({ days: Array.from({ length: p.days_needed }, () => ({ title: 'Daily', body: `${p.instruction} (Demo: connect the AI in Settings for fresh content each day.)` })) });
+    }
     throw new Error(`No offline heuristic for ${task.name}`);
   }
 }

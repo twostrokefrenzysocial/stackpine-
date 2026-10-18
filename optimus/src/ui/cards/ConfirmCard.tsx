@@ -70,6 +70,18 @@ function draftRows(a: PendingAction): { label: string; value: string; key?: stri
         { label: 'Remind me', value: s(d.text), key: 'text', multiline: true },
         { label: 'When', value: when(d.dueAt), key: 'dueAt' },
       ];
+    case 'create_routine':
+      return [
+        { label: 'Every day at', value: s(d.time), key: 'time' },
+        { label: 'Name', value: s(d.title), key: 'title' },
+        { label: 'What I’ll write each day', value: s(d.instruction), key: 'instruction', multiline: true },
+        { label: 'Example', value: s(d.example), multiline: true },
+      ].filter((r) => r.value);
+    case 'delete_routine':
+      return [
+        { label: 'Stop', value: s(d.title) },
+        { label: 'Every day at', value: s(d.time) },
+      ];
   }
 }
 

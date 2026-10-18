@@ -35,7 +35,7 @@ async function userName(rt: ReturnType<typeof useApp>['rt'], fallback?: string):
 }
 
 export default function Home() {
-  const { rt, settings, palette: p } = useApp();
+  const { rt, settings, palette: p, bump } = useApp();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [regenerating, setRegenerating] = useState(false);
@@ -175,6 +175,17 @@ export default function Home() {
                     <Txt variant="mono" color={p.textTertiary}>
                       {formatDay(r.dueAt).toUpperCase()} {formatTime(r.dueAt)}
                     </Txt>
+                    <Button
+                      label={`Delete reminder: ${r.text}`}
+                      icon="close"
+                      iconOnly
+                      variant="ghost"
+                      compact
+                      onPress={async () => {
+                        await rt.engine.reminders.complete(r.id);
+                        bump();
+                      }}
+                    />
                   </View>
                 ))}
               </View>

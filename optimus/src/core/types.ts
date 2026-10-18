@@ -213,6 +213,8 @@ export type ActionKind =
   | 'send_email'
   | 'save_memory_from_data'
   | 'create_reminder'
+  | 'create_routine'
+  | 'delete_routine'
   | 'delete_memory';
 
 export type ActionStatus = 'pending' | 'approved' | 'executed' | 'failed' | 'cancelled';

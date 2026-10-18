@@ -3,6 +3,7 @@ import type { ActionStore } from '../actions/actions';
 import type { ActivityLog } from '../activity/log';
 import type { ConversationStore, EpisodeStore } from '../conversations/store';
 import type { MemoryStore } from '../memory/store';
+import type { RoutineStore } from '../routines/routines';
 import type { ReminderStore } from '../reminders/reminders';
 import type { DataSources } from '../sources/types';
 import type { ChatCard } from '../types';
@@ -18,6 +19,7 @@ export interface ToolContext {
   actions: ActionStore;
   activity: ActivityLog;
   reminders: ReminderStore;
+  routines: RoutineStore;
   conversationId: string;
   now: () => Date;
   locationEnabled: boolean;

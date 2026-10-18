@@ -1,5 +1,6 @@
 import type { MemoryStore } from '../memory/store';
 import type { ReminderStore } from '../reminders/reminders';
+import type { RoutineStore } from '../routines/routines';
 import type { DataSources } from '../sources/types';
 import { dayPhrase } from '../util/time';
 import type { ActionHandlers } from './actions';
@@ -10,7 +11,7 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '');
  * The side effects behind each confirmation card. Each returns a short,
  * truthful result line; failures throw and are reported as failed.
  */
-export function createActionHandlers(deps: { sources: () => DataSources; memory: MemoryStore; reminders: ReminderStore }): ActionHandlers {
+export function createActionHandlers(deps: { sources: () => DataSources; memory: MemoryStore; reminders: ReminderStore; routines: RoutineStore; onRoutinesChanged?: () => Promise<unknown> }): ActionHandlers {
   return {
     async send_text(d) {
       await deps.sources().texts.send(s(d.to), s(d.body));
@@ -63,6 +64,16 @@ export function createActionHandlers(deps: { sources: () => DataSources; memory:
     async create_reminder(d) {
       const r = await deps.reminders.create({ text: s(d.text), dueAt: s(d.dueAt) });
       return `Reminder set for ${dayPhrase(r.dueAt)}.`;
+    },
+    async create_routine(d) {
+      const r = await deps.routines.create({ title: s(d.title), instruction: s(d.instruction), time: s(d.time) });
+      // Write and schedule the first week now; failures here are retried on the next app open.
+      await deps.onRoutinesChanged?.().catch(() => undefined);
+      return `Daily routine “${r.title}” is on: a new one arrives every day at ${r.time}.`;
+    },
+    async delete_routine(d) {
+      if (!(await deps.routines.remove(s(d.routineId)))) throw new Error('That routine was already stopped.');
+      return `Stopped “${s(d.title)}”.`;
     },
   };
 }

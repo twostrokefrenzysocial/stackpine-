@@ -543,13 +543,72 @@ export const getLocation: ToolDef = {
 export const proposeReminder: ToolDef = {
   name: 'propose_reminder',
   kind: 'propose',
-  description: 'Draft a reminder ("remind me to reply to Sarah tomorrow"). Shows a card; scheduled only if the user approves. Pick a sensible time (9:00 AM if only a day is given).',
+  description: 'Draft a one-time reminder ("remind me to reply to Sarah tomorrow"). Shows a card; scheduled only if the user approves. Pick a sensible time (9:00 AM if only a day is given). For anything that repeats every day, use propose_routine instead.',
   input_schema: { type: 'object', properties: { text: { type: 'string' }, due_at: { type: 'string', description: 'ISO date/time with offset' } }, required: ['text', 'due_at'] },
   async run(input, ctx: ToolContext) {
     const dueAt = isoOrUndefined(input.due_at);
     if (!dueAt || new Date(dueAt).getTime() <= ctx.now().getTime()) return { content: 'Need a valid future time. Ask the user when.', isError: true, activity: 'propose_reminder: bad time' };
     const action = await ctx.actions.propose({ kind: 'create_reminder', title: 'New reminder', draft: { text: String(input.text ?? ''), dueAt }, editable: ['text', 'dueAt'], conversationId: ctx.conversationId });
     return { content: 'Reminder card shown. It is scheduled only if the user taps Approve.', cards: [{ type: 'confirm', actionId: action.id }], activity: `Drafted reminder “${truncate(String(input.text ?? ''), 40)}”` };
+  },
+};
+
+// ---------- Daily routines ----------
+
+export const proposeRoutine: ToolDef = {
+  name: 'propose_routine',
+  kind: 'propose',
+  description:
+    'Set up something that should arrive every day as a phone notification, with fresh content each day (a different Bible verse, a quote, a vocabulary word, a daily encouragement). The user approves once; after that Optimus writes each day’s message ahead of time and delivers it at the set time with no further approvals. Use this instead of one-off reminders whenever the user says every day / every morning / daily. Include a sample of the first message as example.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: 'Short name, e.g. "Morning verse"' },
+      instruction: { type: 'string', description: 'Exactly what to write each day, in full (translation, length, tone, topic).' },
+      time: { type: 'string', description: 'Local 24-hour time, e.g. "07:00"' },
+      example: { type: 'string', description: 'A sample of the first message' },
+    },
+    required: ['title', 'instruction', 'time'],
+  },
+  async run(input, ctx: ToolContext) {
+    const time = String(input.time ?? '').trim();
+    if (!/^\d{1,2}:\d{2}$/.test(time)) return { content: 'Need a time like "07:00". Ask the user when.', isError: true, activity: 'propose_routine: bad time' };
+    const action = await ctx.actions.propose({
+      kind: 'create_routine',
+      title: 'New daily routine',
+      draft: { title: String(input.title ?? 'Daily'), instruction: String(input.instruction ?? ''), time: time.padStart(5, '0'), example: String(input.example ?? '') },
+      editable: ['time', 'title', 'instruction'],
+      conversationId: ctx.conversationId,
+    });
+    return {
+      content: 'Routine card shown. Once the user taps Approve, a different message arrives every day at that time automatically, with no more approvals. Tell them that in one sentence; do not ask follow-up questions.',
+      cards: [{ type: 'confirm', actionId: action.id }],
+      activity: `Drafted daily routine “${truncate(String(input.title ?? ''), 40)}”`,
+    };
+  },
+};
+
+export const listRoutines: ToolDef = {
+  name: 'list_routines',
+  kind: 'read',
+  description: 'The daily routines that are on (things Optimus sends every day), with their ids.',
+  input_schema: { type: 'object', properties: {} },
+  async run(_input, ctx) {
+    const list = await ctx.routines.list();
+    return { content: list.length ? JSON.stringify(list.map((r) => ({ id: r.id, title: r.title, time: r.time, instruction: r.instruction }))) : 'No daily routines.', activity: `Read routines (${list.length})` };
+  },
+};
+
+export const proposeStopRoutine: ToolDef = {
+  name: 'propose_stop_routine',
+  kind: 'propose',
+  description: 'Stop a daily routine (get its id from list_routines). Shows a confirmation card.',
+  input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+  async run(input, ctx: ToolContext) {
+    const r = await ctx.routines.get(String(input.id ?? ''));
+    if (!r) return { content: 'No routine with that id. Use list_routines.', isError: true, activity: 'propose_stop_routine: unknown id' };
+    const action = await ctx.actions.propose({ kind: 'delete_routine', title: 'Stop daily routine', draft: { routineId: r.id, title: r.title, time: r.time }, editable: [], conversationId: ctx.conversationId });
+    return { content: 'Stop card shown. The routine stops only if the user approves.', cards: [{ type: 'confirm', actionId: action.id }], activity: `Drafted stopping “${truncate(r.title, 40)}”` };
   },
 };
 
@@ -585,4 +644,7 @@ export const DATA_TOOLS = [
   getLocation,
   proposeReminder,
   listReminders,
+  proposeRoutine,
+  listRoutines,
+  proposeStopRoutine,
 ];

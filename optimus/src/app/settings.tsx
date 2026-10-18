@@ -63,6 +63,8 @@ export default function Settings() {
   const [emailMsg, setEmailMsg] = useState<string | null>(null);
   const [newPkg, setNewPkg] = useState('');
 
+  const { data: routines } = useData(() => rt.engine.routines.list(), []);
+
   const { data: apps } = useData(async () => {
     const seen = settings.dataMode === 'mock' ? rt.mock.dataset.notifications.map((n) => ({ packageName: n.packageName, appName: n.appName })) : await rt.engine.notifications.apps();
     const all = [...SENSITIVE_APPS, ...seen, ...settings.excludedNotificationApps.map((pk) => ({ packageName: pk, appName: pk }))];
@@ -371,6 +373,34 @@ export default function Settings() {
           <Segmented label="Brief time" value={settings.briefTime} onChange={(v) => updateSettings({ briefTime: v })} options={['06:00', '06:30', '07:00', '07:30', '08:00'].map((t) => ({ value: t, label: t }))} />
         </Section>
 
+        <Section title="Daily routines">
+          {routines?.length ? (
+            routines.map((r) => (
+              <View key={r.id} style={styles.routineRow}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt variant="bodyStrong">{r.title}</Txt>
+                  <Txt variant="small" color={p.textSecondary} numberOfLines={2}>
+                    Every day at {r.time} · {r.instruction}
+                  </Txt>
+                </View>
+                <Button
+                  label="Stop"
+                  variant="ghost"
+                  compact
+                  onPress={async () => {
+                    await rt.engine.routines.remove(r.id);
+                    bump();
+                  }}
+                />
+              </View>
+            ))
+          ) : (
+            <Txt variant="small" color={p.textSecondary}>
+              None yet. Ask in chat, for example “Send me a different Bible verse every morning at 7.”
+            </Txt>
+          )}
+        </Section>
+
         <Section title="Voice and feedback">
           <Toggle label="Spoken replies" hint="When you talk to me, I answer out loud in a low, steady voice." value={settings.voiceReplies} onChange={(v) => updateSettings({ voiceReplies: v })} />
           <Button label="Test voice" icon="speaker" variant="ghost" compact onPress={() => speak('Optimus online. Standing by.', { rate: settings.voiceRate, pitch: settings.voicePitch })} style={{ alignSelf: 'flex-start' }} />
@@ -425,6 +455,7 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
+  routineRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   usageRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.md, flexWrap: 'wrap' },
   track: { height: 2, width: '100%' },

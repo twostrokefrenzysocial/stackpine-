@@ -20,6 +20,7 @@ export function useAppLifecycle() {
         await syncNotifications(rt).catch(() => 0);
         const { ensureTodaysBrief } = await import('../platform/briefRunner');
         await ensureTodaysBrief(rt).catch(() => null);
+        await rt.engine.refillRoutines().catch(() => 0);
         const n = await rt.engine.processIdleConversations(activeConversation.id ?? undefined).catch(() => 0);
         if (n) bump();
       } finally {

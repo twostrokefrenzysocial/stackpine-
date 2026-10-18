@@ -249,3 +249,24 @@ describe('engine on OpenAI', () => {
     expect(sources.sentTexts).toHaveLength(1);
   });
 });
+
+describe('daily routines end to end', () => {
+  it('one approval turns a routine on and schedules the coming week', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport((_req, n) =>
+      n === 0
+        ? { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'propose_routine', input: { title: 'Morning verse', instruction: 'A different ESV verse for anxiety and a one-line encouragement', time: '07:00', example: 'Psalm 46:1' } }] }
+        : { content: [{ type: 'text', text: 'Approve it and a new verse arrives every morning at 7.', citations: null }] },
+    );
+    const { engine } = makeEngine(db, fake);
+    const conv = await engine.conversations.create();
+    const { result } = await engine.send(conv.id, 'Send me a different Bible verse every morning at 7', () => {});
+    const [id] = confirmIds(result.cards);
+    expect(await engine.routines.list()).toHaveLength(0);
+    const r = await engine.actions.approve(id);
+    expect(r.status).toBe('executed');
+    expect(await engine.routines.list()).toHaveLength(1);
+    const items = await db.all<{ date: string }>('SELECT date FROM routine_items');
+    expect(items).toHaveLength(7);
+  });
+});

@@ -19,7 +19,7 @@ import { openDatabase } from './db';
 import { proxyToken } from './secrets';
 import { loadMockPhoto } from './sources/mockPhotos';
 import { createRealSources } from './sources/real';
-import { notificationScheduler } from './notify';
+import { notificationScheduler, routineScheduler } from './notify';
 
 /**
  * Process-wide app runtime: database, settings, engine, and the switches
@@ -109,6 +109,7 @@ async function doBoot(): Promise<Runtime> {
     transport: () => transport,
     background: () => background,
     scheduler: notificationScheduler,
+    routineScheduler,
     locationEnabled: () => settings.locationEnabled,
     unavailableSources: () => unavailableSources(settings),
   });
