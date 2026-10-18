@@ -75,7 +75,18 @@ export function useVoiceInput(onFinal: (text: string) => void) {
     clearSilence();
     setListening(false);
     level.set(0);
-    if (e.error !== 'aborted' && e.error !== 'no-speech') setError(e.error === 'not-allowed' ? 'Microphone permission is off.' : 'I didn’t catch that.');
+    // Stopping a continuous session can surface a timeout/client error even
+    // though words were heard: deliver them instead of complaining.
+    const text = [finalText.current, interim.current].join(' ').replace(/\s+/g, ' ').trim();
+    finalText.current = '';
+    interim.current = '';
+    setPartial('');
+    if (text) {
+      onFinal(text);
+      return;
+    }
+    if (e.error === 'aborted' || e.error === 'no-speech' || e.error === 'speech-timeout' || e.error === 'client') return;
+    setError(e.error === 'not-allowed' ? 'Microphone permission is off.' : e.error === 'network' ? 'Voice input needs a connection.' : 'I didn’t catch that.');
   });
 
   const start = useCallback(async () => {
@@ -107,6 +118,7 @@ export function useVoiceInput(onFinal: (text: string) => void) {
 
   const stop = useCallback(() => {
     clearSilence();
+    setError(null);
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
