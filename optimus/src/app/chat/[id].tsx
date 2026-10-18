@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage } from '../../core/types';
 import { formatDay } from '../../core/util/time';
 import { useVoiceInput } from '../../platform/voice';
 import { useApp, useData } from '../../ui/AppContext';
+import { useKeyboardVisible } from '../../ui/useKeyboardVisible';
 import { Brain } from '../../ui/components/Brain';
 import { Banner } from '../../ui/components/Banner';
 import { Button } from '../../ui/components/Button';
@@ -26,6 +27,7 @@ export default function Chat() {
   const { id, voice, q } = useLocalSearchParams<{ id: string; voice?: string; q?: string }>();
   const { rt, palette: p } = useApp();
   const insets = useSafeAreaInsets();
+  const keyboardUp = useKeyboardVisible();
   const [created, setCreated] = useState<string | null>(null);
   const convId = id && id !== 'new' ? id : created;
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -101,7 +103,8 @@ export default function Chat() {
         />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Android draws edge to edge, so the window no longer resizes for the keyboard: pad instead. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         {empty ? (
           <View style={styles.empty}>
             <Brain size={220} state={chat.avatar} micLevel={mic.level} speechLevel={chat.speechLevel} onPress={mic.start} onLongPress={() => router.push('/settings')} />
@@ -145,7 +148,7 @@ export default function Chat() {
         )}
         <View>
           <Composer
-            bottomInset={insets.bottom}
+            bottomInset={keyboardUp ? 0 : insets.bottom}
             onSend={(t) => chat.send(t)}
             onMic={mic.start}
             onStopMic={mic.stop}

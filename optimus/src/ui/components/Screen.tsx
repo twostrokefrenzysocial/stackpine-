@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useApp } from '../AppContext';
@@ -18,9 +18,12 @@ export function Screen({ children, scroll = true, style, contentStyle, padTop = 
   return (
     <View style={[styles.root, { backgroundColor: p.bg }, style]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={[pad, contentStyle]} keyboardShouldPersistTaps="handled" {...rest}>
-          {children}
-        </ScrollView>
+        // Shrinks with the keyboard so the field being typed in can scroll into view.
+        <KeyboardAvoidingView style={styles.root} behavior="padding">
+          <ScrollView contentContainerStyle={[pad, contentStyle]} keyboardShouldPersistTaps="handled" {...rest}>
+            {children}
+          </ScrollView>
+        </KeyboardAvoidingView>
       ) : (
         <View style={[styles.root, pad, contentStyle]}>{children}</View>
       )}
