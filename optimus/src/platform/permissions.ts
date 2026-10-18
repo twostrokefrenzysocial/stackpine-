@@ -3,11 +3,12 @@ import * as Contacts from 'expo-contacts/legacy';
 import * as Location from 'expo-location';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Notifications from 'expo-notifications';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { PermissionsAndroid, Platform } from 'react-native';
 import * as Native from '../../modules/optimus-android';
 
 /** Each permission is requested on its own, after an explanation screen. */
-export type PermissionKey = 'texts' | 'calls' | 'notifications' | 'calendar' | 'contacts' | 'photos' | 'location' | 'alerts';
+export type PermissionKey = 'texts' | 'calls' | 'notifications' | 'calendar' | 'contacts' | 'photos' | 'location' | 'alerts' | 'microphone';
 
 export type PermissionStates = Record<PermissionKey, boolean>;
 
@@ -24,7 +25,7 @@ async function safe(fn: () => Promise<boolean>): Promise<boolean> {
 
 export async function getPermissionStates(): Promise<PermissionStates> {
   const android = Platform.OS === 'android';
-  const [texts, calls, calendar, contacts, photos, location, alerts] = await Promise.all([
+  const [texts, calls, calendar, contacts, photos, location, alerts, microphone] = await Promise.all([
     safe(async () => android && (await PermissionsAndroid.check(P.READ_SMS))),
     safe(async () => android && (await PermissionsAndroid.check(P.READ_CALL_LOG))),
     safe(async () => (await Calendar.getCalendarPermissionsAsync()).granted),
@@ -32,8 +33,9 @@ export async function getPermissionStates(): Promise<PermissionStates> {
     safe(async () => (await MediaLibrary.getPermissionsAsync()).granted),
     safe(async () => (await Location.getForegroundPermissionsAsync()).granted),
     safe(async () => (await Notifications.getPermissionsAsync()).granted),
+    safe(async () => (await ExpoSpeechRecognitionModule.getPermissionsAsync()).granted),
   ]);
-  return { texts, calls, calendar, contacts, photos, location, alerts, notifications: Native.getDeviceStatus()?.notificationAccessGranted ?? false };
+  return { texts, calls, calendar, contacts, photos, location, alerts, microphone, notifications: Native.getDeviceStatus()?.notificationAccessGranted ?? false };
 }
 
 const granted = (r: string) => r === PermissionsAndroid.RESULTS.GRANTED;
@@ -64,5 +66,7 @@ export async function requestPermission(key: PermissionKey): Promise<boolean> {
       return (await Location.requestForegroundPermissionsAsync()).granted;
     case 'alerts':
       return (await Notifications.requestPermissionsAsync()).granted;
+    case 'microphone':
+      return (await ExpoSpeechRecognitionModule.requestPermissionsAsync()).granted;
   }
 }

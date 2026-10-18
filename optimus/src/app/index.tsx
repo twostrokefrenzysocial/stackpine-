@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,6 +72,8 @@ export default function Home() {
     setRegenerating(false);
     router.replace('/');
   };
+
+  if (!settings.onboardingDone) return <Redirect href="/onboarding" />;
 
   const mode = [settings.dataMode === 'mock' ? 'MOCK DATA' : 'LIVE DATA', rt.isDemoBrain() ? 'DEMO CORE' : 'ONLINE'].join(' · ');
 
