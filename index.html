@@ -135,16 +135,18 @@
   </div>
 </header>
 
-<main id="main">
+<main id="main" data-stack>
 
 <section class="hero ch ch--ground">
   <svg class="hero__shape" viewBox="0 0 32 36" aria-hidden="true" focusable="false">
-      <path d="M16 1.5l3.6 5.4h-7.2z"/>
-      <g fill="none" stroke-width="2.3" stroke-linecap="square">
-        <path d="M11.4 11.4L16 9l4.6 2.4"/><path d="M9.4 15.8L16 12.4l6.6 3.4"/><path d="M7.4 20.2L16 15.8l8.6 4.4"/><path d="M5.4 24.6L16 19.2l10.6 5.4"/><path d="M3.4 29L16 22.6 28.6 29"/>
-      </g>
-      <rect x="11.5" y="32" width="9" height="3"/>
-    </svg>
+    <g class="pl" style="--n:0"><rect class="pl__in" x="11.5" y="32" width="9" height="3"/></g>
+    <g class="pl" style="--n:1"><path class="pl__in pl__stroke" d="M3.4 29L16 22.6 28.6 29"/></g>
+    <g class="pl" style="--n:2"><path class="pl__in pl__stroke" d="M5.4 24.6L16 19.2l10.6 5.4"/></g>
+    <g class="pl" style="--n:3"><path class="pl__in pl__stroke" d="M7.4 20.2L16 15.8l8.6 4.4"/></g>
+    <g class="pl" style="--n:4"><path class="pl__in pl__stroke" d="M9.4 15.8L16 12.4l6.6 3.4"/></g>
+    <g class="pl" style="--n:5"><path class="pl__in pl__stroke" d="M11.4 11.4L16 9l4.6 2.4"/></g>
+    <g class="pl" style="--n:6"><path class="pl__in" d="M16 1.5l3.6 5.4h-7.2z"/></g>
+  </svg>
   <div class="wrap hero__in" data-enter>
     <h1>Built around<br> how you work.</h1>
     <p class="hero__lede">Custom business software, apps and websites for small businesses, on one monthly fee that covers the build, hosting, support and every improvement after.</p>
@@ -161,7 +163,7 @@
 
 <section class="stair ch ch--navy" aria-label="The problem">
   <div class="wrap stair__in">
-    <p class="stair__text" data-enter="lines">
+    <p class="stair__text">
       <span>Spreadsheets, group texts</span>
       <span>and five apps that each</span>
       <span>do 60% of the job.</span>
@@ -206,7 +208,7 @@
 
 <section class="names ch ch--pine">
   <div class="wrap">
-    <p class="names__text" data-enter><b>Built so far:</b>
+    <p class="names__text"><b>Built so far:</b>
       <a href="/results/">Leadership dashboard</a>, <a href="/results/">Custom online store</a>, <a href="/results/">Expense tracker</a>, <a href="/builds/">Email Triage Agent</a>, <a href="/builds/">On-Prem AI Server</a>, <a href="/builds/">RevLane</a>, <a href="/builds/">Staff Knowledge Assistant</a>, <a href="/builds/">Resume Screening Pipeline</a>, <a href="/builds/">Operational Dashboards</a>, <a href="/builds/">Funeral Triage</a>.</p>
     <p class="names__note">Ten systems in production use, for healthcare, retail, motorsports and service businesses. Client details stay anonymous.</p>
   </div>
@@ -225,7 +227,7 @@
         </ul>
       </div>
       <div class="ticket__stub">
-        <p class="ticket__price">$0</p>
+        <p class="ticket__price"><span class="sr-only">$0</span><span aria-hidden="true" data-count-from="40000">$0</span></p>
         <p class="ticket__per">up front</p>
         <a class="btn btn--bar" href="/pricing/">See how pricing works</a>
       </div>
@@ -282,6 +284,7 @@
   </div>
 </footer>
 <script src="/assets/site.js" defer></script>
+<script src="/assets/fx.js" defer></script>
 <script src="/assets/beacon.js" defer></script>
 </body>
 </html>

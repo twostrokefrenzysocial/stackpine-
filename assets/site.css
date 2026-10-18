@@ -296,7 +296,7 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 .ticket h2{font-size:var(--step-head);max-width:12ch}
 .ticket__terms{display:grid;grid-template-columns:1fr 1fr;gap:10px 32px}
 .ticket__stub{padding:40px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-left:6px dotted var(--blaze-field)}
-.ticket__price{font-family:var(--display);font-weight:700;font-size:var(--step-display);line-height:.9;letter-spacing:-.04em}
+.ticket__price{font-family:var(--display);font-weight:700;font-size:min(var(--step-display),4rem);white-space:nowrap;line-height:.9;letter-spacing:-.04em}
 .ticket__per{font-size:var(--step-lead);margin-bottom:20px}
 @media (max-width:899px){
   .ticket{grid-template-columns:1fr;--split:calc(100% - 230px)}
@@ -525,3 +525,34 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
   @keyframes done-fade{from{opacity:0}}
 }
 .stage__tab:focus-visible{outline-offset:-6px}
+
+/* ---------- effects layer (assets/fx.js; never under reduced motion) ---------- */
+.pl__stroke{fill:none;stroke-width:2.3;stroke-linecap:square}
+.footer{position:relative;z-index:2}
+@media (prefers-reduced-motion:no-preference){
+  /* the pine builds itself: trunk first, each layer stacked on top, then the tip */
+  .fx .pl{animation:pl-in 720ms var(--ease-out) both;animation-delay:calc(var(--n) * 110ms + 120ms)}
+  @keyframes pl-in{from{opacity:0;transform:translateY(-7px)}}
+
+  /* headlines rise word by word from behind a mask */
+  .fx-w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.1em;margin-bottom:-.1em}
+  .fx-w>span{display:inline-block;animation:w-in 900ms var(--ease-out) both}
+  @keyframes w-in{from{transform:translateY(110%)}}
+  .fx [data-enter]>h1{opacity:1!important;transform:none!important}
+
+  /* chapters stack: each slides over the last, which sinks back and dims */
+  .fx [data-stack]{background:#0B1320}
+  .fx-stack{position:sticky;transform-origin:50% 35%}
+  .fx-shade{position:absolute;inset:0;background:#0B1320;opacity:0;pointer-events:none;z-index:5}
+
+  /* text lights up in reading order */
+  .fx-scrub span,.fx-scrub a{transition:opacity 420ms ease,color 420ms ease}
+  .fx .fx-scrub span:not(.is-lit),.fx .fx-scrub a:not(.is-lit){opacity:.22}
+  .fx .names__text a.is-lit{color:var(--on-dark)}
+
+  /* pictures drift under script control */
+  .fx .page-hero__pic img,.fx .stair__pics img{transition:none!important;will-change:transform}
+
+  /* buttons lean towards the pointer, and spring back */
+  .btn{transition:transform var(--t-press) var(--ease-out),translate 320ms var(--ease-out),background-color var(--t-hover) ease,color var(--t-hover) ease}
+}
