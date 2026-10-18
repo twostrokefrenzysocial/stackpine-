@@ -10,34 +10,69 @@ import { useSharedValue } from 'react-native-reanimated';
  * Voice in (speech-to-text) and out (text-to-speech).
  */
 
+/**
+ * How long you can pause mid-sentence before Optimus takes the turn. The
+ * phone's recognizer wants to stop at the first short pause; instead we keep
+ * it running and end the utterance ourselves after real silence.
+ */
+export const SILENCE_MS = 2200;
+
 export function useVoiceInput(onFinal: (text: string) => void) {
   const [listening, setListening] = useState(false);
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const level = useSharedValue(0);
+  // Finished segments so far, and the segment still being spoken.
   const finalText = useRef('');
+  const interim = useRef('');
+  const silence = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSilence = () => {
+    if (silence.current) clearTimeout(silence.current);
+    silence.current = null;
+  };
+  const armSilence = () => {
+    clearSilence();
+    silence.current = setTimeout(() => {
+      silence.current = null;
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch {
+        // The 'end' event delivers whatever was heard.
+      }
+    }, SILENCE_MS);
+  };
 
   useSpeechRecognitionEvent('start', () => {
     setListening(true);
     setError(null);
   });
   useSpeechRecognitionEvent('end', () => {
+    clearSilence();
     setListening(false);
     level.set(0);
-    const text = finalText.current.trim();
+    const text = [finalText.current, interim.current].join(' ').replace(/\s+/g, ' ').trim();
     finalText.current = '';
+    interim.current = '';
     setPartial('');
     if (text) onFinal(text);
   });
   useSpeechRecognitionEvent('result', (e) => {
-    const t = e.results[0]?.transcript ?? '';
-    if (e.isFinal) finalText.current = t;
-    setPartial(t);
+    const t = (e.results[0]?.transcript ?? '').trim();
+    if (e.isFinal) {
+      // Continuous mode hands back one segment at a time: keep them all.
+      if (t) finalText.current = [finalText.current, t].filter(Boolean).join(' ');
+      interim.current = '';
+    } else interim.current = t;
+    setPartial([finalText.current, interim.current].filter(Boolean).join(' '));
+    // Only count silence once something has been said.
+    if (finalText.current || interim.current) armSilence();
   });
   useSpeechRecognitionEvent('volumechange', (e) => {
     level.set(Math.max(0, Math.min(1, (e.value + 2) / 12)));
   });
   useSpeechRecognitionEvent('error', (e) => {
+    clearSilence();
     setListening(false);
     level.set(0);
     if (e.error !== 'aborted' && e.error !== 'no-speech') setError(e.error === 'not-allowed' ? 'Microphone permission is off.' : 'I didn’t catch that.');
@@ -51,13 +86,27 @@ export function useVoiceInput(onFinal: (text: string) => void) {
         return;
       }
       Speech.stop();
-      ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true, continuous: false, volumeChangeEventOptions: { enabled: true, intervalMillis: 80 } });
+      finalText.current = '';
+      interim.current = '';
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: true,
+        // Keep listening through pauses; we end the turn after SILENCE_MS of quiet.
+        continuous: true,
+        androidIntentOptions: {
+          EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: SILENCE_MS,
+          EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: SILENCE_MS,
+          EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 8000,
+        },
+        volumeChangeEventOptions: { enabled: true, intervalMillis: 80 },
+      });
     } catch {
       setError('Voice input isn’t available on this device.');
     }
   }, []);
 
   const stop = useCallback(() => {
+    clearSilence();
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
