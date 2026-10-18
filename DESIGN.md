@@ -179,7 +179,18 @@ A single requestAnimationFrame loop that eases every value and writes only trans
 - **Magnetic buttons:** buttons lean up to 8px towards the pointer using the `translate` property, so the press `scale` still works.
 - **Drift:** header and staircase pictures drift slower than the page.
 
+### Persuasion rules (marketing-psychology skill)
+Used honestly, with facts the site already states:
+- **Low first step** (foot-in-the-door, activation energy): the hero asks one question; the answer carries into the contact form, which opens with an acknowledgement and shows only name, email and the problem. Everything else sits under "Add more detail".
+- **One action per section** (Hick's law): the price ticket's button is "Get my free quote", with a text link to pricing; button labels say what happens ("Get a free quote").
+- **Risk reducers beside every action** (regret aversion): free quote, no upfront build cost, cancel anytime, usually a same-day reply, and the promise to say so if custom software isn't needed.
+- **Before and after, concretely** (contrast, availability): the proof chapter states real outcomes from the Builds and Results pages, and says they are estimates.
+- **Outcomes before service names** (jobs to be done): each service heading is what the owner gets; the service name follows in bold.
+- **Anchor and reframe the price** (anchoring, mental accounting): the $40,000 agency quote counts down to $0 up front, and the fee is set against what owners already spend on apps that half-fit.
+
 ### Don't:
+- Don't invent urgency, scarcity, testimonials, customer counts, logos or prices. None are on record (see PRODUCT.md).
+- Don't use a decoy or tiered pricing: there are no published tiers.
 - Don't use eyebrows, monospace, index numbers, hairlines, gradients, resting shadows or glass.
 - Don't put cards on the fields, and don't use rows of identical cards.
 - Don't style an accent word in a headline (no italic or coloured word mid-heading).

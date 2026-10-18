@@ -285,6 +285,13 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 .names__note{color:var(--on-dark-soft);margin-top:32px;max-width:60ch}
 @media (max-width:760px){.names__text a{color:var(--on-dark);line-height:1.35}}
 
+/* proof: concrete before and after */
+.proof{display:grid;gap:28px 40px;margin-top:56px}
+@media (min-width:860px){.proof{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.proof b{display:block;font-family:var(--display);font-weight:700;font-size:var(--step-lead);letter-spacing:-.02em;line-height:1.05;color:var(--on-dark)}
+.proof span{display:block;margin-top:8px;color:var(--on-dark-soft);max-width:34ch}
+.what__list p strong{font-weight:600}
+
 /* ---------- pricing: the ticket ---------- */
 .price{min-height:90svh;display:grid;align-items:center;padding-block:clamp(80px,10vw,140px)}
 .ticket{
@@ -304,6 +311,8 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 .ticket__stub{padding:40px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-left:6px dotted var(--blaze-field)}
 .ticket__price{font-family:var(--display);font-weight:700;font-size:min(var(--step-display),4rem);white-space:nowrap;line-height:.9;letter-spacing:-.04em}
 .ticket__per{font-size:var(--step-lead);margin-bottom:20px}
+.ticket__stub .tlink{margin-top:14px;color:var(--pine)}
+.price__note{max-width:60ch;margin:36px auto 0;text-align:center}
 @media (max-width:899px){
   .ticket{grid-template-columns:1fr;--split:calc(100% - 230px)}
   .ticket::before,.ticket::after{top:var(--split);bottom:auto;transform:translateY(-50%)}
@@ -497,6 +506,15 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 .steps-mini b{font-weight:600}
 .aside-alt{margin-top:32px;padding:20px 24px;background:var(--land)}
 .aside-alt a{color:var(--pine);font-weight:600;text-decoration:underline;text-underline-offset:.2em}
+.form__carried{background:var(--pine-200);padding:14px 18px;font-weight:600}
+.form__more summary{list-style:none;cursor:pointer;display:block;padding:10px 0;font-weight:600;color:var(--pine);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.25em;text-decoration-color:transparent;transition:text-decoration-color var(--t-hover) ease}
+.form__more summary::-webkit-details-marker{display:none}
+.form__more summary span{font-weight:400;color:var(--ink-soft)}
+.form__more summary::after{content:'';display:inline-block;margin-left:10px;width:8px;height:8px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform 200ms var(--ease-out)}
+.form__more[open] summary::after{transform:translateY(2px) rotate(-135deg)}
+@media (hover:hover) and (pointer:fine){.form__more summary:hover{text-decoration-color:currentColor}}
+.form__more-body{display:grid;gap:24px;margin-top:16px}
+.form__reassure{color:var(--ink-soft);max-width:52ch}
 .form__done:not([hidden]){animation:done-in .4s var(--ease-out)}
 @keyframes done-in{from{opacity:0;transform:translateY(12px)}}
 
