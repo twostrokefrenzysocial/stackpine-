@@ -3,26 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Builds — AI Systems &amp; Software Portfolio | Stackpine</title>
+<title>Builds: AI Systems &amp; Software Portfolio | Stackpine</title>
 <meta name="description" content="A portfolio of AI systems and custom software: internal RAG assistants, autonomous email triage, live dashboards, SaaS products and on-prem AI infrastructure.">
 <link rel="canonical" href="https://stackpine.org/builds/">
 <meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
-<meta property="og:title" content="Builds — AI Systems &amp; Software Portfolio | Stackpine">
+<meta property="og:title" content="Builds: AI Systems &amp; Software Portfolio | Stackpine">
 <meta property="og:description" content="AI systems and custom software: RAG assistants, email triage agents, dashboards, SaaS and on-prem AI.">
 <meta property="og:url" content="https://stackpine.org/builds/">
 <meta property="og:image" content="https://stackpine.org/cover.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Builds — AI Systems &amp; Software Portfolio | Stackpine">
+<meta name="twitter:title" content="Builds: AI Systems &amp; Software Portfolio | Stackpine">
 <meta name="twitter:description" content="AI systems and custom software: RAG assistants, email triage, dashboards, SaaS and on-prem AI.">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
 <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/league-spartan-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
+<script>document.documentElement.classList.add('js')</script>
 <link rel="stylesheet" href="/assets/builds.css">
 <script type="application/ld+json">
 {
@@ -47,7 +48,7 @@
   },
   {
    "@type": "CollectionPage",
-   "name": "Builds — AI systems and software portfolio",
+   "name": "Builds: AI systems and software portfolio",
    "description": "Selected AI systems and custom software: autonomous email triage, on-prem LLM inference, a production SaaS platform, internal RAG assistants and live operational dashboards.",
    "url": "https://stackpine.org/builds/",
    "isPartOf": {
@@ -147,7 +148,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
-<header class="nav" id="nav">
+<header class="nav ch--ground" id="nav">
   <div class="wrap nav__in">
     <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
     <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
@@ -157,26 +158,26 @@
       <a href="/pricing/">Pricing</a>
       <a href="/results/">Results</a>
       <a href="/builds/">Builds</a>
-      <a class="btn btn--primary btn--sm nav__cta" href="/contact/">Get in touch</a>
+      <a class="btn btn--sm nav__cta" href="/contact/">Get in touch</a>
     </nav>
   </div>
 </header>
 
 <main id="main">
 <section class="page-hero board">
-  <div class="wrap">
-    <p class="crumbs"><a href="/">Home</a><span></span>Builds</p>
+  <div class="wrap" data-enter>
     <h1>Systems that pay for themselves.</h1>
-    <p class="lede">Selected systems in production use — autonomous agents, on-prem LLM inference, a live SaaS platform and internal AI tooling. Each one replaced hours of manual work with something that runs itself.</p>
+    <p class="lede">Selected systems in production use: autonomous agents, on-prem LLM inference, a live SaaS platform and internal AI tooling. Each one replaced hours of manual work with something that runs itself.</p>
   </div>
+  <figure class="page-hero__pic shutter"><img src="/assets/img/forest-screens.jpg" width="900" height="600" alt="Stackpine illustration: software windows and a data network set among pine trees"></figure>
 </section>
 
-<section class="section">
+<section class="section section--tint">
   <div class="wrap">
     <h2 class="sr-only">Selected builds</h2>
-    <div class="builds" id="builds">
+    <div class="builds" data-enter="rows" id="builds">
       <article class="build build--featured">
-        <div class="build__id"><h3>Email Triage Agent</h3><p class="build__kind">Autonomous inbox management</p><p class="build__metric">50 emails triaged in 13s — was 8 minutes</p></div>
+        <div class="build__id"><h3>Email Triage Agent</h3><p class="build__kind">Autonomous inbox management</p><p class="build__metric">50 emails triaged in 13s, down from 8 minutes</p></div>
         <p class="build__sum">A persistent agent that sorts high-volume Outlook inboxes automatically and rescues legitimate mail from junk.</p>
         <details class="build__more"><summary>Full detail</summary><div class="build__body"><h4>The problem</h4><p>High-volume Outlook inboxes needed constant manual sorting, and legitimate contacts occasionally landed in junk unseen.</p><h4>What was built</h4><p>Persistent Python agent that authenticates to Microsoft Graph (MSAL device-code flow, cached token), applies sender rules first, batch-classifies the rest with an LLM (Actionable, Automated, Spam), moves messages to the right folders, and rescues protected contacts from junk. Replicated across multiple staff inboxes from a reusable build prompt.</p><h4>Impact</h4><p>Cut triage of 50 emails from roughly 8 minutes to about 13 seconds.</p><h4>Stack</h4><ul class="chips"><li>Python</li><li>Microsoft Graph API</li><li>MSAL</li><li>Anthropic API</li><li>Local JSON classification cache</li><li>Continuous polling service</li></ul></div></details>
       </article>
@@ -213,45 +214,49 @@
       </article>
     </div>
 
-    <div class="endcap board">
-      <h2>Want systems like these in your organization?</h2>
+    <div class="endcap board" data-enter>
+      <h2>Want systems like these?</h2>
       <p>Tell us what&rsquo;s slowing you down. Free quote, plain English, zero pressure.</p>
       <div class="btn-row">
-        <a class="btn btn--primary" href="/contact/">Get a free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        <a class="btn btn--ghost" href="/results/">See client results</a>
+        <a class="btn" href="/contact/">Get a free quote</a>
+        <a class="tlink" href="/results/">See client results <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
     </div>
   </div>
 </section>
 </main>
 
-<footer class="footer">
+<footer class="footer ch ch--navy">
   <div class="wrap">
-    <div class="footer__top">
-      <div class="footer__brand">
-        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
-        <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
-      </div>
-      <div><h4>Company</h4><ul>
-        <li><a href="/how-it-works/">How it works</a></li>
-        <li><a href="/what-we-build/">What we build</a></li>
-        <li><a href="/pricing/">Pricing</a></li>
-        <li><a href="/results/">Results</a></li>
-        <li><a href="/builds/">Builds</a></li>
-      </ul></div>
-      <div><h4>Guides</h4><ul>
-        <li><a href="/custom-software/">Custom software guide</a></li>
-        <li><a href="/websites/">Websites guide</a></li>
-        <li><a href="/ohio/">Ohio</a></li>
-      </ul></div>
-      <div><h4>Contact</h4><ul>
-        <li><a href="/contact/">Get in touch</a></li>
-        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Facebook</a></li>
-      </ul></div>
+    <p class="footer__name" aria-hidden="true">Stackpine</p>
+    <div class="footer__row">
+      <ul class="footer__places">
+        <li><a href="mailto:chris@stackpine.org">chris@stackpine.org</a></li>
+        <li><a href="/ohio/">Cleveland · Columbus · Cincinnati</a></li>
+        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message us on Facebook</a></li>
+      </ul>
+      <nav class="footer__links" aria-label="Footer">
+        <div><h2>Company</h2><ul>
+          <li><a href="/how-it-works/">How it works</a></li>
+          <li><a href="/what-we-build/">What we build</a></li>
+          <li><a href="/pricing/">Pricing</a></li>
+          <li><a href="/results/">Results</a></li>
+          <li><a href="/builds/">Builds</a></li>
+        </ul></div>
+        <div><h2>Guides</h2><ul>
+          <li><a href="/custom-software/">Custom software guide</a></li>
+          <li><a href="/websites/">Websites guide</a></li>
+          <li><a href="/ohio/">Ohio</a></li>
+        </ul></div>
+        <div><h2>Contact</h2><ul>
+          <li><a href="/contact/">Get in touch</a></li>
+        </ul></div>
+      </nav>
     </div>
     <div class="footer__base">
-      <span>&copy; 2026 Stackpine. All rights reserved.</span>
-      <span>Based in Ohio &middot; Serving businesses everywhere</span>
+      <span>&copy; 2026 Stackpine · Based in Ohio</span>
+      <span>Illustrations from Stackpine’s cover art</span>
+      <a href="#main">Back to top</a>
     </div>
   </div>
 </footer>

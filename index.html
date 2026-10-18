@@ -4,25 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Custom Software for Small Business | Stackpine</title>
-<meta name="description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs — one monthly fee, hosting and support included.">
+<meta name="description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs, one monthly fee, hosting and support included.">
 <link rel="canonical" href="https://stackpine.org/">
 <meta name="theme-color" content="#F5F8F4">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stackpine">
 <meta property="og:title" content="Custom Software for Small Business | Stackpine">
-<meta property="og:description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs — one monthly fee, hosting and support incl">
+<meta property="og:description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs, one monthly fee, hosting and support incl">
 <meta property="og:url" content="https://stackpine.org/">
 <meta property="og:image" content="https://stackpine.org/cover.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Custom Software for Small Business | Stackpine">
-<meta name="twitter:description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs — one monthly fee, hosting and support incl">
+<meta name="twitter:description" content="Stackpine builds custom business software, apps and websites shaped around how your business actually runs, one monthly fee, hosting and support incl">
 <meta name="twitter:image" content="https://stackpine.org/cover.jpg">
 <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
 <link rel="icon" href="/logo.png" type="image/png">
-<link rel="preload" href="/assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/league-spartan-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
+<script>document.documentElement.classList.add('js')</script>
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -119,7 +120,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
-<header class="nav" id="nav">
+<header class="nav ch--ground" id="nav">
   <div class="wrap nav__in">
     <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
     <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
@@ -129,109 +130,154 @@
       <a href="/pricing/">Pricing</a>
       <a href="/results/">Results</a>
       <a href="/builds/">Builds</a>
-      <a class="btn btn--primary btn--sm nav__cta" href="/contact/">Get in touch</a>
+      <a class="btn btn--sm nav__cta" href="/contact/">Get in touch</a>
     </nav>
   </div>
 </header>
 
 <main id="main">
 
-<section class="hero board">
-  <div class="wrap">
-    <div class="hero__in">
-      <div>
-        <h1>Software built around how your business already works.</h1>
-        <p class="lede">Stop bending your business around off-the-shelf tools. We build custom business software, apps, websites and online stores shaped around you, for one monthly subscription that covers the build, hosting, support and every improvement after.</p>
+<section class="hero ch ch--ground">
+  <svg class="hero__shape" viewBox="0 0 32 36" aria-hidden="true" focusable="false">
+      <path d="M16 1.5l3.6 5.4h-7.2z"/>
+      <g fill="none" stroke-width="2.3" stroke-linecap="square">
+        <path d="M11.4 11.4L16 9l4.6 2.4"/><path d="M9.4 15.8L16 12.4l6.6 3.4"/><path d="M7.4 20.2L16 15.8l8.6 4.4"/><path d="M5.4 24.6L16 19.2l10.6 5.4"/><path d="M3.4 29L16 22.6 28.6 29"/>
+      </g>
+      <rect x="11.5" y="32" width="9" height="3"/>
+    </svg>
+  <div class="wrap hero__in" data-enter>
+    <h1>Built around<br> how you work.</h1>
+    <p class="hero__lede">Custom business software, apps and websites for small businesses, on one monthly fee that covers the build, hosting, support and every improvement after.</p>
+    <form class="start" action="/contact/" method="get">
+      <label for="start-problem">What’s slowing your business down?</label>
+      <div class="start__row">
+        <input id="start-problem" name="problem" maxlength="3000" autocomplete="off" placeholder="We lose track of jobs that come in by text">
+        <button class="btn" type="submit">Start my free quote</button>
       </div>
-      <form class="start" action="/contact/" method="get">
-        <label for="start-problem">What’s slowing your business down?</label>
-        <p class="hint">One sentence is plenty. You’ll finish the rest on the next page.</p>
-        <textarea id="start-problem" name="problem" maxlength="3000" placeholder="“Requests come in by text and we lose track of them.”"></textarea>
-        <button class="btn btn--primary" type="submit">Start my free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        <p class="fine">No upfront build cost · Working software in weeks</p>
-      </form>
-    </div>
-    <nav class="dest" aria-label="Where to start">
-      <a href="/how-it-works/"><em><span class="blaze" aria-hidden="true"></span><b>How it works</b></em><span>Three steps, plain English</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a href="/what-we-build/"><em><span class="blaze" aria-hidden="true"></span><b>What we build</b></em><span>Intake, booking, portals, stores</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a href="/pricing/"><em><span class="blaze" aria-hidden="true"></span><b>What it costs</b></em><span>One predictable monthly fee</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a href="/results/"><em><span class="blaze" aria-hidden="true"></span><b>Real results</b></em><span>Three builds, before and after</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-    </nav>
+      <p class="start__note">Free quote, no upfront build cost. You’ll finish the details on the next page.</p>
+    </form>
   </div>
 </section>
 
-<section class="section" id="problem">
+<section class="stair ch ch--navy" aria-label="The problem">
+  <div class="wrap stair__in">
+    <p class="stair__text" data-enter="lines">
+      <span>Spreadsheets, group texts</span>
+      <span>and five apps that each</span>
+      <span>do 60% of the job.</span>
+      <span>That “almost” costs</span>
+      <span>you every single day.</span>
+    </p>
+    <div class="stair__pics">
+      <figure class="shutter"><img src="/assets/img/forest-screens.jpg" width="900" height="600" alt="Stackpine illustration: software windows and a data network set among pine trees"></figure>
+      <figure data-enter><img src="/assets/img/forest-edge.jpg" width="960" height="640" loading="lazy" alt="Stackpine illustration: navy and green pine forest"></figure>
+    </div>
+    <p class="stair__note">The spreadsheet only one person understands. Requests by phone, text and sticky note. A $40,000 quote, then a developer who vanished after launch.</p>
+  </div>
+</section>
+
+<section class="how ch ch--land">
   <div class="wrap">
-    <div class="head">
-      <h2 class="h-lg">Your tools almost fit. That “almost” costs you every day.</h2>
-      <p class="lede">Most businesses run on a patchwork of spreadsheets, group texts and off-the-shelf apps built for somebody else’s business. You end up adapting to the software instead of the other way round.</p>
+    <div class="how__intro" data-enter>
+      <h2>One layer at a time</h2>
+      <p>You start with the one tool that would help most, in use within weeks. It grows from there, and the same person stays with it next month and next year.</p>
     </div>
-    <ul class="pains">
-      <li>The spreadsheet only one person understands, and they’re on vacation.</li>
-      <li>Paying for five different apps that each do 60% of what you need.</li>
-      <li>Requests arriving by phone, text, email and sticky note, then falling through the cracks.</li>
-      <li>A developer quoted $40,000 up front… then vanished after launch.</li>
-    </ul>
+    <div class="stages" data-stages data-enter="rows">
+      <section class="stage stage--1 is-open">
+        <h3><button class="stage__tab" id="st-1" aria-expanded="true" aria-controls="sp-1">Tell us</button></h3>
+        <div class="stage__body" id="sp-1" role="region" aria-labelledby="st-1"><p>Describe what’s slowing you down the way you’d tell a friend. No tech knowledge, no jargon, no homework.</p></div>
+      </section>
+      <section class="stage stage--2">
+        <h3><button class="stage__tab" id="st-2" aria-expanded="false" aria-controls="sp-2">First layer</button></h3>
+        <div class="stage__body" id="sp-2" role="region" aria-labelledby="st-2"><p>We build the one tool that helps most, shaped around your words, your workflow and your rules. Working in weeks, not months.</p></div>
+      </section>
+      <section class="stage stage--3">
+        <h3><button class="stage__tab" id="st-3" aria-expanded="false" aria-controls="sp-3">In daily use</button></h3>
+        <div class="stage__body" id="sp-3" role="region" aria-labelledby="st-3"><p>We host it, secure it and keep it running. Questions go to the person who built it, not a ticket queue.</p></div>
+      </section>
+      <section class="stage stage--4">
+        <h3><button class="stage__tab" id="st-4" aria-expanded="false" aria-controls="sp-4">Next layer</button></h3>
+        <div class="stage__body" id="sp-4" role="region" aria-labelledby="st-4"><p>As your business changes, the software grows with it: scheduling, quoting, reporting, one layer at a time. Same monthly fee model, no surprise bills.</p></div>
+      </section>
+    </div>
+    <p class="how__more"><a class="tlink" href="/how-it-works/">How it works, with the common questions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
   </div>
 </section>
 
-<section class="section section--tint">
-  <div class="wrap trail-layout">
-    <div class="head">
-      <h2 class="h-lg">One layer at a time, not one giant bill</h2>
-      <p class="lede">You start with the one tool that would help most, in use within weeks. It grows from there, and we stay with it.</p>
-      <div class="btn-row"><a class="btn btn--ghost" href="/how-it-works/">How it works in detail</a></div>
-    </div>
-    <ol class="trail">
-      <li><h3>Tell us what’s slowing you down</h3><p>Describe it the way you’d explain it to a friend. No tech knowledge, no jargon, no homework.</p></li>
-      <li><h3>We build the first layer</h3><p>Shaped around your words, your workflow and your rules. You see working software in weeks, not months.</p></li>
-      <li><h3>It keeps improving</h3><p>One monthly fee covers hosting, updates, support and new layers as your business changes. No surprise bills, no disappearing developer.</p></li>
-    </ol>
-  </div>
-</section>
-
-<section class="section">
+<section class="names ch ch--pine">
   <div class="wrap">
-    <div class="endcap board">
+    <p class="names__text" data-enter><b>Built so far:</b>
+      <a href="/results/">Leadership dashboard</a>, <a href="/results/">Custom online store</a>, <a href="/results/">Expense tracker</a>, <a href="/builds/">Email Triage Agent</a>, <a href="/builds/">On-Prem AI Server</a>, <a href="/builds/">RevLane</a>, <a href="/builds/">Staff Knowledge Assistant</a>, <a href="/builds/">Resume Screening Pipeline</a>, <a href="/builds/">Operational Dashboards</a>, <a href="/builds/">Funeral Triage</a>.</p>
+    <p class="names__note">Ten systems in production use, for healthcare, retail, motorsports and service businesses. Client details stay anonymous.</p>
+  </div>
+</section>
+
+<section class="price ch ch--blaze">
+  <div class="wrap">
+    <div class="ticket" data-enter>
+      <div class="ticket__main">
+        <h2>One monthly subscription</h2>
+        <ul class="ticket__terms">
+          <li>The build, hosting, support and updates</li>
+          <li>Every improvement after launch</li>
+          <li>Quoted for your business, free</li>
+          <li>No surprise invoices, cancel anytime</li>
+        </ul>
+      </div>
+      <div class="ticket__stub">
+        <p class="ticket__price">$0</p>
+        <p class="ticket__per">up front</p>
+        <a class="btn btn--bar" href="/pricing/">See how pricing works</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="act ch ch--ground">
+  <div class="act__row" data-enter="rows">
+    <div class="act__side act__side--pic"><img src="/assets/img/treeline.jpg" width="1032" height="432" loading="lazy" alt="Stackpine illustration: a pine treeline in green and navy"></div>
+    <div class="act__tile">
       <h2>Have an idea? Let’s talk.</h2>
-      <p>Tell us what’s slowing your business down, in plain English. The first conversation is free, and if we think you don’t need custom software, we’ll say so.</p>
-      <div class="btn-row">
-        <a class="btn btn--primary" href="/contact/">Get a free quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        <a class="btn btn--ghost" href="/builds/">See our builds</a>
-      </div>
+      <p>Tell us what’s slowing your business down, in plain English. If we think you don’t need custom software, we’ll say so.</p>
+      <a class="btn btn--light" href="/contact/">Get a free quote</a>
     </div>
+    <div class="act__side act__side--flat"><img src="/assets/img/forest-mid.jpg" width="990" height="660" loading="lazy" alt="Stackpine illustration: pine trees and software windows"></div>
   </div>
 </section>
 
 </main>
 
-<footer class="footer">
+<footer class="footer ch ch--navy">
   <div class="wrap">
-    <div class="footer__top">
-      <div class="footer__brand">
-        <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
-        <p>Custom business software and websites for small businesses. Proudly based in Ohio, serving businesses everywhere.</p>
-      </div>
-      <div><h4>Company</h4><ul>
-        <li><a href="/how-it-works/">How it works</a></li>
-        <li><a href="/what-we-build/">What we build</a></li>
-        <li><a href="/pricing/">Pricing</a></li>
-        <li><a href="/results/">Results</a></li>
-        <li><a href="/builds/">Builds</a></li>
-      </ul></div>
-      <div><h4>Guides</h4><ul>
-        <li><a href="/custom-software/">Custom software guide</a></li>
-        <li><a href="/websites/">Websites guide</a></li>
-        <li><a href="/ohio/">Ohio</a></li>
-      </ul></div>
-      <div><h4>Contact</h4><ul>
-        <li><a href="/contact/">Get in touch</a></li>
-        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Facebook</a></li>
-      </ul></div>
+    <p class="footer__name" aria-hidden="true">Stackpine</p>
+    <div class="footer__row">
+      <ul class="footer__places">
+        <li><a href="mailto:chris@stackpine.org">chris@stackpine.org</a></li>
+        <li><a href="/ohio/">Cleveland · Columbus · Cincinnati</a></li>
+        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message us on Facebook</a></li>
+      </ul>
+      <nav class="footer__links" aria-label="Footer">
+        <div><h2>Company</h2><ul>
+          <li><a href="/how-it-works/">How it works</a></li>
+          <li><a href="/what-we-build/">What we build</a></li>
+          <li><a href="/pricing/">Pricing</a></li>
+          <li><a href="/results/">Results</a></li>
+          <li><a href="/builds/">Builds</a></li>
+        </ul></div>
+        <div><h2>Guides</h2><ul>
+          <li><a href="/custom-software/">Custom software guide</a></li>
+          <li><a href="/websites/">Websites guide</a></li>
+          <li><a href="/ohio/">Ohio</a></li>
+        </ul></div>
+        <div><h2>Contact</h2><ul>
+          <li><a href="/contact/">Get in touch</a></li>
+        </ul></div>
+      </nav>
     </div>
     <div class="footer__base">
-      <span>&copy; 2026 Stackpine. All rights reserved.</span>
-      <span>Based in Ohio &middot; Serving businesses everywhere</span>
+      <span>&copy; 2026 Stackpine · Based in Ohio</span>
+      <span>Illustrations from Stackpine’s cover art</span>
+      <a href="#main">Back to top</a>
     </div>
   </div>
 </footer>
