@@ -158,7 +158,7 @@ export function NotificationsCard({ notifications, index }: { notifications: Cap
 export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: number }) {
   const { palette: p } = useApp();
   return (
-    <Panel label={`${photos.length} photo${photos.length === 1 ? '' : 's'}`} index={index}>
+    <Panel label={`${photos.length} photo${photos.length === 1 ? '' : 's'} reviewed`} index={index}>
       <View style={styles.grid}>
         {photos.map((ph) => (
           <Pressable key={ph.id} style={[styles.thumb, { borderColor: p.line }]} accessibilityRole="image" accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}>

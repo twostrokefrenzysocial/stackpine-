@@ -113,6 +113,44 @@ describe('engine (phase acceptance)', () => {
     expect(sources.sentEmails).toHaveLength(1);
   });
 
+  it('phase 6: finds a specific photo from a description, sending only resized candidates', async () => {
+    const db = await createMigratedDb();
+    const loads: { id: string; maxEdge: number }[] = [];
+    const sources = createMockSources({
+      now: () => NOW,
+      photoLoader: async (photo, maxEdge) => {
+        loads.push({ id: photo.id, maxEdge });
+        return { base64: 'AAAA', mediaType: 'image/jpeg' };
+      },
+    });
+    const captions = (id: string) => sources.dataset.photos.find((p) => p.id === id)?.mockCaption;
+    const engine = new OptimusEngine({ db, sources: () => sources, transport: () => new ScriptedTransport({ now: () => NOW, captions }), background: () => new HeuristicBackgroundLlm(), now: () => NOW });
+    const conv = await engine.conversations.create();
+    const r = await engine.send(conv.id, 'Find the photo of my parking spot in the garage', () => {});
+    expect(r.result.text).toMatch(/C-42/);
+    expect(loads.length).toBeGreaterThan(0);
+    expect(loads.length).toBeLessThanOrEqual(6);
+    expect(loads.every((l) => l.maxEdge <= 1024)).toBe(true);
+    expect(loads[0].id).toBe('ph-parking-sign');
+    const photoCard = r.result.cards.find((c) => c.type === 'photos');
+    expect(photoCard).toBeDefined();
+  });
+
+  it('sends photos to vision as image blocks in the tool result', async () => {
+    const db = await createMigratedDb();
+    const sources = createMockSources({ now: () => NOW, photoLoader: async () => ({ base64: 'QkFTRTY0', mediaType: 'image/jpeg' }) });
+    const fake = new FakeTransport((_req, i) =>
+      i === 0 ? { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'look_at_photos', input: { ids: ['ph-lake-sunset', 'ph-tacos'] } }] } : { content: [{ type: 'text', text: 'The sunset one.', citations: null }] },
+    );
+    const engine = new OptimusEngine({ db, sources: () => sources, transport: () => fake, background: () => new HeuristicBackgroundLlm(), now: () => NOW });
+    const conv = await engine.conversations.create();
+    await engine.send(conv.id, 'Which of these is the sunset?', () => {});
+    const last = fake.requests[1].messages[fake.requests[1].messages.length - 1];
+    const result = (last.content as { type: string; content: { type: string }[] }[])[0];
+    expect(result.type).toBe('tool_result');
+    expect(result.content.filter((b) => b.type === 'image')).toHaveLength(2);
+  });
+
   it('enforces the 8 tool-call limit per request', async () => {
     const db = await createMigratedDb();
     let n = 0;
