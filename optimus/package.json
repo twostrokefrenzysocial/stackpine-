@@ -82,7 +82,8 @@
     "test:proxy": "jest proxy",
     "export:web": "expo export --platform web",
     "render:brand": "node scripts/render-brand.mjs",
-    "render:mock-photos": "node scripts/render-mock-photos.mjs"
+    "render:mock-photos": "node scripts/render-mock-photos.mjs",
+    "verify": "tsc --noEmit && eslint . && jest"
   },
   "private": true
 }

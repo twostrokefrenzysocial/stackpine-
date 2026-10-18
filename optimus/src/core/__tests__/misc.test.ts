@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import { BriefStore, briefDue, generateBrief } from '../brief/brief';
-import { EpisodeStore } from '../conversations/store';
+import { ConversationStore, EpisodeStore } from '../conversations/store';
+import { ROLLING_WINDOW, maybeRollSummary, unsummarizedMessages } from '../llm/background';
+import { HeuristicBackgroundLlm } from '../llm/scripted';
 import { MIGRATIONS, migrate, withoutFts5 } from '../db/schema';
 import type { Db } from '../db/types';
 import { MemoryStore } from '../memory/store';
@@ -65,9 +67,6 @@ it('migrate is idempotent', async () => {
 
 describe('rolling summary', () => {
   it('folds older messages so long conversations keep the thread', async () => {
-    const { ConversationStore } = await import('../conversations/store');
-    const { maybeRollSummary, unsummarizedMessages, ROLLING_WINDOW } = await import('../llm/background');
-    const { HeuristicBackgroundLlm } = await import('../llm/scripted');
     const db = await createMigratedDb();
     const conversations = new ConversationStore(db);
     const c = await conversations.create();
