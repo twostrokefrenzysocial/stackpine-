@@ -1,7 +1,7 @@
 import type { MemoryStore } from '../memory/store';
 import type { ReminderStore } from '../reminders/reminders';
 import type { DataSources } from '../sources/types';
-import { formatDay, formatTime } from '../util/time';
+import { dayPhrase } from '../util/time';
 import type { ActionHandlers } from './actions';
 
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -29,7 +29,7 @@ export function createActionHandlers(deps: { sources: () => DataSources; memory:
         notes: s(d.notes) || undefined,
         allDay: d.allDay === true,
       });
-      return `Added “${e.title}” on ${formatDay(e.start)} at ${formatTime(e.start)}.`;
+      return `Added “${e.title}” ${dayPhrase(e.start)}.`;
     },
     async edit_event(d) {
       const e = await deps.sources().calendar.update(s(d.eventId), {
@@ -62,7 +62,7 @@ export function createActionHandlers(deps: { sources: () => DataSources; memory:
     },
     async create_reminder(d) {
       const r = await deps.reminders.create({ text: s(d.text), dueAt: s(d.dueAt) });
-      return `Reminder set for ${formatDay(r.dueAt)} at ${formatTime(r.dueAt)}.`;
+      return `Reminder set for ${dayPhrase(r.dueAt)}.`;
     },
   };
 }

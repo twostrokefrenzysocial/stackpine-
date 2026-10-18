@@ -50,6 +50,13 @@ export function formatDay(iso: string, now = new Date()): string {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** formatDay for mid-sentence use: "tomorrow at 3:00 PM", "on Friday at…", "on Oct 20 at…". */
+export function dayPhrase(iso: string, now = new Date()): string {
+  const d = formatDay(iso, now);
+  const relative = d === 'Today' || d === 'Tomorrow' || d === 'Yesterday';
+  return `${relative ? d.toLowerCase() : `on ${d}`} at ${formatTime(iso)}`;
+}
+
 export function relativeTime(iso: string, now = new Date()): string {
   const ms = now.getTime() - new Date(iso).getTime();
   if (ms < MINUTE) return 'just now';

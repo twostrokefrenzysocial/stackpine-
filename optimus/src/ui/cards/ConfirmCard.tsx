@@ -12,6 +12,14 @@ import { Panel } from '../components/Panel';
 import { Txt } from '../components/Txt';
 import { space } from '../theme';
 
+/** "2026-10-19 12:30" in local time, for editing. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const s = (v: unknown) => (typeof v === 'string' ? v : Array.isArray(v) ? v.join(', ') : v == null ? '' : String(v));
 
 function when(iso: unknown): string {
@@ -143,7 +151,7 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
               <Field
                 key={r.label}
                 label={r.label}
-                defaultValue={r.key === 'start' || r.key === 'end' || r.key === 'dueAt' ? s(action.draft[r.key]) : r.value}
+                defaultValue={r.key === 'start' || r.key === 'end' || r.key === 'dueAt' ? toLocalInput(s(action.draft[r.key])) : r.value}
                 onChangeText={(v) => setEdits((e) => ({ ...e, [r.key!]: v }))}
                 multiline={r.multiline}
                 style={r.multiline ? { minHeight: 96, textAlignVertical: 'top', paddingTop: space.sm } : undefined}
@@ -187,8 +195,9 @@ function normalizeEdits(a: PendingAction, edits: Record<string, string>): Record
   for (const [k, v] of Object.entries(edits)) {
     if (k === 'to' && a.kind === 'send_email') out[k] = v.split(',').map((x) => x.trim()).filter(Boolean);
     else if (k === 'start' || k === 'end' || k === 'dueAt') {
-      const d = new Date(v);
-      if (Number.isNaN(d.getTime())) throw new Error(`“${v}” isn’t a valid date/time. Use a format like 2026-10-20T14:00.`);
+      // Local "YYYY-MM-DD HH:MM" (what the field shows) or any ISO string.
+      const d = new Date(/^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}$/.test(v.trim()) ? v.trim().replace(' ', 'T') : v);
+      if (Number.isNaN(d.getTime())) throw new Error(`“${v}” isn’t a valid date and time. Use a format like 2026-10-20 14:00.`);
       out[k] = d.toISOString();
     } else out[k] = v;
   }
