@@ -18,7 +18,7 @@
   var lerp = function (a, b, t) { return a + (b - a) * t; };
   var clamp = function (v, lo, hi) { return Math.min(hi, Math.max(lo, v)); };
   var vh = innerHeight;
-  addEventListener('resize', function () { vh = innerHeight; layoutStack(); }, { passive: true });
+  addEventListener('resize', function () { vh = innerHeight; }, { passive: true });
 
   /* ---------- headlines rise word by word from behind a mask ---------- */
   document.querySelectorAll('.hero h1, .page-hero h1').forEach(function (h) {
@@ -54,29 +54,6 @@
     });
     hero.addEventListener('pointerleave', function () { tx = 0; ty = 0; });
   }
-
-  /* ---------- chapters stack like layers ---------- */
-  var stackHost = document.querySelector('[data-stack]');
-  var chapters = stackHost ? Array.prototype.slice.call(stackHost.children).filter(function (el) {
-    return el.tagName === 'SECTION';
-  }) : [];
-  chapters.forEach(function (ch) {
-    ch.classList.add('fx-stack');
-    var shade = document.createElement('div');
-    shade.className = 'fx-shade';
-    shade.setAttribute('aria-hidden', 'true');
-    ch.appendChild(shade);
-    ch._shade = shade;
-  });
-  function layoutStack() {
-    // a chapter taller than the screen scrolls all the way through, then
-    // pins at its bottom edge while the next one slides over it
-    chapters.forEach(function (ch) {
-      ch.style.top = Math.min(0, vh - ch.offsetHeight) + 'px';
-    });
-  }
-  layoutStack();
-  addEventListener('load', layoutStack);
 
   /* ---------- text that lights up as it is read ---------- */
   var scrubs = [];
@@ -145,18 +122,6 @@
         var dy = py * (0.4 + depth * 1.2) + spread;
         l.style.transform = 'translate(' + dx.toFixed(3) + 'px,' + dy.toFixed(3) + 'px)';
       });
-    }
-
-    // chapters: the one being covered sinks back and dims
-    for (var c = 0; c < chapters.length; c++) {
-      var ch = chapters[c], next = chapters[c + 1];
-      if (!next) { ch.style.transform = ''; ch._shade.style.opacity = 0; continue; }
-      var nt = next.getBoundingClientRect().top;
-      var cover = clamp(1 - nt / vh, 0, 1);
-      ch.style.transform = cover > 0 ? 'scale(' + (1 - cover * 0.06).toFixed(4) + ')' : '';
-      ch._shade.style.opacity = (cover * 0.55).toFixed(3);
-      // fully covered: stop painting it at all
-      ch.style.visibility = nt <= 0 ? 'hidden' : '';
     }
 
     // scrubbed text: parts light up in reading order as the block crosses the screen

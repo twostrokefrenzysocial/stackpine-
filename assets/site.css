@@ -86,6 +86,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .ch--navy{background:var(--navy);color:var(--on-dark)}
 .ch--pine{background:var(--pine-900);color:var(--on-dark)}
 .ch--blaze{background:var(--blaze-field);color:var(--on-dark)}
+.ch--leaf{background:var(--pine-200);color:var(--ink)}
 .ch--navy :focus-visible,.ch--pine :focus-visible,.ch--blaze :focus-visible,.board :focus-visible{outline-color:var(--on-dark)}
 
 /* ---------- layout ---------- */
@@ -168,16 +169,17 @@ ul,ol{margin:0;padding:0;list-style:none}
   .nav__cta{margin:18px var(--arrow) 0 0;align-self:flex-start}
 }
 
-/* ---------- home: hero (a giant cropped pine) ---------- */
-.hero{position:relative;overflow:hidden;min-height:calc(100svh - var(--nav-h));display:grid;align-items:center}
+/* ---------- home: hero (copy left, the pine in its own column on the right) ---------- */
+.hero{overflow:hidden;min-height:calc(100svh - var(--nav-h));display:grid;align-items:center}
+.hero__in{display:grid;gap:40px clamp(24px,4vw,64px);align-items:center;padding-block:clamp(40px,7vh,96px)}
+@media (min-width:760px){.hero__in{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}}
 .hero__shape{
-  position:absolute;z-index:0;height:120vh;width:auto;aspect-ratio:32/36;
-  left:calc(82vw - 53.3vh);top:calc(55% - 60vh);
-  fill:var(--pine);stroke:var(--pine);pointer-events:none;
+  width:min(100%,calc((100svh - var(--nav-h) - 80px) * .889));height:auto;aspect-ratio:32/36;
+  justify-self:end;overflow:visible;fill:var(--pine);stroke:var(--pine);
 }
-.hero__in{position:relative;z-index:1;padding-block:clamp(48px,8vh,96px)}
-.hero h1{font-size:var(--step-display);line-height:.92;letter-spacing:-.045em;max-width:11ch}
-.hero__lede{font-size:var(--step-lead);line-height:1.35;max-width:30ch;margin-top:28px}
+@media (max-width:759px){.hero__shape{width:min(62%,300px);justify-self:end}}
+.hero h1{font-size:clamp(2.6rem,1.4rem + 3.8vw,5.25rem);line-height:.94;letter-spacing:-.045em}
+.hero__lede{font-size:var(--step-lead);line-height:1.4;max-width:34ch;margin-top:28px}
 
 /* the live thing: the enquiry starts here */
 .start{margin-top:40px;max-width:560px}
@@ -191,13 +193,6 @@ ul,ol{margin:0;padding:0;list-style:none}
 .start input:focus{outline:3px solid var(--blaze);outline-offset:2px}
 .start__note{color:var(--ink-soft);margin-top:12px}
 
-@media (max-width:760px){
-  .hero{align-items:start}
-  .hero__shape{height:auto;width:130vw;left:-15vw;top:auto;bottom:-46vw}
-  .hero h1{font-size:11.5vw}
-  .hero__lede{font-size:var(--step-body);max-width:none}
-  .hero__in{padding-top:8vh;padding-bottom:62vw}
-}
 
 /* ---------- home: staircase statement ---------- */
 .stair{padding-block:clamp(96px,11vw,176px)}
@@ -223,6 +218,17 @@ ul,ol{margin:0;padding:0;list-style:none}
   .stair__text span:nth-child(5){padding-left:20vw}
   .stair__pics{grid-template-columns:1fr 1fr}
 }
+
+/* ---------- what we build ---------- */
+.what{padding-block:clamp(96px,11vw,176px)}
+.what__in{display:grid;gap:56px clamp(32px,6vw,96px)}
+@media (min-width:900px){.what__in{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}.what__intro{position:sticky;top:calc(var(--nav-h) + 40px)}}
+.what__intro h2{font-size:var(--step-head)}
+.what__intro p{font-size:var(--step-lead);line-height:1.4;margin-top:24px;max-width:30ch}
+.what__intro .what__more{font-size:var(--step-body);margin-top:28px}
+.what__list{display:grid;gap:36px}
+.what__list h3{font-size:var(--step-lead);letter-spacing:-.02em;line-height:1.05}
+.what__list p{margin-top:8px;max-width:48ch}
 
 /* ---------- stages: accordion of tinted panels ---------- */
 .how{padding-block:clamp(80px,10vw,160px)}
@@ -528,7 +534,6 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 
 /* ---------- effects layer (assets/fx.js; never under reduced motion) ---------- */
 .pl__stroke{fill:none;stroke-width:2.3;stroke-linecap:square}
-.footer{position:relative;z-index:2}
 @media (prefers-reduced-motion:no-preference){
   /* the pine builds itself: trunk first, each layer stacked on top, then the tip */
   .fx .pl{animation:pl-in 720ms var(--ease-out) both;animation-delay:calc(var(--n) * 110ms + 120ms)}
@@ -539,11 +544,6 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
   .fx-w>span{display:inline-block;animation:w-in 900ms var(--ease-out) both}
   @keyframes w-in{from{transform:translateY(110%)}}
   .fx [data-enter]>h1{opacity:1!important;transform:none!important}
-
-  /* chapters stack: each slides over the last, which sinks back and dims */
-  .fx [data-stack]{background:#0B1320}
-  .fx-stack{position:sticky;transform-origin:50% 35%}
-  .fx-shade{position:absolute;inset:0;background:#0B1320;opacity:0;pointer-events:none;z-index:5}
 
   /* text lights up in reading order */
   .fx-scrub span,.fx-scrub a{transition:opacity 420ms ease,color 420ms ease}
