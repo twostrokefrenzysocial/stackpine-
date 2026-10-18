@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSharedValue } from 'react-native-reanimated';
+import { useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import type { BrainState } from '../core/brain/state';
 import type { TurnEvent } from '../core/llm/agent';
 import { friendlyError } from '../core/llm/transport';
 import type { ChatCard, ChatMessage } from '../core/types';
 import { speak, stopSpeaking } from '../platform/voice';
 import { useApp } from './AppContext';
-import type { AvatarState } from './components/Avatar';
 import { feedback } from './feedback';
 
 export interface StreamingTurn {
@@ -18,7 +18,7 @@ export function useChat(conversationId: string | null) {
   const { rt, settings, bump } = useApp();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState<StreamingTurn | null>(null);
-  const [avatar, setAvatar] = useState<AvatarState>('idle');
+  const [avatar, setAvatar] = useState<BrainState>('idle');
   const [error, setError] = useState<{ title: string; body: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const speechLevel = useSharedValue(0);
@@ -53,8 +53,11 @@ export function useChat(conversationId: string | null) {
         if (e.type === 'text') {
           if (firstText) {
             firstText = false;
-            setAvatar('speaking');
+            setAvatar('responding');
+            feedback.fire('tap');
           }
+          // No TTS amplitude while streaming: pulse once per chunk.
+          speechLevel.set(withSequence(withTiming(0.6 + Math.random() * 0.4, { duration: 60 }), withTiming(0, { duration: 320 })));
           setStreaming((s) => (s ? { ...s, text: s.text + e.delta } : s));
         } else if (e.type === 'tool-start') {
           setAvatar('thinking');
@@ -72,7 +75,7 @@ export function useChat(conversationId: string | null) {
         await reload();
         bump();
         if (opts.spoken && settings.voiceReplies && assistant.text) {
-          setAvatar('speaking');
+          setAvatar('responding');
           let t: ReturnType<typeof setInterval> | null = null;
           speak(assistant.text, {
             rate: settings.voiceRate,

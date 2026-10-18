@@ -10,7 +10,7 @@ import { Field, Segmented } from '../ui/components/Controls';
 import { Dock } from '../ui/components/Dock';
 import { Icon, StatusDot } from '../ui/components/Icon';
 import { Panel } from '../ui/components/Panel';
-import { Backdrop, Screen } from '../ui/components/Screen';
+import { Screen } from '../ui/components/Screen';
 import { Txt } from '../ui/components/Txt';
 import { feedback } from '../ui/feedback';
 import { space } from '../ui/theme';
@@ -51,13 +51,13 @@ export default function MemoryCore() {
     <View style={{ flex: 1 }}>
       <Screen contentStyle={{ gap: space.md }}>
         <View style={styles.titleRow}>
-          <Icon name="core" size={28} color={p.cyanText} />
-          <Txt variant="hero" accessibilityRole="header" style={{ flex: 1 }}>
+          <Icon name="core" size={24} color={p.textSecondary} />
+          <Txt variant="display" accessibilityRole="header" style={{ flex: 1 }}>
             Memory Core
           </Txt>
         </View>
-        <Txt variant="small" color={p.textDim}>
-          {data ? `${data.all.length} memories stored on this phone, encrypted.` : ' '}
+        <Txt variant="small" color={p.textSecondary}>
+          {data ? `${data.all.length} ${data.all.length === 1 ? 'memory' : 'memories'} stored on this phone, encrypted.` : ' '}
         </Txt>
 
         <Button label="What do you know about me?" icon="person" variant="secondary" onPress={() => router.push(`/chat/new?q=${encodeURIComponent('What do you know about me?')}`)} />
@@ -106,8 +106,8 @@ export default function MemoryCore() {
 function Empty({ text }: { text: string }) {
   const { palette: p } = useApp();
   return (
-    <Panel tone="inset" assemble={false}>
-      <Txt variant="body" color={p.textDim}>
+    <Panel tone="inset" animate={false}>
+      <Txt variant="body" color={p.textSecondary}>
         {text}
       </Txt>
     </Panel>
@@ -119,7 +119,7 @@ function ImportanceBar({ value }: { value: number }) {
   return (
     <View style={styles.imp} accessibilityLabel={`Importance ${value} of 5`}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <View key={i} style={[styles.impCell, { backgroundColor: i <= value ? p.cyan : p.inset, borderColor: p.seam }]} />
+        <View key={i} style={[styles.impCell, { backgroundColor: i <= value ? p.text : p.line }]} />
       ))}
     </View>
   );
@@ -131,13 +131,13 @@ function MemoryRow({ m, onPress }: { m: Memory; onPress: () => void }) {
     <Pressable onPress={onPress} style={styles.memRow} accessibilityRole="button" accessibilityLabel={`${m.content}. ${SOURCE_LABEL[m.source] ?? m.source}. Tap to edit.`}>
       <View style={{ flex: 1, gap: 2 }}>
         <Txt variant="body">{m.content}</Txt>
-        <Txt variant="mono" color={p.textFaint} style={{ fontSize: 11 }}>
+        <Txt variant="mono" color={p.textTertiary} style={{ fontSize: 11 }}>
           {(SOURCE_LABEL[m.source] ?? m.source).toUpperCase()} · {m.lastUsedAt ? `USED ${relativeTime(m.lastUsedAt).toUpperCase()}` : 'NOT USED YET'}
           {m.sensitive ? ' · SENSITIVE' : ''}
         </Txt>
       </View>
       <ImportanceBar value={m.importance} />
-      <Icon name="chevronRight" size={18} color={p.textFaint} />
+      <Icon name="chevronRight" size={18} color={p.textTertiary} />
     </Pressable>
   );
 }
@@ -148,12 +148,12 @@ function MemoryPanel({ m, index, onPress, person }: { m: Memory; index: number; 
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${m.personName ?? ''} ${m.content}. Tap to edit.`}>
       <Panel code="ID" label={person ? (m.personName ?? 'Person') : m.category} index={index} right={<ImportanceBar value={m.importance} />}>
         {person && !!m.aliases?.length && (
-          <Txt variant="mono" color={p.cyanText} style={{ marginBottom: space.xs }}>
+          <Txt variant="mono" color={p.text} style={{ marginBottom: space.xs }}>
             {m.aliases.join(' · ').toUpperCase()}
           </Txt>
         )}
         <Txt variant="body">{m.content}</Txt>
-        <Txt variant="mono" color={p.textFaint} style={{ fontSize: 11, marginTop: space.sm }}>
+        <Txt variant="mono" color={p.textTertiary} style={{ fontSize: 11, marginTop: space.sm }}>
           {m.contactId ? 'LINKED TO CONTACT · ' : ''}
           {(SOURCE_LABEL[m.source] ?? m.source).toUpperCase()}
         </Txt>
@@ -168,20 +168,20 @@ function PendingList({ items, onChange }: { items: PendingMemory[]; onChange: ()
   if (!items.length) return <Empty text="Nothing waiting. When I notice something worth remembering in your messages, I’ll ask here first." />;
   return (
     <>
-      <Txt variant="small" color={p.textDim}>
+      <Txt variant="small" color={p.textSecondary}>
         I noticed these in your data. Nothing is saved until you approve it.
       </Txt>
       {items.map((m, i) => (
-        <Panel key={m.id} tone="amber" code="REVIEW" label={m.category} index={i} right={<Txt variant="mono" color={p.textFaint}>{relativeTime(m.createdAt)}</Txt>}>
+        <Panel key={m.id} tone="active" code="REVIEW" label={m.category} index={i} right={<Txt variant="mono" color={p.textTertiary}>{relativeTime(m.createdAt)}</Txt>}>
           <Field label="Memory" defaultValue={m.content} onChangeText={(v) => setEdits((e) => ({ ...e, [m.id]: v }))} multiline style={{ minHeight: 72, textAlignVertical: 'top', paddingTop: space.sm }} />
-          <Txt variant="mono" color={p.amberText} style={{ fontSize: 11, marginTop: space.sm }}>
+          <Txt variant="mono" color={p.redGlow} style={{ fontSize: 11, marginTop: space.sm }}>
             {m.reason.toUpperCase()}
           </Txt>
           <View style={styles.actions}>
             <Button
               label="Remember"
               icon="check"
-              variant="amber"
+              variant="primary"
               feedbackKind="confirm"
               style={{ flex: 1 }}
               onPress={async () => {
@@ -252,11 +252,10 @@ function MemoryEditor({ memory, onClose, onChanged }: { memory: Memory | null; o
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: p.scrim }]} onPress={onClose} accessibilityLabel="Close editor" />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
-        <Backdrop />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg, backgroundColor: p.surface, borderColor: p.line }]}>
         <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md }} keyboardShouldPersistTaps="handled">
           <View style={styles.titleRow}>
-            <StatusDot color={p.cyan} />
+            <StatusDot color={p.textSecondary} />
             <Txt variant="title" style={{ flex: 1 }}>
               {memory.personName ?? memory.category}
             </Txt>
@@ -269,7 +268,7 @@ function MemoryEditor({ memory, onClose, onChanged }: { memory: Memory | null; o
             onChange={setImportance}
             options={['1', '2', '3', '4', '5'].map((v) => ({ value: v, label: v }))}
           />
-          <Panel tone="inset" assemble={false}>
+          <Panel tone="inset" animate={false}>
             <View style={{ gap: space.xs }}>
               <Meta k="Source" v={SOURCE_LABEL[memory.source] ?? memory.source} />
               <Meta k="Created" v={formatDay(memory.createdAt)} />
@@ -279,18 +278,18 @@ function MemoryEditor({ memory, onClose, onChanged }: { memory: Memory | null; o
             </View>
           </Panel>
           {error && (
-            <Txt variant="smallStrong" color={p.dangerText}>
+            <Txt variant="smallStrong" color={p.redGlow}>
               {error}
             </Txt>
           )}
           {confirmDelete ? (
-            <Panel tone="danger" assemble={false}>
+            <Panel tone="alert" animate={false}>
               <Txt variant="bodyStrong">Forget this completely?</Txt>
-              <Txt variant="small" color={p.textDim} style={{ marginTop: 4 }}>
+              <Txt variant="small" color={p.textSecondary} style={{ marginTop: 4 }}>
                 It’s deleted from this phone, along with anything I worked out only from it.
               </Txt>
               <View style={styles.actions}>
-                <Button label="Forget" icon="trash" variant="danger" onPress={remove} style={{ flex: 1 }} feedbackKind="confirm" />
+                <Button label="Forget" icon="trash" variant="primary" onPress={remove} style={{ flex: 1 }} feedbackKind="confirm" />
                 <Button label="Keep" variant="ghost" onPress={() => setConfirmDelete(false)} style={{ flex: 1 }} />
               </View>
             </Panel>
@@ -310,7 +309,7 @@ function Meta({ k, v }: { k: string; v: string }) {
   const { palette: p } = useApp();
   return (
     <View style={{ flexDirection: 'row', gap: space.md }}>
-      <Txt variant="label" color={p.textFaint} style={{ width: 92, paddingTop: 2 }}>
+      <Txt variant="label" color={p.textTertiary} style={{ width: 92, paddingTop: 2 }}>
         {k}
       </Txt>
       <Txt variant="small" style={{ flex: 1 }}>
@@ -324,8 +323,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   memRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56, paddingVertical: space.sm },
   imp: { flexDirection: 'row', gap: 2 },
-  impCell: { width: 6, height: 14, borderWidth: 1 },
+  impCell: { width: 3, height: 12, borderRadius: 1 },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', overflow: 'hidden' },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', overflow: 'hidden', borderTopWidth: 1, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
 });
 

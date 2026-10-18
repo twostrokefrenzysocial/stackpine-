@@ -5,7 +5,7 @@ import type { CalendarEvent, CallLogEntry, CapturedNotification, ChatCard, Email
 import { formatDay, formatTime, relativeTime } from '../../core/util/time';
 import { mockPhotoSource } from '../../platform/sources/mockPhotos';
 import { useApp } from '../AppContext';
-import { Icon, StatusDot, type IconName } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { Panel } from '../components/Panel';
 import { Txt } from '../components/Txt';
 import { space } from '../theme';
@@ -15,8 +15,8 @@ function Row({ icon, title, meta, body, accent, a11y }: { icon: IconName; title:
   const { palette: p } = useApp();
   return (
     <View style={styles.row} accessible accessibilityLabel={a11y ?? [title, meta, body].filter(Boolean).join(', ')}>
-      <View style={[styles.rowIcon, { borderColor: accent ?? p.seam }]}>
-        <Icon name={icon} size={18} color={accent ?? p.textDim} />
+      <View style={[styles.rowIcon, { borderColor: accent ?? p.line }]}>
+        <Icon name={icon} size={18} color={accent ?? p.textSecondary} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <View style={styles.rowTop}>
@@ -24,13 +24,13 @@ function Row({ icon, title, meta, body, accent, a11y }: { icon: IconName; title:
             {title}
           </Txt>
           {meta && (
-            <Txt variant="mono" color={p.textFaint}>
+            <Txt variant="mono" color={p.textTertiary}>
               {meta}
             </Txt>
           )}
         </View>
         {body ? (
-          <Txt variant="small" color={p.textDim} numberOfLines={3}>
+          <Txt variant="small" color={p.textSecondary} numberOfLines={3}>
             {body}
           </Txt>
         ) : null}
@@ -39,7 +39,7 @@ function Row({ icon, title, meta, body, accent, a11y }: { icon: IconName; title:
   );
 }
 
-export function EventsCard({ events, label = 'Schedule', code = 'CAL', index }: { events: CalendarEvent[]; label?: string; code?: string; index?: number }) {
+export function EventsCard({ events, label = 'Schedule', code, index }: { events: CalendarEvent[]; label?: string; code?: string; index?: number }) {
   const { palette: p } = useApp();
   const [now] = useState(() => Date.now());
   return (
@@ -50,11 +50,11 @@ export function EventsCard({ events, label = 'Schedule', code = 'CAL', index }: 
           const moved = /moved from/i.test(e.notes ?? '');
           return (
             <View key={e.id} style={styles.event} accessible accessibilityLabel={`${e.title}, ${formatDay(e.start)} at ${formatTime(e.start)}${e.location ? `, ${e.location}` : ''}${moved ? ', time changed' : ''}`}>
-              <View style={[styles.timeCol, { borderRightColor: live ? p.cyan : p.seam }]}>
-                <Txt variant="mono" color={live ? p.cyanText : p.text}>
+              <View style={[styles.timeCol, { borderRightColor: live ? p.red : p.line }]}>
+                <Txt variant="mono" color={live ? p.text : p.text}>
                   {e.allDay ? 'ALL DAY' : formatTime(e.start)}
                 </Txt>
-                <Txt variant="mono" color={p.textFaint} style={{ fontSize: 11 }}>
+                <Txt variant="mono" color={p.textTertiary} style={{ fontSize: 11 }}>
                   {formatDay(e.start).toUpperCase()}
                 </Txt>
               </View>
@@ -63,17 +63,25 @@ export function EventsCard({ events, label = 'Schedule', code = 'CAL', index }: 
                   {e.title}
                 </Txt>
                 {(e.location || moved) && (
-                  <Txt variant="small" color={moved ? p.amberText : p.textDim} numberOfLines={1}>
-                    {moved ? 'Time changed · ' : ''}
-                    {e.location ?? ''}
-                  </Txt>
+                  <View style={styles.rowTop}>
+                    {moved && (
+                      <Txt variant="mono" color={p.redGlow}>
+                        TIME CHANGED
+                      </Txt>
+                    )}
+                    {e.location ? (
+                      <Txt variant="small" color={p.textSecondary} numberOfLines={1} style={{ flex: 1 }}>
+                        {e.location}
+                      </Txt>
+                    ) : null}
+                  </View>
                 )}
               </View>
             </View>
           );
         })}
         {events.length === 0 && (
-          <Txt variant="small" color={p.textDim}>
+          <Txt variant="small" color={p.textSecondary}>
             Clear.
           </Txt>
         )}
@@ -85,7 +93,7 @@ export function EventsCard({ events, label = 'Schedule', code = 'CAL', index }: 
 export function TextsCard({ messages, label = 'Texts', index }: { messages: SmsMessage[]; label?: string; index?: number }) {
   const { palette: p } = useApp();
   return (
-    <Panel code="SMS" label={label} index={index}>
+    <Panel label={label} index={index}>
       <View style={{ gap: space.md }}>
         {messages.map((m) => (
           <Row
@@ -94,7 +102,7 @@ export function TextsCard({ messages, label = 'Texts', index }: { messages: SmsM
             title={m.direction === 'incoming' ? (m.contactName ?? m.address) : `To ${m.contactName ?? m.address}`}
             meta={relativeTime(m.date)}
             body={m.body}
-            accent={m.direction === 'incoming' && !m.read ? p.cyan : undefined}
+            accent={m.direction === 'incoming' && !m.read ? p.text : undefined}
           />
         ))}
       </View>
@@ -105,10 +113,10 @@ export function TextsCard({ messages, label = 'Texts', index }: { messages: SmsM
 export function EmailsCard({ emails, label = 'Email', index }: { emails: EmailMessage[]; label?: string; index?: number }) {
   const { palette: p } = useApp();
   return (
-    <Panel code="MAIL" label={label} index={index}>
+    <Panel label={label} index={index}>
       <View style={{ gap: space.md }}>
         {emails.map((e) => (
-          <Row key={e.id} icon="mail" title={`${e.fromName ?? e.from} — ${e.subject}`} meta={relativeTime(e.date)} body={e.snippet || e.body.slice(0, 160)} accent={e.unread ? p.cyan : undefined} />
+          <Row key={e.id} icon="mail" title={`${e.fromName ?? e.from} — ${e.subject}`} meta={relativeTime(e.date)} body={e.snippet || e.body.slice(0, 160)} accent={e.unread ? p.text : undefined} />
         ))}
       </View>
     </Panel>
@@ -118,7 +126,7 @@ export function EmailsCard({ emails, label = 'Email', index }: { emails: EmailMe
 export function CallsCard({ calls, label = 'Calls', index }: { calls: CallLogEntry[]; label?: string; index?: number }) {
   const { palette: p } = useApp();
   return (
-    <Panel code="TEL" label={label} index={index}>
+    <Panel label={label} index={index}>
       <View style={{ gap: space.md }}>
         {calls.map((c) => (
           <Row
@@ -127,7 +135,7 @@ export function CallsCard({ calls, label = 'Calls', index }: { calls: CallLogEnt
             title={c.contactName ?? c.number}
             meta={relativeTime(c.date)}
             body={c.type === 'missed' ? 'Missed call' : `${c.type[0].toUpperCase()}${c.type.slice(1)} · ${Math.max(1, Math.round(c.durationSec / 60))} min`}
-            accent={c.type === 'missed' ? p.amber : undefined}
+            accent={c.type === 'missed' ? p.red : undefined}
           />
         ))}
       </View>
@@ -137,7 +145,7 @@ export function CallsCard({ calls, label = 'Calls', index }: { calls: CallLogEnt
 
 export function NotificationsCard({ notifications, index }: { notifications: CapturedNotification[]; index?: number }) {
   return (
-    <Panel code="NTF" label="Notifications" index={index}>
+    <Panel label="Notifications" index={index}>
       <View style={{ gap: space.md }}>
         {notifications.map((n) => (
           <Row key={n.id} icon="bell" title={`${n.appName} · ${n.title}`} meta={relativeTime(n.postedAt)} body={n.text} />
@@ -150,13 +158,13 @@ export function NotificationsCard({ notifications, index }: { notifications: Cap
 export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: number }) {
   const { palette: p } = useApp();
   return (
-    <Panel code="IMG" label={`${photos.length} photo${photos.length === 1 ? '' : 's'}`} index={index}>
+    <Panel label={`${photos.length} photo${photos.length === 1 ? '' : 's'}`} index={index}>
       <View style={styles.grid}>
         {photos.map((ph) => (
-          <Pressable key={ph.id} style={[styles.thumb, { borderColor: p.seam }]} accessibilityRole="image" accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}>
+          <Pressable key={ph.id} style={[styles.thumb, { borderColor: p.line }]} accessibilityRole="image" accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}>
             <Image source={ph.uri.startsWith('mock://') ? mockPhotoSource(ph) : { uri: ph.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={120} />
             <View style={[styles.thumbMeta, { backgroundColor: p.scrim }]}>
-              <Txt variant="mono" color="#E8EDF1" style={{ fontSize: 11 }} numberOfLines={1}>
+              <Txt variant="mono" color={p.text} style={{ fontSize: 11 }} numberOfLines={1}>
                 {formatDay(ph.takenAt).toUpperCase()}
               </Txt>
             </View>
@@ -170,15 +178,15 @@ export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: num
 export function SuspiciousCard({ source, excerpt, reason }: { source: string; excerpt: string; reason: string }) {
   const { palette: p } = useApp();
   return (
-    <Panel tone="danger" code="ALERT" label="Suspicious content" assemble={false} accessibilityLabel={`Suspicious ${source}. ${reason}. Optimus ignored it.`}>
+    <Panel tone="alert" code="ALERT" label="Suspicious content" animate={false} accessibilityLabel={`Suspicious ${source}. ${reason}. Optimus ignored it.`}>
       <View style={{ gap: space.sm }}>
         <View style={styles.rowTop}>
-          <Icon name="alert" size={18} color={p.dangerText} />
-          <Txt variant="smallStrong" color={p.dangerText} style={{ flex: 1 }}>
+          <Icon name="alert" size={18} color={p.redGlow} />
+          <Txt variant="smallStrong" color={p.redGlow} style={{ flex: 1 }}>
             {reason} — in a {source}. Ignored.
           </Txt>
         </View>
-        <Txt variant="small" color={p.textDim} numberOfLines={4}>
+        <Txt variant="small" color={p.textSecondary} numberOfLines={4}>
           “{excerpt}”
         </Txt>
       </View>
@@ -189,9 +197,9 @@ export function SuspiciousCard({ source, excerpt, reason }: { source: string; ex
 export function MemorySavedChip({ content }: { content: string }) {
   const { palette: p } = useApp();
   return (
-    <View style={[styles.chip, { borderColor: p.cyanDim, backgroundColor: p.inset }]} accessible accessibilityLabel={`Saved to memory: ${content}`}>
-      <StatusDot color={p.cyan} />
-      <Txt variant="small" color={p.textDim} numberOfLines={2} style={{ flex: 1 }}>
+    <View style={[styles.chip, { borderColor: p.redDim, backgroundColor: p.bg }]} accessible accessibilityLabel={`Saved to memory: ${content}`}>
+      <Icon name="check" size={14} color={p.text} />
+      <Txt variant="small" color={p.textSecondary} numberOfLines={2} style={{ flex: 1 }}>
         Memory · {content}
       </Txt>
     </View>
@@ -223,12 +231,12 @@ export function ChatCardView({ card, index }: { card: ChatCard; index?: number }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
-  rowIcon: { width: 34, height: 34, borderWidth: 1, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '0deg' }] },
+  rowIcon: { width: 32, height: 32, borderWidth: 1, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   event: { flexDirection: 'row', gap: space.md, alignItems: 'center', minHeight: 48 },
   timeCol: { width: 84, borderRightWidth: 2, paddingRight: space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  thumb: { width: '31%', aspectRatio: 1, borderWidth: 1, overflow: 'hidden', justifyContent: 'flex-end' },
+  thumb: { width: '31%', aspectRatio: 1, borderWidth: 1, borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
   thumbMeta: { paddingHorizontal: 4, paddingVertical: 2 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, paddingHorizontal: space.md, paddingVertical: space.sm, alignSelf: 'flex-start', maxWidth: '100%' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, borderRadius: 999, paddingHorizontal: space.md, paddingVertical: 6, alignSelf: 'flex-start', maxWidth: '100%' },
 });

@@ -1,34 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useApp } from '../AppContext';
 import { feedback } from '../feedback';
-import { TOUCH, fonts, motion, space, type as T } from '../theme';
+import { EASE, GUTTER, TOUCH, fonts, motion, radius, space, type as T } from '../theme';
 import { Button } from './Button';
 import { Icon } from './Icon';
-import { PanelSurface } from './Panel';
 import { Txt } from './Txt';
 
-const BARS = 28;
+const BARS = 32;
 
 function Bar({ i, level, t }: { i: number; level: SharedValue<number>; t: SharedValue<number> }) {
   const { palette: p } = useApp();
   const style = useAnimatedStyle(() => {
     const wobble = Math.abs(Math.sin(t.value * Math.PI * 2 + i * 0.9)) * 0.6 + Math.abs(Math.sin(t.value * Math.PI * 4 + i * 0.37)) * 0.4;
     const center = 1 - Math.abs(i - BARS / 2) / (BARS / 2);
-    const h = 4 + (6 + 30 * center) * (0.25 + level.value * 0.95) * wobble;
-    return { height: h };
+    return { height: 2 + (4 + 24 * center) * (0.2 + level.value) * wobble };
   });
-  return <Animated.View style={[styles.bar, { backgroundColor: i % 7 === 0 ? p.cyanText : p.cyan }, style]} />;
+  return <Animated.View style={[styles.bar, { backgroundColor: p.red }, style]} />;
 }
 
-/** The waveform the mic unfolds into while listening. */
+/** Live mic level as thin red bars. */
 export function Waveform({ level }: { level: SharedValue<number> }) {
   const { reduceMotion } = useApp();
   const t = useSharedValue(0);
   useEffect(() => {
-    if (reduceMotion) return;
-    t.value = withRepeat(withTiming(1, { duration: 1200, easing: Easing.linear }), -1);
+    if (!reduceMotion) t.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.linear }), -1);
   }, [t, reduceMotion]);
   return (
     <View style={styles.wave} accessibilityElementsHidden>
@@ -49,30 +46,22 @@ export interface ComposerProps {
   busy?: boolean;
   onStop?: () => void;
   placeholder?: string;
-  autoFocus?: boolean;
+  bottomInset?: number;
 }
 
 /**
- * "Ask Optimus" input. The mic unfolds into a live waveform while listening
- * (the plate slides open from the mic's edge, < 400ms).
+ * Input bar pinned to the bottom: surface background, hairline top border.
+ * The mic turns solid red while listening and the field becomes a waveform.
  */
-export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', autoFocus }: ComposerProps) {
+export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0 }: ComposerProps) {
   const { palette: p, reduceMotion } = useApp();
   const [text, setText] = useState('');
-  const [w, setW] = useState(0);
-  const unfold = useSharedValue(0);
-
+  const shown = useSharedValue(0);
   useEffect(() => {
-    feedback.fire('transform');
-    unfold.value = reduceMotion ? (listening ? 1 : 0) : withTiming(listening ? 1 : 0, { duration: motion.slow - 60, easing: Easing.out(Easing.cubic) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listening]);
-
-  const waveStyle = useAnimatedStyle(() => {
-    const sx = 0.12 + unfold.value * 0.88;
-    return { opacity: unfold.value < 0.02 ? 0 : 1, transform: [{ translateX: ((1 - sx) * w) / 2 }, { scaleX: sx }] };
-  });
-  const inputStyle = useAnimatedStyle(() => ({ opacity: 1 - unfold.value }));
+    shown.value = reduceMotion ? (listening ? 1 : 0) : withTiming(listening ? 1 : 0, { duration: motion.panel - 50, easing: Easing.bezier(...EASE) });
+  }, [listening, reduceMotion, shown]);
+  const waveStyle = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 8 }] }));
+  const inputStyle = useAnimatedStyle(() => ({ opacity: 1 - shown.value }));
 
   const send = () => {
     const t = text.trim();
@@ -82,59 +71,60 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
     setText('');
   };
 
-  const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
-
   return (
-    <View style={styles.root} onLayout={onLayout}>
-      <PanelSurface width={w} height={TOUCH + 12} tone={listening ? 'cyan' : 'inset'} glow={listening} />
-      <Animated.View style={[styles.row, inputStyle]} pointerEvents={listening ? 'none' : 'auto'}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder={placeholder}
-          placeholderTextColor={p.textFaint}
-          onSubmitEditing={send}
-          returnKeyType="send"
-          autoFocus={autoFocus}
-          multiline
-          accessibilityLabel="Message to Optimus"
-          style={[T.body, styles.input, { color: p.text, fontFamily: fonts.body }]}
-        />
+    <View style={[styles.bar_, { backgroundColor: p.surface, borderTopColor: p.line, paddingBottom: bottomInset + space.sm }]}>
+      <View style={styles.row}>
+        <View style={{ flex: 1, justifyContent: 'center', minHeight: TOUCH }}>
+          <Animated.View style={inputStyle} pointerEvents={listening ? 'none' : 'auto'}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder={placeholder}
+              placeholderTextColor={p.textTertiary}
+              selectionColor={p.red}
+              cursorColor={p.red}
+              onSubmitEditing={send}
+              returnKeyType="send"
+              multiline
+              accessibilityLabel="Message to Optimus"
+              style={[T.bodyLarge, styles.input, { color: p.text, fontFamily: fonts.body }]}
+            />
+          </Animated.View>
+          <Animated.View style={[StyleSheet.absoluteFill, styles.waveWrap, waveStyle]} pointerEvents="none">
+            {partial ? (
+              <Txt variant="small" numberOfLines={1}>
+                {partial}
+              </Txt>
+            ) : null}
+            <Waveform level={level} />
+          </Animated.View>
+        </View>
         {busy && onStop ? (
-          <Button label="Stop reply" icon="stop" iconOnly variant="secondary" compact onPress={onStop} />
-        ) : text.trim() ? (
-          <Button label="Send" icon="send" iconOnly compact onPress={send} feedbackKind="send" />
+          <Button label="Stop reply" icon="stop" iconOnly variant="secondary" onPress={onStop} />
+        ) : text.trim() && !listening ? (
+          <Button label="Send" icon="send" iconOnly variant="secondary" onPress={send} feedbackKind="send" />
         ) : (
-          <Pressable onPress={onMic} accessibilityRole="button" accessibilityLabel="Speak to Optimus" accessibilityHint="Starts voice input" style={[styles.mic, { borderColor: p.cyan, backgroundColor: p.cyanDim }]}>
-            <Icon name="mic" size={22} color={p.mode === 'dark' ? p.cyanText : p.cyan} />
+          <Pressable
+            onPress={listening ? onStopMic : onMic}
+            accessibilityRole="button"
+            accessibilityLabel={listening ? 'Stop listening' : 'Speak to Optimus'}
+            accessibilityState={{ selected: listening }}
+            style={[styles.mic, { backgroundColor: listening ? p.red : 'transparent', borderColor: listening ? p.red : p.line }]}
+          >
+            <Icon name={listening ? 'stop' : 'mic'} size={22} color={listening ? p.onRed : p.text} />
           </Pressable>
         )}
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.waveWrap, waveStyle]} pointerEvents={listening ? 'auto' : 'none'}>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          {partial ? (
-            <Txt variant="small" numberOfLines={1} color={p.text} style={{ marginBottom: 2 }}>
-              {partial}
-            </Txt>
-          ) : (
-            <Txt variant="label" color={p.cyanText}>
-              Listening
-            </Txt>
-          )}
-          <Waveform level={level} />
-        </View>
-        <Button label="Stop listening" icon="stop" iconOnly compact variant="secondary" onPress={onStopMic} />
-      </Animated.View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { minHeight: TOUCH + 12, justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: space.lg, paddingRight: space.xs + 2, gap: space.sm, minHeight: TOUCH + 12 },
-  input: { flex: 1, maxHeight: 140, paddingVertical: space.sm },
-  mic: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  waveWrap: { flexDirection: 'row', alignItems: 'center', paddingLeft: space.lg, paddingRight: space.xs + 2, gap: space.sm },
-  wave: { flexDirection: 'row', alignItems: 'center', height: 40, gap: 3 },
-  bar: { width: 3, borderRadius: 0 },
+  bar_: { borderTopWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: GUTTER, paddingTop: space.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  input: { maxHeight: 140, paddingVertical: space.sm },
+  mic: { width: TOUCH, height: TOUCH, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  waveWrap: { justifyContent: 'center', gap: 2 },
+  wave: { flexDirection: 'row', alignItems: 'center', height: 32, gap: 3 },
+  bar: { width: 2, borderRadius: 1 },
 });

@@ -6,19 +6,19 @@ import { Icon, type IconName } from './Icon';
 import { Panel } from './Panel';
 import { Txt } from './Txt';
 
-/** Friendly, on-brand error/status message. Never shows raw errors. */
-export function Banner({ title, body, icon = 'alert', tone = 'amber', action, onDismiss }: { title: string; body: string; icon?: IconName; tone?: 'amber' | 'danger' | 'cyan'; action?: { label: string; onPress: () => void }; onDismiss?: () => void }) {
+/** Friendly status message. Errors use red text; information stays white. Never raw errors. */
+export function Banner({ title, body, icon = 'alert', tone = 'alert', action, onDismiss }: { title: string; body: string; icon?: IconName; tone?: 'alert' | 'info'; action?: { label: string; onPress: () => void }; onDismiss?: () => void }) {
   const { palette: p } = useApp();
-  const color = tone === 'danger' ? p.dangerText : tone === 'cyan' ? p.cyanText : p.amberText;
+  const color = tone === 'alert' ? p.redGlow : p.text;
   return (
-    <Panel tone={tone} assemble={false} accessibilityLabel={`${title}. ${body}`}>
+    <Panel tone={tone === 'alert' ? 'alert' : 'default'} animate={false} accessibilityLabel={`${title}. ${body}`}>
       <View style={styles.row}>
-        <Icon name={icon} size={22} color={color} />
+        <Icon name={icon} size={20} color={color} />
         <View style={{ flex: 1, gap: 2 }}>
           <Txt variant="heading" color={color}>
             {title}
           </Txt>
-          <Txt variant="small" color={p.textDim}>
+          <Txt variant="small" color={p.textSecondary}>
             {body}
           </Txt>
         </View>

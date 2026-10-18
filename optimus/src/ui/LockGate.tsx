@@ -5,9 +5,11 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shouldRelock } from '../core/security/lock';
 import { useApp } from './AppContext';
-import { Avatar } from './components/Avatar';
+import { Brain } from './components/Brain';
+import { HudCorners } from './components/Panel';
 import { Button } from './components/Button';
 import { Backdrop } from './components/Screen';
+import { StatusStrip } from './components/StatusStrip';
 import { Txt } from './components/Txt';
 import { feedback } from './feedback';
 import { space } from './theme';
@@ -68,9 +70,9 @@ export function LockGate({ enabled, children }: { enabled: boolean; children: Re
 
   useEffect(() => {
     if (reduceMotion) return;
-    scan.value = withRepeat(withSequence(withTiming(1, { duration: 380, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 380, easing: Easing.inOut(Easing.quad) })), -1);
+    scan.value = withRepeat(withSequence(withTiming(1, { duration: 1100, easing: Easing.bezier(0.2, 0, 0, 1) }), withTiming(0, { duration: 1100, easing: Easing.bezier(0.2, 0, 0, 1) })), -1);
   }, [scan, reduceMotion]);
-  const beam = useAnimatedStyle(() => ({ transform: [{ translateY: scan.value * 180 - 90 }] }));
+  const beam = useAnimatedStyle(() => ({ transform: [{ translateY: scan.value * 220 - 110 }] }));
 
   return (
     <View style={{ flex: 1 }}>
@@ -79,17 +81,16 @@ export function LockGate({ enabled, children }: { enabled: boolean; children: Re
         <View style={[StyleSheet.absoluteFill, { zIndex: 50 }]} accessibilityViewIsModal>
           <Backdrop />
           <View style={[styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom + space.xl }]}>
-            <Txt variant="label" color={p.textDim}>
-              Identity check
-            </Txt>
+            <StatusStrip state={scanning ? 'listening' : 'idle'} detail="IDENTITY CHECK" />
             <View style={styles.scanner}>
-              <Avatar size={200} state={scanning ? 'listening' : 'idle'} />
-              {!reduceMotion && <Animated.View style={[styles.beam, { backgroundColor: p.cyan, shadowColor: p.cyan }, beam]} pointerEvents="none" />}
+              <HudCorners color={p.textSecondary} size={16} />
+              <Brain size={230} state={scanning ? 'listening' : 'idle'} interactive={false} accessibilityLabel="Optimus" />
+              {!reduceMotion && <Animated.View style={[styles.beam, { backgroundColor: p.red }, beam]} pointerEvents="none" />}
             </View>
-            <Txt variant="title" style={{ textAlign: 'center' }}>
-              Visor scan
+            <Txt variant="display" style={{ textAlign: 'center' }}>
+              Locked
             </Txt>
-            <Txt variant="body" color={p.textDim} style={{ textAlign: 'center', maxWidth: 300 }}>
+            <Txt variant="body" color={p.textSecondary} style={{ textAlign: 'center', maxWidth: 300 }}>
               {message ?? 'Use your fingerprint or face to unlock.'}
             </Txt>
             <Button label="Scan to unlock" icon="scan" onPress={unlock} disabled={scanning} style={{ alignSelf: 'stretch', marginTop: space.lg }} />
@@ -101,7 +102,7 @@ export function LockGate({ enabled, children }: { enabled: boolean; children: Re
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg, paddingHorizontal: space.xl },
-  scanner: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  beam: { position: 'absolute', left: 10, right: 10, height: 2, opacity: 0.9, shadowOpacity: 1, shadowRadius: 8, elevation: 4 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: space.lg, paddingHorizontal: space.xl },
+  scanner: { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: space.xl },
+  beam: { position: 'absolute', left: 16, right: 16, height: 1, opacity: 0.8 },
 });

@@ -7,18 +7,18 @@ import type { ChatMessage } from '../../core/types';
 import { formatDay } from '../../core/util/time';
 import { useVoiceInput } from '../../platform/voice';
 import { useApp, useData } from '../../ui/AppContext';
-import { Avatar } from '../../ui/components/Avatar';
+import { Brain } from '../../ui/components/Brain';
 import { Banner } from '../../ui/components/Banner';
 import { Button } from '../../ui/components/Button';
 import { Composer } from '../../ui/components/Composer';
 import { Icon } from '../../ui/components/Icon';
 import { AssistantBlock, MessageView } from '../../ui/components/Message';
-import { PanelSurface } from '../../ui/components/Panel';
 import { Backdrop } from '../../ui/components/Screen';
+import { StatusStrip } from '../../ui/components/StatusStrip';
 import { Txt } from '../../ui/components/Txt';
 import { activeConversation } from '../../ui/useAppLifecycle';
 import { useChat } from '../../ui/useChat';
-import { space } from '../../ui/theme';
+import { GUTTER, radius, space } from '../../ui/theme';
 
 const SUGGESTIONS = ['What did I miss?', "What's on my schedule today?", 'Reply to Sarah about her email', 'Find the photo of my parking spot'];
 
@@ -81,16 +81,14 @@ export default function Chat() {
     <View style={{ flex: 1 }}>
       <Backdrop />
       {/* Top bar */}
-      <View style={[styles.top, { paddingTop: insets.top + space.xs }]}>
+      <View style={[styles.top, { paddingTop: insets.top + space.xs, borderBottomColor: p.line }]}>
         <Button label="Back" icon="chevronLeft" iconOnly variant="ghost" compact onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
-        <Avatar size={44} state={chat.avatar} level={chat.avatar === 'listening' ? mic.level : chat.speechLevel} />
-        <View style={{ flex: 1 }}>
+        <Brain size={56} state={chat.avatar} micLevel={mic.level} speechLevel={chat.speechLevel} interactive={false} onPress={mic.listening ? mic.stop : mic.start} />
+        <View style={{ flex: 1, gap: 2 }}>
           <Txt variant="heading" numberOfLines={1}>
             Optimus
           </Txt>
-          <Txt variant="mono" color={chat.avatar === 'idle' ? p.textFaint : p.cyanText} style={{ fontSize: 11 }}>
-            {chat.avatar === 'idle' ? (rt.isDemoBrain() ? 'DEMO BRAIN · OFFLINE' : 'ONLINE') : chat.avatar.toUpperCase()}
-          </Txt>
+          <StatusStrip state={chat.avatar} />
         </View>
         <Button label="Conversation history" icon="history" iconOnly variant="ghost" compact onPress={() => setHistoryOpen(true)} />
         <Button
@@ -106,10 +104,15 @@ export default function Chat() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {empty ? (
           <View style={styles.empty}>
-            <Avatar size={150} state={chat.avatar} level={mic.level} />
-            <Txt variant="title" style={{ textAlign: 'center' }}>
+            <Brain size={220} state={chat.avatar} micLevel={mic.level} speechLevel={chat.speechLevel} onPress={mic.start} onLongPress={() => router.push('/settings')} />
+            <Txt variant="display" style={{ textAlign: 'center' }}>
               Standing by.
             </Txt>
+            {rt.isDemoBrain() && (
+              <Txt variant="mono" color={p.textTertiary} style={{ textAlign: 'center' }}>
+                DEMO CORE · CONNECT THE PROXY IN SETTINGS FOR FULL CONVERSATION
+              </Txt>
+            )}
             <View style={{ gap: space.sm, alignSelf: 'stretch' }}>
               {SUGGESTIONS.map((s) => (
                 <Button key={s} label={s} variant="secondary" compact onPress={() => chat.send(s)} />
@@ -122,12 +125,12 @@ export default function Chat() {
             data={items}
             keyExtractor={(m) => m.id}
             renderItem={({ item }) => <MessageView m={item} />}
-            contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl }}
+            contentContainerStyle={{ paddingHorizontal: GUTTER, paddingVertical: space.lg }}
             onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
             ListFooterComponent={
               <>
                 {chat.streaming && <AssistantBlock text={chat.streaming.text} cards={chat.streaming.cards} activity={chat.streaming.activity} streaming />}
-                {chat.error && <Banner title={chat.error.title} body={chat.error.body} tone="amber" onDismiss={() => chat.setError(null)} action={{ label: 'Settings', onPress: () => router.push('/settings') }} />}
+                {chat.error && <Banner title={chat.error.title} body={chat.error.body} tone="alert" onDismiss={() => chat.setError(null)} action={{ label: 'Settings', onPress: () => router.push('/settings') }} />}
               </>
             }
             keyboardShouldPersistTaps="handled"
@@ -135,13 +138,14 @@ export default function Chat() {
         )}
         {mic.error && (
           <View style={{ paddingHorizontal: space.lg }}>
-            <Txt variant="small" color={p.amberText}>
+            <Txt variant="small" color={p.redGlow}>
               {mic.error}
             </Txt>
           </View>
         )}
-        <View style={{ paddingHorizontal: space.md, paddingBottom: insets.bottom + space.sm, paddingTop: space.xs }}>
+        <View>
           <Composer
+            bottomInset={insets.bottom}
             onSend={(t) => chat.send(t)}
             onMic={mic.start}
             onStopMic={mic.stop}
@@ -174,10 +178,9 @@ function HistoryDrawer({ open, onClose, current }: { open: boolean; onClose: () 
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: p.scrim }]} onPress={onClose} accessibilityLabel="Close history" />
-      <Animated.View style={[styles.drawer, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom }, style]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-        <PanelSurface width={w} height={2000} c={0} />
+      <Animated.View style={[styles.drawer, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom, backgroundColor: p.surface, borderRightColor: p.line }, style]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
         <View style={styles.drawerHead}>
-          <Icon name="history" size={20} color={p.cyanText} />
+          <Icon name="history" size={20} color={p.textSecondary} />
           <Txt variant="heading" style={{ flex: 1 }} accessibilityRole="header">
             History
           </Txt>
@@ -188,7 +191,7 @@ function HistoryDrawer({ open, onClose, current }: { open: boolean; onClose: () 
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ paddingHorizontal: space.md, gap: space.xs }}
           ListEmptyComponent={
-            <Txt variant="small" color={p.textDim} style={{ padding: space.md }}>
+            <Txt variant="small" color={p.textSecondary} style={{ padding: space.md }}>
               No past conversations yet.
             </Txt>
           }
@@ -198,14 +201,14 @@ function HistoryDrawer({ open, onClose, current }: { open: boolean; onClose: () 
                 onClose();
                 if (item.id !== current) router.replace(`/chat/${item.id}`);
               }}
-              style={[styles.convRow, { borderColor: item.id === current ? p.cyan : p.seam, backgroundColor: item.id === current ? p.inset : 'transparent' }]}
+              style={[styles.convRow, { borderColor: p.line, borderLeftColor: item.id === current ? p.red : p.line, backgroundColor: item.id === current ? p.surfaceRaised : 'transparent' }]}
               accessibilityRole="button"
               accessibilityLabel={`${item.title}, ${formatDay(item.updatedAt)}`}
             >
               <Txt variant="smallStrong" numberOfLines={1}>
                 {item.title}
               </Txt>
-              <Txt variant="mono" color={p.textFaint} style={{ fontSize: 11 }}>
+              <Txt variant="mono" color={p.textTertiary}>
                 {formatDay(item.updatedAt).toUpperCase()}
               </Txt>
             </Pressable>
@@ -217,9 +220,9 @@ function HistoryDrawer({ open, onClose, current }: { open: boolean; onClose: () 
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm, paddingBottom: space.sm },
+  top: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth * 2 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg, paddingHorizontal: space.xl },
-  drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '84%', maxWidth: 380, overflow: 'hidden' },
+  drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '84%', maxWidth: 380, overflow: 'hidden', borderRightWidth: 1 },
   drawerHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, marginBottom: space.md },
-  convRow: { borderWidth: 1, paddingHorizontal: space.md, paddingVertical: space.sm, minHeight: 56, justifyContent: 'center', gap: 2 },
+  convRow: { borderWidth: 1, borderLeftWidth: 2, borderRadius: radius.sm, paddingHorizontal: space.md, paddingVertical: space.sm, minHeight: 56, justifyContent: 'center', gap: 2 },
 });

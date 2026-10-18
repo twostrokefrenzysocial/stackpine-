@@ -4,12 +4,17 @@ import { type as T } from '../theme';
 
 export type TxtVariant = keyof typeof T;
 
-/** Themed text. Font scaling stays on (system font size is respected). */
+const UPPER: TxtVariant[] = ['label', 'heading'];
+
+/** Themed text. System font scaling stays on. */
 export function Txt({ variant = 'body', color, style, children, ...rest }: TextProps & { variant?: TxtVariant; color?: string }) {
   const { palette } = useApp();
-  const upper = variant === 'label';
   return (
-    <Text {...rest} maxFontSizeMultiplier={variant === 'hero' || variant === 'label' ? 1.6 : 2.2} style={[T[variant], { color: color ?? palette.text }, upper && { textTransform: 'uppercase' }, style]}>
+    <Text
+      {...rest}
+      maxFontSizeMultiplier={variant === 'hero' || variant === 'display' ? 1.4 : 2}
+      style={[T[variant], { color: color ?? palette.text }, UPPER.includes(variant) && { textTransform: 'uppercase' }, style]}
+    >
       {children}
     </Text>
   );

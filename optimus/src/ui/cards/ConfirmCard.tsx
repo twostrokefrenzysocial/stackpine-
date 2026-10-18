@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import type { PendingAction } from '../../core/types';
 import { formatDay, formatTime } from '../../core/util/time';
 import { useApp, useData } from '../AppContext';
@@ -87,29 +86,20 @@ const STATUS: Record<PendingAction['status'], { label: string; icon: 'check' | '
  * Locks into place with two clamps and a click when it appears.
  */
 export function ConfirmCard({ actionId }: { actionId: string }) {
-  const { rt, palette: p, reduceMotion } = useApp();
+  const { rt, palette: p } = useApp();
   const { data: action } = useData(() => rt.engine.actions.get(actionId), [actionId]);
   const [editing, setEditing] = useState(false);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clamp = useSharedValue(reduceMotion ? 1 : 0);
-  useEffect(() => {
-    if (reduceMotion) return;
-    clamp.value = withSequence(withTiming(1.08, { duration: 220, easing: Easing.out(Easing.cubic) }), withTiming(1, { duration: 90 }));
-    const t = setTimeout(() => feedback.fire('confirm'), 230);
-    return () => clearTimeout(t);
-  }, [clamp, reduceMotion]);
-  const leftClamp = useAnimatedStyle(() => ({ transform: [{ translateX: (1 - clamp.value) * -24 }], opacity: Math.min(1, clamp.value * 1.5) }));
-  const rightClamp = useAnimatedStyle(() => ({ transform: [{ translateX: (1 - clamp.value) * 24 }], opacity: Math.min(1, clamp.value * 1.5) }));
 
   if (!action) return null;
   const pending = action.status === 'pending';
   const rows = draftRows(action);
   const st = STATUS[action.status];
-  const tone = action.status === 'failed' ? 'danger' : pending ? 'amber' : action.status === 'executed' ? 'cyan' : 'default';
-  const destructive = action.kind === 'delete_event' || action.kind === 'delete_memory';
+  const tone = action.status === 'failed' ? 'alert' : 'default';
+  const statusColor = action.status === 'failed' ? p.redGlow : pending ? p.redGlow : action.status === 'executed' ? p.text : p.textSecondary;
 
   const approve = async () => {
     setBusy(true);
@@ -128,19 +118,16 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
 
   return (
     <View style={styles.wrap}>
-      <Animated.View style={[styles.clamp, styles.clampL, { backgroundColor: p.amber }, leftClamp]} />
-      <Animated.View style={[styles.clamp, styles.clampR, { backgroundColor: p.amber }, rightClamp]} />
       <Panel
         tone={tone}
         code="CONFIRM"
         label={action.title}
-        rivets
-        assemble={false}
+        hud={pending}
         right={
           <View style={styles.status} accessibilityLabel={`Status: ${st.label}`}>
-            <Icon name={st.icon} size={16} color={tone === 'danger' ? p.dangerText : tone === 'cyan' ? p.cyanText : p.amberText} />
-            <Txt variant="label" color={tone === 'danger' ? p.dangerText : tone === 'cyan' ? p.cyanText : p.amberText}>
-              {st.label}
+            <Icon name={st.icon} size={16} color={statusColor} />
+            <Txt variant="mono" color={statusColor}>
+              {st.label.toUpperCase()}
             </Txt>
           </View>
         }
@@ -158,7 +145,7 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
               />
             ) : (
               <View key={r.label} style={{ gap: 2 }}>
-                <Txt variant="label" color={p.textFaint}>
+                <Txt variant="label" color={p.textTertiary}>
                   {r.label}
                 </Txt>
                 <Txt variant="body" selectable>
@@ -168,18 +155,18 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
             ),
           )}
           {action.resultMessage && !pending && (
-            <Txt variant="smallStrong" color={action.status === 'failed' ? p.dangerText : p.textDim}>
+            <Txt variant="smallStrong" color={action.status === 'failed' ? p.redGlow : p.textSecondary}>
               {action.resultMessage}
             </Txt>
           )}
           {error && (
-            <Txt variant="smallStrong" color={p.dangerText}>
+            <Txt variant="smallStrong" color={p.redGlow}>
               {error}
             </Txt>
           )}
           {pending && (
             <View style={styles.actions}>
-              <Button label={editing ? 'Approve edits' : 'Approve'} icon="check" variant={destructive ? 'danger' : 'amber'} onPress={approve} disabled={busy} feedbackKind="confirm" style={{ flex: 1.4 }} accessibilityHint="Runs this action now" />
+              <Button label={editing ? 'Approve edits' : 'Approve'} icon="check" variant="primary" onPress={approve} disabled={busy} feedbackKind="confirm" style={{ flex: 1.4 }} accessibilityHint="Runs this action now" />
               {action.editable.length > 0 && !editing && <Button label="Edit" icon="edit" variant="secondary" onPress={() => setEditing(true)} disabled={busy} style={{ flex: 1 }} />}
               <Button label="Cancel" icon="close" variant="ghost" onPress={() => rt.engine.actions.cancel(action.id)} disabled={busy} style={{ flex: 1 }} />
             </View>
@@ -206,9 +193,6 @@ function normalizeEdits(a: PendingAction, edits: Record<string, string>): Record
 
 const styles = StyleSheet.create({
   wrap: { position: 'relative', marginVertical: space.xs },
-  clamp: { position: 'absolute', top: 18, width: 4, height: 28, zIndex: 2 },
-  clampL: { left: -3 },
-  clampR: { right: -3 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.xs, flexWrap: 'wrap' },
 });

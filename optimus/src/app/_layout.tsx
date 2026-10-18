@@ -1,5 +1,6 @@
-import { ChakraPetch_500Medium, ChakraPetch_600SemiBold, ChakraPetch_700Bold } from '@expo-google-fonts/chakra-petch';
+import { BarlowSemiCondensed_300Light, BarlowSemiCondensed_500Medium, BarlowSemiCondensed_600SemiBold } from '@expo-google-fonts/barlow-semi-condensed';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, useFonts } from '@expo-google-fonts/inter';
+import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -20,16 +21,16 @@ function Shell() {
   const { palette, settings } = useApp();
   useAppLifecycle();
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(palette.ground).catch(() => undefined);
-  }, [palette.ground]);
+    SystemUI.setBackgroundColorAsync(palette.bg).catch(() => undefined);
+  }, [palette.bg]);
   return (
-    <View style={[styles.root, { backgroundColor: palette.ground }]}>
-      <StatusBar style={palette.mode === 'dark' ? 'light' : 'dark'} />
+    <View style={[styles.root, { backgroundColor: palette.bg }]}>
+      <StatusBar style="light" />
       <LockGate enabled={settings.appLockEnabled}>
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: palette.ground },
+            contentStyle: { backgroundColor: palette.bg },
             animation: 'fade',
             animationDuration: 240,
           }}
@@ -44,9 +45,11 @@ function Shell() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    ChakraPetch_500Medium,
-    ChakraPetch_600SemiBold,
-    ChakraPetch_700Bold,
+    BarlowSemiCondensed_300Light,
+    BarlowSemiCondensed_500Medium,
+    BarlowSemiCondensed_600SemiBold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,

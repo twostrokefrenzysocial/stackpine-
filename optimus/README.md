@@ -11,10 +11,11 @@ A personal AI assistant for Android (built and tuned for the Samsung Galaxy S24 
 | `src/app/` | Screens (Expo Router). `index` = Command Center, `chat/[id]`, `memory`, `activity`, `settings`, `onboarding`, plus `voice` and `brief` deep-link entries. |
 | `src/core/` | The brain, in plain TypeScript with no React Native imports, so it's unit tested in Node. Memory, tools, the agent loop, confirmation logic, redaction, the daily brief, backup. |
 | `src/platform/` | Device glue: encrypted SQLite, secure storage, the Claude client (via your proxy), real data sources, voice, notifications, background tasks, the widget. |
-| `src/ui/` | Design system: theme tokens, chamfered panels, the Optimus avatar, cards, controls. |
+| `src/ui/` | Design system (see `.claude/skills/optimus-design/`): black/white/red tokens, panels, the live 3D neural brain avatar, cards, controls. |
 | `modules/optimus-android/` | A local native module (Kotlin): SMS/MMS, call log, the notification listener (with on-device passcode redaction and an encrypted queue), Samsung setup checks. |
 | `proxy/` | A Cloudflare Worker that holds your Anthropic API key, checks the app token, rate-limits, and enforces the monthly spending cap. See `proxy/README.md`. |
-| `assets/` | Brand art (generated from `scripts/render-brand.mjs`), mock photos (`scripts/render-mock-photos.mjs`), sounds. |
+| `assets/` | Brand art rendered from the brain geometry (`scripts/render-brand.mjs`), mock photos (`scripts/render-mock-photos.mjs`), sounds. |
+| `.claude/skills/optimus-design/` | The design system skill: colors, type, components, motion, and the brain avatar spec. |
 
 ## How it works
 

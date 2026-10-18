@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, useColorScheme } from 'react-native';
+import { AccessibilityInfo } from 'react-native';
 import type { Settings } from '../core/settings/settings';
 import type { Runtime } from '../platform/runtime';
 import { feedback } from './feedback';
-import { dark, light, type Palette } from './theme';
+import { palette, type Palette } from './theme';
 
 interface AppState {
   rt: Runtime;
@@ -22,7 +22,6 @@ export function AppProvider({ rt, children }: { rt: Runtime; children: ReactNode
   const [settings, setSettings] = useState<Settings>(rt.settings);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
-  const scheme = useColorScheme();
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => undefined);
@@ -46,12 +45,11 @@ export function AppProvider({ rt, children }: { rt: Runtime; children: ReactNode
     [rt],
   );
 
-  const palette = settings.theme === 'light' || (settings.theme === 'system' && scheme === 'light') ? light : dark;
   const bump = useCallback(() => setDataVersion((v) => v + 1), []);
 
   const value = useMemo(
     () => ({ rt, settings, updateSettings, palette, reduceMotion, dataVersion, bump }),
-    [rt, settings, updateSettings, palette, reduceMotion, dataVersion, bump],
+    [rt, settings, updateSettings, reduceMotion, dataVersion, bump],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

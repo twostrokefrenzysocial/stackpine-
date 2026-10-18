@@ -1,8 +1,7 @@
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 /**
- * Original angular icon set on a 24-unit grid. Stroke-based, squared caps,
- * chamfered corners to match the panels.
+ * Original thin outline icon set on a 24-unit grid (1.5px stroke).
  */
 export type IconName =
   | 'mic'
@@ -83,28 +82,19 @@ const PATHS: Record<IconName, string> = {
   bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
 };
 
-export function Icon({ name, size = 24, color, strokeWidth = 1.8 }: { name: IconName; size?: number; color: string; strokeWidth?: number }) {
+export function Icon({ name, size = 24, color, strokeWidth = 1.5 }: { name: IconName; size?: number; color: string; strokeWidth?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Path d={PATHS[name]} stroke={color} strokeWidth={strokeWidth} strokeLinecap="square" strokeLinejoin="miter" />
+      <Path d={PATHS[name]} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
 
-/** A small decorative rivet. */
-export function Rivet({ size = 6, color, highlight }: { size?: number; color: string; highlight: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 6 6">
-      <Circle cx={3} cy={3} r={2.6} fill={color} />
-      <Circle cx={2.3} cy={2.2} r={0.9} fill={highlight} opacity={0.6} />
-    </Svg>
-  );
-}
-
-export function StatusDot({ color, size = 8 }: { color: string; size?: number }) {
+/** A small status dot. */
+export function StatusDot({ color, size = 6 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 8 8">
-      <Rect x={1} y={1} width={6} height={6} fill={color} transform="rotate(45 4 4)" />
+      <Circle cx={4} cy={4} r={4} fill={color} />
     </Svg>
   );
 }
