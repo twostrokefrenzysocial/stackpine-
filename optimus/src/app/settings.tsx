@@ -29,9 +29,9 @@ const SENSITIVE_APPS = [
   { packageName: 'com.venmo', appName: 'Venmo' },
 ];
 
-function Section({ code, title, children }: { code: string; title: string; children: ReactNode }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Panel code={code} label={title} animate={false}>
+    <Panel label={title} animate={false}>
       <View style={{ gap: space.md }}>{children}</View>
     </Panel>
   );
@@ -40,6 +40,9 @@ function Section({ code, title, children }: { code: string; title: string; child
 export default function Settings() {
   const { rt, settings, updateSettings, palette: p, bump } = useApp();
   const [url, setUrl] = useState(settings.proxyUrl);
+  const [provider, setProvider] = useState(settings.provider);
+  const [oaModel, setOaModel] = useState(settings.openaiModel);
+  const [oaBgModel, setOaBgModel] = useState(settings.openaiBackgroundModel);
   const [token, setToken] = useState('');
   const [usage, setUsage] = useState<ProxyUsage | null>(null);
   const [connMsg, setConnMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -78,7 +81,12 @@ export default function Settings() {
   const saveConnection = async () => {
     setBusy('conn');
     if (token.trim()) await proxyToken.set(token.trim());
-    await updateSettings({ proxyUrl: url.trim() });
+    if (provider === 'openai' && !oaModel.trim()) {
+      setConnMsg({ ok: false, text: 'Enter the OpenAI model to use (it must be in your proxy’s OPENAI_MODELS list).' });
+      setBusy(null);
+      return;
+    }
+    await updateSettings({ proxyUrl: url.trim(), provider, openaiModel: oaModel.trim(), openaiBackgroundModel: oaBgModel.trim() });
     setToken('');
     await refreshUsage(url.trim());
     setBusy(null);
@@ -167,10 +175,25 @@ export default function Settings() {
           Settings
         </Txt>
 
-        <Section code="01" title="Connection">
+        <Section title="Connection">
           <Txt variant="small" color={p.textSecondary}>
-            Optimus talks to Claude only through your own proxy. Your API key never lives on this phone.
+            Optimus talks to the AI only through your own proxy. Your API keys never live on this phone.
           </Txt>
+          <Segmented
+            label="AI provider"
+            value={provider}
+            onChange={setProvider}
+            options={[
+              { value: 'anthropic', label: 'Anthropic' },
+              { value: 'openai', label: 'OpenAI' },
+            ]}
+          />
+          {provider === 'openai' && (
+            <>
+              <Field label="OpenAI model" value={oaModel} onChangeText={setOaModel} placeholder="Model id from platform.openai.com" autoCapitalize="none" autoCorrect={false} />
+              <Field label="Background model (optional)" value={oaBgModel} onChangeText={setOaBgModel} placeholder="A cheaper model for memory and summaries" autoCapitalize="none" autoCorrect={false} />
+            </>
+          )}
           <Field label="Proxy URL" value={url} onChangeText={setUrl} placeholder="https://optimus-proxy.example.workers.dev" autoCapitalize="none" autoCorrect={false} keyboardType="url" />
           <Field label="App token" value={token} onChangeText={setToken} placeholder={settings.proxyUrl ? 'Saved — enter a new one to replace it' : 'Paste the APP_TOKEN you created'} autoCapitalize="none" autoCorrect={false} secureTextEntry />
           <Button label={busy === 'conn' ? 'Checking' : 'Save and test'} onPress={saveConnection} disabled={busy === 'conn'} />
@@ -180,11 +203,15 @@ export default function Settings() {
             </Txt>
           )}
           <Txt variant="mono" color={p.textTertiary}>
-            CORE: {rt.isDemoBrain() ? 'OFFLINE DEMO' : MAIN_MODEL.toUpperCase()} · BACKGROUND: {rt.isDemoBrain() ? 'HEURISTICS' : BACKGROUND_MODEL.toUpperCase()}
+            {rt.isDemoBrain()
+              ? 'CORE: OFFLINE DEMO · BACKGROUND: HEURISTICS'
+              : settings.provider === 'openai'
+                ? `CORE: ${settings.openaiModel.toUpperCase()} · BACKGROUND: ${(settings.openaiBackgroundModel || settings.openaiModel).toUpperCase()}`
+                : `CORE: ${MAIN_MODEL.toUpperCase()} · BACKGROUND: ${BACKGROUND_MODEL.toUpperCase()}`}
           </Txt>
         </Section>
 
-        <Section code="02" title="Usage this month">
+        <Section title="Usage this month">
           {usage ? (
             <>
               <View style={styles.usageRow}>
@@ -207,7 +234,7 @@ export default function Settings() {
           <Button label="Set cap" variant="secondary" onPress={saveCap} />
         </Section>
 
-        <Section code="03" title="Data">
+        <Section title="Data">
           <Segmented
             label="Data mode"
             value={settings.dataMode}
@@ -224,7 +251,7 @@ export default function Settings() {
           <Toggle label="Location" hint="Off by default. Only for context like “when I get home”." value={settings.locationEnabled} onChange={(v) => updateSettings({ locationEnabled: v })} />
         </Section>
 
-        <Section code="04" title="Email">
+        <Section title="Email">
           {(['gmail', 'outlook'] as const).map((a) => {
             const on = settings.emailAccounts.includes(a);
             return (
@@ -249,7 +276,7 @@ export default function Settings() {
           </Txt>
         </Section>
 
-        <Section code="05" title="Notifications">
+        <Section title="Notifications">
           <Toggle label="Capture notifications" hint="So I can tell you what you missed. Passcodes are hidden before anything is stored." value={settings.notificationCaptureEnabled} onChange={(v) => updateSettings({ notificationCaptureEnabled: v })} />
           <Txt variant="label" color={p.textSecondary}>
             Keep for
@@ -284,24 +311,24 @@ export default function Settings() {
           />
         </Section>
 
-        <Section code="06" title="Daily brief">
+        <Section title="Daily brief">
           <Toggle label="Morning brief" hint="A notification each morning. If the phone delays it, it’s built when you open the app." value={settings.briefEnabled} onChange={(v) => updateSettings({ briefEnabled: v })} />
           <Segmented label="Brief time" value={settings.briefTime} onChange={(v) => updateSettings({ briefTime: v })} options={['06:00', '06:30', '07:00', '07:30', '08:00'].map((t) => ({ value: t, label: t }))} />
         </Section>
 
-        <Section code="07" title="Voice and feedback">
+        <Section title="Voice and feedback">
           <Toggle label="Spoken replies" hint="When you talk to me, I answer out loud in a low, steady voice." value={settings.voiceReplies} onChange={(v) => updateSettings({ voiceReplies: v })} />
           <Button label="Test voice" icon="speaker" variant="ghost" compact onPress={() => speak('Optimus online. Standing by.', { rate: settings.voiceRate, pitch: settings.voicePitch })} style={{ alignSelf: 'flex-start' }} />
           <Toggle label="Haptics" hint="Light ticks on confirm, send and when I start answering." value={settings.hapticsEnabled} onChange={(v) => updateSettings({ hapticsEnabled: v })} />
           <Toggle label="Sound effects" hint="Subtle clicks. Off by default." value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
         </Section>
 
-        <Section code="08" title="Security">
+        <Section title="Security">
           <Toggle label="App lock" hint="Fingerprint or face on open. Locks again after 5 minutes in the background." value={settings.appLockEnabled} onChange={(v) => updateSettings({ appLockEnabled: v })} />
           <Button label="Activity log" icon="activity" variant="secondary" onPress={() => router.replace('/activity')} />
         </Section>
 
-        <Section code="09" title="Memory backup">
+        <Section title="Memory backup">
           <Txt variant="small" color={p.textSecondary}>
             An encrypted file with all memories and conversations, so I remember you on a new phone. Tokens and keys are never included.
           </Txt>
@@ -320,7 +347,7 @@ export default function Settings() {
           )}
         </Section>
 
-        <Section code="10" title="Wipe">
+        <Section title="Wipe">
           {wipeArmed ? (
             <Banner
               title="Wipe everything?"

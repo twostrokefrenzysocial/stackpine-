@@ -6,7 +6,7 @@ import { Icon, type IconName } from './Icon';
 import { Panel } from './Panel';
 import { Txt } from './Txt';
 
-/** Friendly status message. Errors use red text; information stays white. Never raw errors. */
+/** Friendly status message. Errors use red text; information stays ink. Never raw errors. */
 export function Banner({ title, body, icon = 'alert', tone = 'alert', action, onDismiss }: { title: string; body: string; icon?: IconName; tone?: 'alert' | 'info'; action?: { label: string; onPress: () => void }; onDismiss?: () => void }) {
   const { palette: p } = useApp();
   const color = tone === 'alert' ? p.redGlow : p.text;
@@ -25,7 +25,7 @@ export function Banner({ title, body, icon = 'alert', tone = 'alert', action, on
       </View>
       {(action || onDismiss) && (
         <View style={styles.actions}>
-          {action && <Button label={action.label} compact variant="secondary" onPress={action.onPress} />}
+          {action && <Button label={action.label} compact onPress={action.onPress} />}
           {onDismiss && <Button label="Dismiss" compact variant="ghost" onPress={onDismiss} />}
         </View>
       )}

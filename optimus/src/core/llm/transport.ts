@@ -17,7 +17,7 @@ export interface ChatRequest {
 }
 
 /**
- * How the agent talks to Claude. The app uses the Anthropic SDK through the
+ * How the agent talks to the model. The app uses the Anthropic SDK (or OpenAI) through the
  * proxy (src/platform/claude.ts); tests and the offline demo use fakes.
  */
 export interface LlmTransport {
@@ -65,7 +65,7 @@ export function friendlyError(e: unknown): { title: string; body: string; kind: 
     case 'rate-limited':
       return { kind, title: 'Cooling down', body: 'Too many requests in a minute. Give me a moment and try again.' };
     case 'overloaded':
-      return { kind, title: 'Servers are busy', body: 'Claude is overloaded right now. Try again in a minute.' };
+      return { kind, title: 'Servers are busy', body: 'The AI service is overloaded right now. Try again in a minute.' };
     case 'refused':
       return { kind, title: 'I can’t help with that one', body: 'That request was declined by the model’s safety checks.' };
     case 'aborted':

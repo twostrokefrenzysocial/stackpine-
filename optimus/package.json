@@ -4,7 +4,6 @@
   "main": "index.ts",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
-    "@expo-google-fonts/barlow-semi-condensed": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@noble/ciphers": "^2.4.0",

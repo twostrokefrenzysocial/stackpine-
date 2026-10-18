@@ -5,7 +5,7 @@ import { TOUCH, radius, space } from '../theme';
 import { Icon, type IconName } from './Icon';
 import { Txt } from './Txt';
 
-/** primary = solid red; secondary = hairline outline; ghost = text only. */
+/** primary = solid ink; secondary = light grey fill; ghost = text only. */
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 export interface ButtonProps {
@@ -24,7 +24,7 @@ export interface ButtonProps {
 
 export function Button({ label, onPress, variant = 'primary', icon, disabled, compact, feedbackKind = 'tap', accessibilityHint, style, iconOnly }: ButtonProps) {
   const { palette: p } = useApp();
-  const fg = variant === 'primary' ? p.onRed : p.text;
+  const fg = variant === 'primary' ? p.onInk : p.text;
   const h = compact ? 40 : TOUCH;
   return (
     <Pressable
@@ -44,8 +44,8 @@ export function Button({ label, onPress, variant = 'primary', icon, disabled, co
           minHeight: h,
           minWidth: iconOnly ? TOUCH : undefined,
           paddingHorizontal: iconOnly ? 0 : compact ? space.md : space.lg,
-          backgroundColor: variant === 'primary' ? p.red : pressed ? p.surfaceRaised : 'transparent',
-          borderColor: variant === 'secondary' ? p.line : 'transparent',
+          backgroundColor: variant === 'primary' ? p.ink : variant === 'secondary' ? (pressed ? p.surfaceRaised : p.surface) : pressed ? p.surface : 'transparent',
+          borderColor: 'transparent',
           opacity: disabled ? 0.4 : variant === 'primary' && pressed ? 0.85 : 1,
         },
         style,
@@ -54,7 +54,7 @@ export function Button({ label, onPress, variant = 'primary', icon, disabled, co
       <View style={styles.row}>
         {icon && <Icon name={icon} size={compact ? 18 : 20} color={fg} />}
         {!iconOnly && (
-          <Txt variant="heading" color={fg} style={{ fontSize: compact ? 13 : 15 }} numberOfLines={1}>
+          <Txt variant="bodyStrong" color={fg} style={{ fontSize: compact ? 13 : 15 }} numberOfLines={1}>
             {label}
           </Txt>
         )}
@@ -64,6 +64,6 @@ export function Button({ label, onPress, variant = 'primary', icon, disabled, co
 }
 
 const styles = StyleSheet.create({
-  base: { borderRadius: radius.sm, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  base: { borderRadius: radius.pill, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

@@ -102,3 +102,50 @@ export function costUsd(model: string | undefined | null, usage: Usage): number 
 
   return tokenCost / 1_000_000 + n(usage.server_tool_use?.web_search_requests) * WEB_SEARCH_USD_PER_REQUEST;
 }
+
+/** OpenAI prices, USD per million tokens. Set per model in OPENAI_PRICES. */
+export interface OpenAIPrice {
+  input: number;
+  output: number;
+  cacheRead?: number;
+}
+
+/**
+ * OpenAI models without a configured price are billed at this deliberately
+ * high rate, so a missing entry makes the cap trip early rather than late.
+ */
+export const OPENAI_FALLBACK_PRICE: OpenAIPrice = { input: 15, output: 75, cacheRead: 15 };
+
+export function parseOpenAIPrices(raw: string | undefined): Record<string, OpenAIPrice> {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    const out: Record<string, OpenAIPrice> = {};
+    for (const [model, v] of Object.entries(parsed as Record<string, Partial<OpenAIPrice>>)) {
+      if (v && Number.isFinite(v.input) && Number.isFinite(v.output)) out[model] = { input: Number(v.input), output: Number(v.output), cacheRead: Number.isFinite(v.cacheRead) ? Number(v.cacheRead) : undefined };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Exact id first, then the longest configured prefix (covers dated snapshots). */
+export function openAIPriceFor(model: string | undefined | null, table: Record<string, OpenAIPrice>): OpenAIPrice {
+  if (model) {
+    if (table[model]) return table[model];
+    const prefix = Object.keys(table)
+      .filter((k) => model.startsWith(`${k}-`))
+      .sort((a, b) => b.length - a.length)[0];
+    if (prefix) return table[prefix];
+  }
+  return OPENAI_FALLBACK_PRICE;
+}
+
+/** Usage here is already mapped: input_tokens excludes cached prompt tokens. */
+export function openAICostUsd(model: string | undefined | null, usage: Usage, table: Record<string, OpenAIPrice>): number {
+  const price = openAIPriceFor(model, table);
+  const cacheRead = price.cacheRead ?? price.input;
+  return (n(usage.input_tokens) * price.input + n(usage.output_tokens) * price.output + n(usage.cache_read_input_tokens) * cacheRead) / 1_000_000;
+}

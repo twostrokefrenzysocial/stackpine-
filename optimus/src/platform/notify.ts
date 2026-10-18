@@ -14,9 +14,9 @@ export async function setupNotifications(): Promise<void> {
   });
   if (Platform.OS === 'android') {
     // eslint-disable-next-line import/namespace -- AndroidImportance is a re-exported enum the import plugin can't see
-    await Notifications.setNotificationChannelAsync(CHANNELS.reminders, { name: 'Reminders', importance: Notifications.AndroidImportance.HIGH, lightColor: '#22D3EE' });
+    await Notifications.setNotificationChannelAsync(CHANNELS.reminders, { name: 'Reminders', importance: Notifications.AndroidImportance.HIGH, lightColor: '#E31937' });
     // eslint-disable-next-line import/namespace
-    await Notifications.setNotificationChannelAsync(CHANNELS.brief, { name: 'Daily brief', importance: Notifications.AndroidImportance.DEFAULT, lightColor: '#22D3EE' });
+    await Notifications.setNotificationChannelAsync(CHANNELS.brief, { name: 'Daily brief', importance: Notifications.AndroidImportance.DEFAULT, lightColor: '#E31937' });
   }
 }
 

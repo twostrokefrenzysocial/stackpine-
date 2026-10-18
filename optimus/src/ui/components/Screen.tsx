@@ -5,7 +5,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useApp } from '../AppContext';
 import { GUTTER, space } from '../theme';
 
-/** True black canvas. */
+/** Plain white canvas. */
 export function Backdrop() {
   const { palette: p } = useApp();
   return <View style={[StyleSheet.absoluteFill, { backgroundColor: p.bg }]} pointerEvents="none" />;
@@ -28,16 +28,17 @@ export function Screen({ children, scroll = true, style, contentStyle, padTop = 
   );
 }
 
-/** Fade to black behind floating controls (a functional scrim, not decoration). */
+/** Fade to white behind floating controls (a functional scrim, not decoration). */
 export function LinearFade({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { palette: p } = useApp();
   return (
     <View style={style} pointerEvents="none">
       <Svg width="100%" height="100%">
         <Defs>
           <LinearGradient id="lf" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#000" stopOpacity={0} />
-            <Stop offset="0.3" stopColor="#000" stopOpacity={0.94} />
-            <Stop offset="1" stopColor="#000" stopOpacity={1} />
+            <Stop offset="0" stopColor={p.bg} stopOpacity={0} />
+            <Stop offset="0.3" stopColor={p.bg} stopOpacity={0.94} />
+            <Stop offset="1" stopColor={p.bg} stopOpacity={1} />
           </LinearGradient>
         </Defs>
         <Rect width="100%" height="100%" fill="url(#lf)" />

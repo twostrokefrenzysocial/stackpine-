@@ -8,12 +8,12 @@ import { useApp } from '../AppContext';
 import { radius, space } from '../theme';
 import { Txt } from './Txt';
 
-/** User message: surface block, right aligned, 2px red bar on the left. */
+/** User message: light grey block, right aligned. */
 function UserBlock({ text, at }: { text: string; at: string }) {
   const { palette: p } = useApp();
   return (
     <View style={styles.userWrap}>
-      <View style={[styles.userBlock, { backgroundColor: p.surface, borderLeftColor: p.red }]} accessible accessibilityLabel={`You said: ${text}`}>
+      <View style={[styles.userBlock, { backgroundColor: p.surface }]} accessible accessibilityLabel={`You said: ${text}`}>
         <Txt variant="body" selectable>
           {text}
         </Txt>
@@ -32,10 +32,10 @@ function Cursor() {
     if (!reduceMotion) o.value = withRepeat(withSequence(withTiming(0.15, { duration: 400 }), withTiming(1, { duration: 400 })), -1);
   }, [o, reduceMotion]);
   const style = useAnimatedStyle(() => ({ opacity: o.value }));
-  return <Animated.View style={[{ width: 8, height: 2, backgroundColor: p.red, marginTop: 14 }, style]} />;
+  return <Animated.View style={[{ width: 8, height: 2, backgroundColor: p.text, marginTop: 14 }, style]} />;
 }
 
-/** Assistant message: plain white text on black, no bubble. */
+/** Assistant message: plain ink text on white, no bubble. */
 export function AssistantBlock({ text, cards, streaming, activity, at }: { text: string; cards: ChatCard[]; streaming?: boolean; activity?: string; at?: string }) {
   const { palette: p } = useApp();
   return (
@@ -74,6 +74,6 @@ export function MessageView({ m }: { m: ChatMessage }) {
 
 const styles = StyleSheet.create({
   userWrap: { alignItems: 'flex-end', marginVertical: space.md },
-  userBlock: { maxWidth: '86%', paddingHorizontal: space.lg, paddingVertical: space.md, borderLeftWidth: 2, borderRadius: radius.sm },
+  userBlock: { maxWidth: '86%', paddingHorizontal: space.lg, paddingVertical: space.md, borderRadius: radius.lg, borderBottomRightRadius: radius.sm },
   assistant: { marginVertical: space.md, gap: space.sm },
 });

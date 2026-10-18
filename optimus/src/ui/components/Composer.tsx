@@ -17,10 +17,10 @@ function Bar({ i, level, t }: { i: number; level: SharedValue<number>; t: Shared
     const center = 1 - Math.abs(i - BARS / 2) / (BARS / 2);
     return { height: 2 + (4 + 24 * center) * (0.2 + level.value) * wobble };
   });
-  return <Animated.View style={[styles.bar, { backgroundColor: p.red }, style]} />;
+  return <Animated.View style={[styles.bar, { backgroundColor: p.text }, style]} />;
 }
 
-/** Live mic level as thin red bars. */
+/** Live mic level as thin ink bars. */
 export function Waveform({ level }: { level: SharedValue<number> }) {
   const { reduceMotion } = useApp();
   const t = useSharedValue(0);
@@ -50,8 +50,9 @@ export interface ComposerProps {
 }
 
 /**
- * Input bar pinned to the bottom: surface background, hairline top border.
- * The mic turns solid red while listening and the field becomes a waveform.
+ * Input bar pinned to the bottom: white, hairline top border, a rounded
+ * grey field. The mic turns solid red while listening (a live signal) and
+ * the field becomes a waveform.
  */
 export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0 }: ComposerProps) {
   const { palette: p, reduceMotion } = useApp();
@@ -72,17 +73,17 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
   };
 
   return (
-    <View style={[styles.bar_, { backgroundColor: p.surface, borderTopColor: p.line, paddingBottom: bottomInset + space.sm }]}>
+    <View style={[styles.bar_, { backgroundColor: p.bg, borderTopColor: p.line, paddingBottom: bottomInset + space.sm }]}>
       <View style={styles.row}>
-        <View style={{ flex: 1, justifyContent: 'center', minHeight: TOUCH }}>
+        <View style={[styles.field, { backgroundColor: p.surface }]}>
           <Animated.View style={inputStyle} pointerEvents={listening ? 'none' : 'auto'}>
             <TextInput
               value={text}
               onChangeText={setText}
               placeholder={placeholder}
               placeholderTextColor={p.textTertiary}
-              selectionColor={p.red}
-              cursorColor={p.red}
+              selectionColor={p.text}
+              cursorColor={p.text}
               onSubmitEditing={send}
               returnKeyType="send"
               multiline
@@ -102,14 +103,14 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
         {busy && onStop ? (
           <Button label="Stop reply" icon="stop" iconOnly variant="secondary" onPress={onStop} />
         ) : text.trim() && !listening ? (
-          <Button label="Send" icon="send" iconOnly variant="secondary" onPress={send} feedbackKind="send" />
+          <Button label="Send" icon="send" iconOnly onPress={send} feedbackKind="send" />
         ) : (
           <Pressable
             onPress={listening ? onStopMic : onMic}
             accessibilityRole="button"
             accessibilityLabel={listening ? 'Stop listening' : 'Speak to Optimus'}
             accessibilityState={{ selected: listening }}
-            style={[styles.mic, { backgroundColor: listening ? p.red : 'transparent', borderColor: listening ? p.red : p.line }]}
+            style={[styles.mic, { backgroundColor: listening ? p.red : p.surface }]}
           >
             <Icon name={listening ? 'stop' : 'mic'} size={22} color={listening ? p.onRed : p.text} />
           </Pressable>
@@ -120,10 +121,11 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
 }
 
 const styles = StyleSheet.create({
-  bar_: { borderTopWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: GUTTER, paddingTop: space.sm },
+  bar_: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: GUTTER, paddingTop: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  field: { flex: 1, justifyContent: 'center', minHeight: TOUCH, borderRadius: TOUCH / 2, paddingHorizontal: space.lg },
   input: { maxHeight: 140, paddingVertical: space.sm },
-  mic: { width: TOUCH, height: TOUCH, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  mic: { width: TOUCH, height: TOUCH, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   waveWrap: { justifyContent: 'center', gap: 2 },
   wave: { flexDirection: 'row', alignItems: 'center', height: 32, gap: 3 },
   bar: { width: 2, borderRadius: 1 },

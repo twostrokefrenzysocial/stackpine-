@@ -13,7 +13,7 @@ import { Brain } from '../ui/components/Brain';
 import { Button } from '../ui/components/Button';
 import { Dock } from '../ui/components/Dock';
 import { Icon } from '../ui/components/Icon';
-import { HudCorners, Panel } from '../ui/components/Panel';
+import { Panel } from '../ui/components/Panel';
 import { LinearFade, Screen } from '../ui/components/Screen';
 import { StatusStrip } from '../ui/components/StatusStrip';
 import { Txt } from '../ui/components/Txt';
@@ -60,7 +60,7 @@ export default function Home() {
   }, [settings.dataMode, settings.userName]);
 
   const brief = data?.brief;
-  const brainSize = Math.round(Math.min(width * 0.66, 340));
+  const brainSize = Math.round(Math.min(width - GUTTER * 2, 400));
   const voice = () => {
     feedback.fire('tap');
     router.push('/chat/new?voice=1');
@@ -75,27 +75,29 @@ export default function Home() {
 
   if (!settings.onboardingDone) return <Redirect href="/onboarding" />;
 
-  const mode = [settings.dataMode === 'mock' ? 'MOCK DATA' : 'LIVE DATA', rt.isDemoBrain() ? 'DEMO CORE' : 'ONLINE'].join(' · ');
+  const mode = [settings.dataMode === 'mock' ? 'MOCK DATA' : 'LIVE DATA', rt.isDemoBrain() ? 'DEMO' : rt.providerLabel()].join(' · ');
 
   return (
     <View style={{ flex: 1, backgroundColor: p.bg }}>
       <Screen contentStyle={{ paddingBottom: insets.bottom + 200 }}>
         <View style={styles.strip}>
-          <StatusStrip state="idle" />
+          <Txt variant="label" style={styles.wordmark}>
+            Optimus
+          </Txt>
           <Txt variant="mono" color={p.textTertiary}>
             {mode}
           </Txt>
         </View>
 
         {/* The brain: tap to talk, long press for assistant settings. */}
-        <View style={[styles.brainWrap, { width: brainSize + 24, height: brainSize + 24 }]}>
-          <HudCorners color={p.textTertiary} size={14} />
+        <View style={styles.brainWrap}>
           <Brain size={brainSize} state="idle" onPress={voice} onLongPress={() => router.push('/settings')} />
+          <StatusStrip state="idle" />
         </View>
 
         <View style={styles.greeting}>
-          <Txt variant="mono" color={p.textSecondary}>
-            {formatDay(now.toISOString()).toUpperCase()} · {formatTime(now.toISOString())}
+          <Txt variant="label" color={p.textTertiary}>
+            {formatDay(now.toISOString())} · {formatTime(now.toISOString())}
           </Txt>
           <Txt variant="display" accessibilityRole="header">
             {greeting(now)}
@@ -116,10 +118,10 @@ export default function Home() {
         <View style={{ gap: space.md }}>
           {data?.offline && <Banner icon="offline" title="Offline" body={`Showing your last brief from ${brief ? formatDay(brief.generatedAt) : 'earlier'}. Conversations and memories still work.`} />}
 
-          {brief && <EventsCard events={brief.schedule} code="01" label="Schedule" index={0} />}
+          {brief && <EventsCard events={brief.schedule} label="Schedule" index={0} />}
 
           {brief && brief.peopleWaiting.length > 0 && (
-            <Panel code="02" label="Waiting on you" index={1}>
+            <Panel label="Waiting on you" index={1}>
               <View style={{ gap: space.lg }}>
                 {brief.peopleWaiting.map((w) => (
                   <View key={`${w.name}-${w.channel}`} style={styles.row} accessible accessibilityLabel={`${w.name} by ${w.channel}: ${w.preview}`}>
@@ -144,7 +146,7 @@ export default function Home() {
           )}
 
           {brief && brief.missed.length > 0 && (
-            <Panel code="03" label="Missed calls" index={2}>
+            <Panel label="Missed calls" index={2}>
               <View style={{ gap: space.md }}>
                 {brief.missed.map((m) => (
                   <View key={`${m.label}-${m.at}`} style={styles.row}>
@@ -161,7 +163,7 @@ export default function Home() {
             </Panel>
           )}
 
-          <Panel code="04" label="Reminders" index={3}>
+          <Panel label="Reminders" index={3}>
             {data?.reminders.length ? (
               <View style={{ gap: space.md }}>
                 {data.reminders.map((r) => (
@@ -184,7 +186,7 @@ export default function Home() {
           </Panel>
 
           {brief && (brief.openTasks.length > 0 || brief.followUps.length > 0) && (
-            <Panel code="05" label="Open loops" index={4}>
+            <Panel label="Open loops" index={4}>
               <View style={{ gap: space.md }}>
                 {[...brief.followUps, ...brief.openTasks].slice(0, 6).map((t) => (
                   <View key={t} style={styles.row}>
@@ -217,7 +219,7 @@ export default function Home() {
       {/* Primary controls in the thumb zone. */}
       <LinearFade style={[styles.fade, { height: insets.bottom + 64 + TOUCH + 48 }]} />
       <View style={[styles.ask, { bottom: insets.bottom + 72 }]}>
-        <Pressable onPress={() => router.push('/chat/new')} style={[styles.askField, { backgroundColor: p.surface, borderColor: p.line }]} accessibilityRole="button" accessibilityLabel="Ask Optimus" accessibilityHint="Opens a new conversation">
+        <Pressable onPress={() => router.push('/chat/new')} style={[styles.askField, { backgroundColor: p.surface }]} accessibilityRole="button" accessibilityLabel="Ask Optimus" accessibilityHint="Opens a new conversation">
           <Txt variant="body" color={p.textTertiary}>
             Ask Optimus
           </Txt>
@@ -231,12 +233,13 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   strip: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  brainWrap: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: space.xl, marginBottom: space.lg },
+  wordmark: { fontSize: 13, letterSpacing: 5 },
+  brainWrap: { alignSelf: 'center', alignItems: 'center', gap: space.md, marginTop: space.lg, marginBottom: space.xxl },
   greeting: { gap: space.sm, marginBottom: space.xl },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   tick: { width: 8, height: 1 },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   ask: { position: 'absolute', left: GUTTER, right: GUTTER, flexDirection: 'row', gap: space.sm, alignItems: 'center' },
-  askField: { flex: 1, minHeight: TOUCH + 8, borderWidth: 1, borderRadius: radius.sm, justifyContent: 'center', paddingHorizontal: space.lg },
+  askField: { flex: 1, minHeight: TOUCH + 8, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.lg },
 });

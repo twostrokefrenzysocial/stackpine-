@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   root: { backgroundColor: palette.bg, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
   center: { alignItems: 'center' },
   mark: { width: 180, height: 180 },
-  word: { marginTop: 12, color: palette.text, fontFamily: fonts.display, fontSize: 17, letterSpacing: 6 },
+  word: { marginTop: 16, color: palette.text, fontFamily: fonts.displayLight, fontSize: 18, letterSpacing: 9 },
   status: { marginTop: 8, color: palette.textTertiary, fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.6 },
   err: { marginTop: 24, color: palette.redGlow, fontFamily: fonts.body, fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
 });

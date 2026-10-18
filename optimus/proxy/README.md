@@ -1,8 +1,8 @@
 # Optimus proxy
 
-A small Cloudflare Worker that sits between the Optimus app and Anthropic's API.
+A small Cloudflare Worker that sits between the Optimus app and the AI provider: Anthropic's API, or OpenAI's if you switch the app to OpenAI.
 
-- It keeps your Anthropic API key on Cloudflare, so the key is never stored in the app.
+- It keeps your Anthropic (and optional OpenAI) API key on Cloudflare, so no key is ever stored in the app.
 - It stops all requests for the rest of the month once you reach your monthly spending cap. The default cap is $20, and you can change it in the app.
 - It allows at most 30 requests per minute, so a runaway loop can't drain your balance.
 - It only allows the models Optimus uses: `claude-sonnet-5-5` and `claude-haiku-5-5`.
@@ -66,7 +66,18 @@ Terminal on a Mac, PowerShell on Windows.
    npx wrangler secret put APP_TOKEN
    ```
 
-8. **Check that the proxy is running.** Open `<your proxy URL>/health` in a browser. It should show `{"ok":true}`.
+8. **Optional: OpenAI.** Only if you want to switch Optimus to OpenAI (Settings › Connection › OpenAI):
+   1. Create a key at <https://platform.openai.com/api-keys> and set a monthly budget under **Settings › Limits** there.
+   2. Store it on Cloudflare:
+      ```sh
+      npx wrangler secret put OPENAI_API_KEY
+      ```
+   3. In `wrangler.toml`, set `OPENAI_MODELS` to the model ids you want to allow (copy them from <https://platform.openai.com/docs/models>), and `OPENAI_PRICES` to their prices per million tokens from <https://platform.openai.com/pricing>. A model without a price counts against your cap at a deliberately high rate, so the cap trips early rather than late.
+   4. Run `npx wrangler deploy` again.
+
+   You can keep both keys: the app switch decides which one is used. If you only want OpenAI, you can skip the Anthropic key.
+
+9. **Check that the proxy is running.** Open `<your proxy URL>/health` in a browser. It should show `{"ok":true}`.
 
 9. **Connect the app.** In Optimus, open **Settings**, paste the **proxy URL** from step 5 and the
    **app token** from step 7, and save.
@@ -107,6 +118,7 @@ All routes except `/health` require the `x-optimus-token` header.
 | --- | --- |
 | `POST /v1/messages` | Forwarded to Anthropic. Supports both streaming and non-streaming requests. The proxy enforces the cap and rate limit, and records the cost after the response finishes. |
 | `POST /v1/messages/count_tokens` | Forwarded to Anthropic. It counts toward the rate limit but is never billed or blocked by the cap. |
+| `POST /openai/v1/chat/completions` | Forwarded to OpenAI with `OPENAI_API_KEY`. Only models in `OPENAI_MODELS` are allowed. Streaming requests always get `stream_options.include_usage` so the cost is metered against the same cap and rate limit. |
 | `GET /usage` | Returns `{ month, spentUsd, capUsd, requests, remainingUsd, rateLimitPerMinute }`. |
 | `PUT /cap` | Takes `{ "capUsd": number }` with 0 < capUsd ≤ 1000. Returns the same shape as `/usage`. |
 | `GET /health` | Returns `{ "ok": true }`. No auth needed. |

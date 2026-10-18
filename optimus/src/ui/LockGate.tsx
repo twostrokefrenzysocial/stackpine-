@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shouldRelock } from '../core/security/lock';
 import { useApp } from './AppContext';
 import { Brain } from './components/Brain';
-import { HudCorners } from './components/Panel';
 import { Button } from './components/Button';
 import { Backdrop } from './components/Screen';
 import { StatusStrip } from './components/StatusStrip';
@@ -83,7 +82,6 @@ export function LockGate({ enabled, children }: { enabled: boolean; children: Re
           <View style={[styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom + space.xl }]}>
             <StatusStrip state={scanning ? 'listening' : 'idle'} detail="IDENTITY CHECK" />
             <View style={styles.scanner}>
-              <HudCorners color={p.textSecondary} size={16} />
               <Brain size={230} state={scanning ? 'listening' : 'idle'} interactive={false} accessibilityLabel="Optimus" />
               {!reduceMotion && <Animated.View style={[styles.beam, { backgroundColor: p.red }, beam]} pointerEvents="none" />}
             </View>

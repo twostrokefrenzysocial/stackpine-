@@ -1,5 +1,4 @@
-import { BarlowSemiCondensed_300Light, BarlowSemiCondensed_500Medium, BarlowSemiCondensed_600SemiBold } from '@expo-google-fonts/barlow-semi-condensed';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, useFonts } from '@expo-google-fonts/inter';
+import { Inter_200ExtraLight, Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, useFonts } from '@expo-google-fonts/inter';
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -41,7 +40,7 @@ function Shell() {
   }, [palette.bg]);
   return (
     <View style={[styles.root, { backgroundColor: palette.bg }]}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <LockGate enabled={settings.appLockEnabled}>
         <Stack
           screenOptions={{
@@ -61,9 +60,8 @@ function Shell() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    BarlowSemiCondensed_300Light,
-    BarlowSemiCondensed_500Medium,
-    BarlowSemiCondensed_600SemiBold,
+    Inter_200ExtraLight,
+    Inter_300Light,
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     Inter_400Regular,

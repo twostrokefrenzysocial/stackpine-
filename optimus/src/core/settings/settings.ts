@@ -4,8 +4,13 @@ import { parseJson } from '../util/json';
 export interface Settings {
   dataMode: 'mock' | 'real';
   proxyUrl: string;
+  /** Which AI company the proxy forwards to. Both keys live only in the proxy. */
+  provider: 'anthropic' | 'openai';
+  /** OpenAI model ids (must be in the proxy's OPENAI_MODELS list). */
+  openaiModel: string;
+  openaiBackgroundModel: string;
   // proxyToken lives in secure storage, not here.
-  theme: 'dark' | 'light' | 'system';
+  theme: 'light';
   voiceReplies: boolean;
   voiceRate: number;
   voicePitch: number;
@@ -27,7 +32,10 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   dataMode: 'mock',
   proxyUrl: '',
-  theme: 'dark',
+  provider: 'anthropic',
+  openaiModel: '',
+  openaiBackgroundModel: '',
+  theme: 'light',
   voiceReplies: true,
   voiceRate: 0.95,
   voicePitch: 0.8,

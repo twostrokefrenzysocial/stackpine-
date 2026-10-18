@@ -326,3 +326,79 @@ describe('/usage and /cap', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('OpenAI route', () => {
+  const oaEnv: HandlerEnv = {
+    ...env,
+    OPENAI_API_KEY: 'sk-openai-real',
+    OPENAI_MODELS: 'oa-main, oa-mini',
+    OPENAI_PRICES: '{"oa-main":{"input":2,"output":10,"cacheRead":0.5}}',
+  };
+  function oaSetup(upstream: (req: Request) => Response | Promise<Response>, e: HandlerEnv = oaEnv) {
+    const clock = fakeClock('2026-10-18T12:00:00Z');
+    const ledger = new LedgerCore(new MemoryStorage(), { defaultCapUsd: 20, rateLimitPerMinute: 30 }, clock.now);
+    const pending: Promise<unknown>[] = [];
+    const upstreamRequests: Request[] = [];
+    const call = (request: Request) =>
+      handle(request, e, {
+        ledger,
+        upstreamFetch: async (req) => {
+          upstreamRequests.push(req);
+          return upstream(req);
+        },
+        waitUntil: (p) => pending.push(p),
+        log: () => {},
+      });
+    return { call, ledger, upstreamRequests, settle: () => Promise.all(pending) };
+  }
+  const oaRequest = (body: unknown) =>
+    new Request(`${BASE}/openai/v1/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-optimus-token': TOKEN }, body: JSON.stringify(body) });
+  const chunks = [
+    { object: 'chat.completion.chunk', model: 'oa-main', choices: [{ index: 0, delta: { content: 'Hi' } }] },
+    { object: 'chat.completion.chunk', model: 'oa-main', choices: [], usage: { prompt_tokens: 1_000_000, completion_tokens: 100_000, prompt_tokens_details: { cached_tokens: 400_000 } } },
+  ];
+  const streamBody = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n';
+
+  it('forwards with the OpenAI key, forces usage reporting and meters the cost', async () => {
+    const { call, upstreamRequests, settle, ledger } = oaSetup(() => new Response(streamBody, { headers: { 'content-type': 'text/event-stream' } }));
+    const res = await call(oaRequest({ model: 'oa-main', stream: true, messages: [{ role: 'user', content: 'hi' }] }));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(streamBody);
+    await settle();
+    const up = upstreamRequests[0];
+    expect(up.url).toBe('https://api.openai.com/v1/chat/completions');
+    expect(up.headers.get('authorization')).toBe('Bearer sk-openai-real');
+    expect(up.headers.get('x-optimus-token')).toBeNull();
+    expect((await up.json()).stream_options).toEqual({ include_usage: true });
+    // 600k input × $2 + 400k cached × $0.5 + 100k output × $10 = $1.2 + $0.2 + $1.0
+    expect((await ledger.usage()).spentUsd).toBeCloseTo(2.4, 6);
+  });
+
+  it('rejects models outside OPENAI_MODELS and refuses when OpenAI is not enabled', async () => {
+    const { call, upstreamRequests } = oaSetup(() => new Response('{}'));
+    const res = await call(oaRequest({ model: 'gpt-anything', messages: [] }));
+    expect(res.status).toBe(400);
+    expect(await errorType(res)).toBe('optimus_model_not_allowed');
+    const off = oaSetup(() => new Response('{}'), { ...oaEnv, OPENAI_MODELS: '' });
+    expect((await off.call(oaRequest({ model: 'oa-main', messages: [] }))).status).toBe(400);
+    expect(upstreamRequests).toHaveLength(0);
+  });
+
+  it('bills unpriced models at the high fallback rate', async () => {
+    const body = JSON.stringify({ model: 'oa-mini', usage: { prompt_tokens: 1_000_000, completion_tokens: 0 } });
+    const { call, settle, ledger } = oaSetup(() => new Response(body, { headers: { 'content-type': 'application/json' } }));
+    await call(oaRequest({ model: 'oa-mini', messages: [] }));
+    await settle();
+    expect((await ledger.usage()).spentUsd).toBeCloseTo(15, 6);
+  });
+
+  it('needs OPENAI_API_KEY for the OpenAI route only', async () => {
+    const { call } = oaSetup(() => new Response('{}'), { ...env });
+    const res = await call(oaRequest({ model: 'oa-main', messages: [] }));
+    expect(res.status).toBe(500);
+    expect(await errorType(res)).toBe('optimus_misconfigured');
+    const onlyOpenAI = oaSetup(() => new Response('{}'), { APP_TOKEN: TOKEN, OPENAI_API_KEY: 'k', OPENAI_MODELS: 'oa-main' });
+    expect((await onlyOpenAI.call(oaRequest({ model: 'oa-main', messages: [] }))).status).toBe(200);
+    expect((await onlyOpenAI.call(messagesRequest(validBody))).status).toBe(500);
+  });
+});

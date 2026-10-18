@@ -15,7 +15,7 @@ const ITEMS: { href: string; label: string; icon: IconName }[] = [
   { href: '/settings', label: 'Settings', icon: 'settings' },
 ];
 
-/** Bottom navigation: black, hairline top border, red dot marks the active screen. */
+/** Bottom navigation: white, hairline top border, a short ink bar marks the active screen. */
 export function Dock() {
   const { palette: p } = useApp();
   const insets = useSafeAreaInsets();
@@ -38,11 +38,11 @@ export function Dock() {
             accessibilityLabel={it.label}
             accessibilityState={{ selected: active }}
           >
-            <Icon name={it.icon} size={22} color={active ? p.text : p.textSecondary} />
-            <Txt variant="label" color={active ? p.text : p.textTertiary}>
+            <Icon name={it.icon} size={22} color={active ? p.text : p.textTertiary} />
+            <Txt variant="label" color={active ? p.text : p.textTertiary} style={styles.label}>
               {it.label}
             </Txt>
-            <View style={[styles.dot, { backgroundColor: active ? p.red : 'transparent' }]} />
+            <View style={[styles.dot, { backgroundColor: active ? p.text : 'transparent' }]} />
           </Pressable>
         );
       })}
@@ -51,7 +51,8 @@ export function Dock() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: space.sm },
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: space.sm },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: 60, paddingTop: space.xs },
-  dot: { width: 4, height: 4, borderRadius: 2, marginTop: 1 },
+  label: { fontSize: 10, letterSpacing: 1 },
+  dot: { width: 14, height: 2, borderRadius: 1, marginTop: 2 },
 });

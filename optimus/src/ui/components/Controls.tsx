@@ -6,7 +6,7 @@ import { feedback } from '../feedback';
 import { EASE, TOUCH, fonts, motion, radius, space, type as T } from '../theme';
 import { Txt } from './Txt';
 
-/** Switch: hairline track, white knob; red track when on. */
+/** Switch: grey track, white knob; ink track when on. */
 export function Toggle({ value, onChange, label, hint }: { value: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   const { palette: p, reduceMotion } = useApp();
   const x = useSharedValue(value ? 1 : 0);
@@ -34,8 +34,8 @@ export function Toggle({ value, onChange, label, hint }: { value: boolean; onCha
           </Txt>
         )}
       </View>
-      <View style={[styles.track, { backgroundColor: value ? p.red : 'transparent', borderColor: value ? p.red : p.line }]}>
-        <Animated.View style={[styles.knob, { backgroundColor: value ? p.onRed : p.textSecondary }, knob]} />
+      <View style={[styles.track, { backgroundColor: value ? p.ink : p.surfaceRaised }]}>
+        <Animated.View style={[styles.knob, { backgroundColor: p.bg }, knob]} />
       </View>
     </Pressable>
   );
@@ -50,21 +50,21 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
       </Txt>
       <TextInput
         placeholderTextColor={p.textTertiary}
-        selectionColor={p.red}
-        cursorColor={p.red}
+        selectionColor={p.text}
+        cursorColor={p.text}
         accessibilityLabel={label}
         {...props}
-        style={[T.body, styles.input, { color: p.text, backgroundColor: p.surface, borderColor: p.line, fontFamily: fonts.body }, props.style]}
+        style={[T.body, styles.input, { color: p.text, backgroundColor: p.bg, borderColor: p.line, fontFamily: fonts.body }, props.style]}
       />
     </View>
   );
 }
 
-/** Segmented control: the selected item gets a 2px red underline. */
+/** Segmented control: grey track, the selected item is a white pill. */
 export function Segmented<V extends string>({ value, options, onChange, label }: { value: V; options: { value: V; label: string }[]; onChange: (v: V) => void; label: string }) {
   const { palette: p } = useApp();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.seg, { borderColor: p.line }]}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.seg, { backgroundColor: p.surfaceRaised }]}>
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -77,7 +77,7 @@ export function Segmented<V extends string>({ value, options, onChange, label }:
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             accessibilityLabel={o.label}
-            style={[styles.segItem, { borderBottomColor: on ? p.red : 'transparent', backgroundColor: on ? p.surfaceRaised : 'transparent' }]}
+            style={[styles.segItem, on && styles.segOn, { backgroundColor: on ? p.bg : 'transparent' }]}
           >
             <Txt variant="label" color={on ? p.text : p.textSecondary}>
               {o.label}
@@ -91,9 +91,10 @@ export function Segmented<V extends string>({ value, options, onChange, label }:
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: TOUCH + 8, paddingVertical: space.sm },
-  track: { width: 46, height: 26, borderWidth: 1, borderRadius: 13, padding: 3 },
-  knob: { width: 18, height: 18, borderRadius: 9 },
-  input: { minHeight: TOUCH, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.md },
-  seg: { flexDirection: 'row', borderWidth: 1, borderRadius: radius.sm, overflow: 'hidden' },
-  segItem: { flex: 1, minHeight: TOUCH, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 2 },
+  track: { width: 46, height: 26, borderRadius: 13, padding: 3 },
+  knob: { width: 20, height: 20, borderRadius: 10 },
+  input: { minHeight: TOUCH, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.lg },
+  seg: { flexDirection: 'row', borderRadius: radius.sm + 2, padding: 3 },
+  segItem: { flex: 1, minHeight: TOUCH - 6, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  segOn: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
 });

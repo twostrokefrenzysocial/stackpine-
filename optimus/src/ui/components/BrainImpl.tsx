@@ -1,4 +1,4 @@
-import { BlendMode, BlurStyle, Canvas, PaintStyle, Picture, PointMode, Skia, StrokeCap, type SkPoint } from '@shopify/react-native-skia';
+import { BlurStyle, Canvas, PaintStyle, Picture, PointMode, Skia, StrokeCap, type SkPoint } from '@shopify/react-native-skia';
 import { useIsFocused } from 'expo-router';
 import { usePowerSaver } from '../../platform/powerSaver';
 import { useEffect, useMemo } from 'react';
@@ -11,10 +11,13 @@ import { BRAIN_STATE_INDEX, blend, targetParams, type BrainParams, type BrainSta
 import { useApp } from '../AppContext';
 
 /**
- * The Optimus avatar: a procedural 3D brain of glowing points and
- * connections (see .claude/skills/optimus-design/references/brain-avatar.md).
- * Geometry and the state machine live in src/core/brain; this file only
- * projects and draws, on the UI thread, with additive blending.
+ * The Optimus avatar: a procedural 3D brain of ink points and hairline
+ * connections on white, wrapped in slowly turning orbit rings (see
+ * .claude/skills/optimus-design/references/brain-avatar.md). The surface
+ * ripples as it works, a red activity band scans the cortex while thinking,
+ * and red pulses travel the connections. Geometry and the state machine
+ * live in src/core/brain; this file only projects and draws, on the UI
+ * thread.
  */
 
 interface Prepared {
@@ -22,6 +25,11 @@ interface Prepared {
   /** CSR adjacency, for pulses that walk several edges. */
   adjStart: Int32Array;
   adj: Int32Array;
+  /** Unit direction from the centre, for the radial ripple. */
+  dir: Float32Array;
+  /** Per-point ripple phases (two travelling waves). */
+  phaseA: Float32Array;
+  phaseB: Float32Array;
 }
 
 const cache = new Map<string, Prepared>();
@@ -43,7 +51,21 @@ function prepare(surfacePoints: number, interiorPoints: number): Prepared {
     adj[fill[a]++] = b;
     adj[fill[b]++] = a;
   }
-  const prepared = { g, adjStart, adj };
+  const dir = new Float32Array(g.count * 3);
+  const phaseA = new Float32Array(g.count);
+  const phaseB = new Float32Array(g.count);
+  for (let i = 0; i < g.count; i++) {
+    const x = g.positions[i * 3];
+    const y = g.positions[i * 3 + 1];
+    const z = g.positions[i * 3 + 2];
+    const len = Math.hypot(x, y, z) || 1;
+    dir[i * 3] = x / len;
+    dir[i * 3 + 1] = y / len;
+    dir[i * 3 + 2] = z / len;
+    phaseA[i] = 3.1 * (x * 0.62 + y * 0.48 + z * 0.62);
+    phaseB[i] = 5.3 * (-x * 0.35 + y * 0.8 + z * 0.49);
+  }
+  const prepared = { g, adjStart, adj, dir, phaseA, phaseB };
   cache.set(key, prepared);
   return prepared;
 }
@@ -52,6 +74,15 @@ const MAX_PULSES = 16;
 const PULSE_LIFE = 0.55; // seconds
 const PATH_STEPS = 5;
 const BASE_PITCH = 0.42;
+/** Brain radius in canvas units, as a fraction of size. */
+const BRAIN_SCALE = 0.31;
+/** Orbit rings: radius (model units), tilt about X and Z, direction, style. */
+const RINGS = [
+  { r: 1.38, tx: 0.12, tz: 0.32, dir: 1, kind: 'arcs' as const },
+  { r: 1.48, tx: -0.22, tz: -0.48, dir: -1, kind: 'full' as const },
+  { r: 1.56, tx: 1.15, tz: 0.12, dir: 1, kind: 'ticks' as const },
+];
+const RING_STEPS = 120;
 
 export interface BrainProps {
   size: number;
@@ -74,7 +105,7 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
   const focused = useIsFocused();
   const small = size < 120;
   const density = (small ? 0.35 : 1) * (lowPower ? 0.5 : 1);
-  const { g, adjStart, adj } = useMemo(() => prepare(Math.round(1800 * density), Math.round(260 * density)), [density]);
+  const { g, adjStart, adj, dir, phaseA, phaseB } = useMemo(() => prepare(Math.round(1800 * density), Math.round(260 * density)), [density]);
 
   const stateIndex = useSharedValue(BRAIN_STATE_INDEX[state]);
   useEffect(() => {
@@ -133,8 +164,7 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
   }, [focused, frame]);
 
   const red = Skia.Color(p.red);
-  const redGlow = Skia.Color(p.redGlow);
-  const white = Skia.Color(p.text);
+  const ink = Skia.Color(p.text);
   const bloom = !lowPower;
 
   const picture = useDerivedValue(() => {
@@ -142,7 +172,7 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
     const prm = params.value;
     const n = g.count;
     const half = size / 2;
-    const scale = size * 0.36;
+    const scale = size * BRAIN_SCALE;
     const wob = Math.sin(t * 0.7) * 0.05;
     const a = yaw.value + dragYaw.value - prm.facing * Math.sin(yaw.value);
     const pitch = BASE_PITCH + wob + dragPitch.value + prm.facing * 0.2;
@@ -154,10 +184,17 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
     const py = new Float32Array(n);
     const pz = new Float32Array(n);
     const pos = g.positions;
+    const wave = prm.wave;
+    const wt = t * prm.waveSpeed;
+    // The activity band sweeps front to back and back again.
+    const sweepAt = Math.sin(t * 1.7) * 1.25;
+    const sweepPts: SkPoint[] = [];
     for (let i = 0; i < n; i++) {
-      const x = pos[i * 3];
-      const y = pos[i * 3 + 1];
-      const z = pos[i * 3 + 2];
+      // Ripple: two travelling waves push each point along its radius.
+      const d = wave * (Math.sin(phaseA[i] - wt) + 0.5 * Math.sin(phaseB[i] + wt * 1.3));
+      const x = pos[i * 3] + dir[i * 3] * d;
+      const y = pos[i * 3 + 1] + dir[i * 3 + 1] * d;
+      const z = pos[i * 3 + 2] + dir[i * 3 + 2] * d;
       const x1 = x * cy + z * sy;
       const z1 = -x * sy + z * cy;
       const y2 = y * cp - z1 * sp;
@@ -166,24 +203,81 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
       px[i] = half + x1 * scale * f;
       py[i] = half - y2 * scale * f;
       pz[i] = z2;
+      if (prm.sweep > 0.05 && Math.abs(pos[i * 3 + 2] - sweepAt) < 0.09) sweepPts.push({ x: px[i], y: py[i] });
     }
 
     const rec = Skia.PictureRecorder();
     const c = rec.beginRecording(Skia.XYWHRect(0, 0, size, size));
     const paint = Skia.Paint();
     paint.setAntiAlias(true);
-    paint.setBlendMode(BlendMode.Plus);
     paint.setStrokeCap(StrokeCap.Round);
     paint.setStyle(PaintStyle.Stroke);
 
-    // Connections: nearly invisible until a pulse passes.
+    // Orbit rings, gyroscope style: they follow the camera tilt but spin on their own.
+    if (!small) {
+      const front: SkPoint[] = [];
+      const back: SkPoint[] = [];
+      const ticks: SkPoint[] = [];
+      const markers: SkPoint[] = [];
+      for (let r = 0; r < RINGS.length; r++) {
+        const ring = RINGS[r];
+        const spin = t * prm.ringSpeed * ring.dir * (1 + r * 0.35);
+        const ctx = Math.cos(ring.tx);
+        const stx = Math.sin(ring.tx);
+        const ctz = Math.cos(ring.tz);
+        const stz = Math.sin(ring.tz);
+        let prevX = 0;
+        let prevY = 0;
+        for (let k = 0; k <= RING_STEPS; k++) {
+          const ang = (k / RING_STEPS) * Math.PI * 2 + spin;
+          // Circle in XZ, tilted about X then Z, then the camera pitch.
+          let x = Math.cos(ang) * ring.r;
+          let y = 0;
+          let z = Math.sin(ang) * ring.r;
+          const y1 = y * ctx - z * stx;
+          z = y * stx + z * ctx;
+          y = y1;
+          const x2 = x * ctz - y * stz;
+          y = x * stz + y * ctz;
+          x = x2;
+          const y3 = y * cp - z * sp;
+          const z3 = y * sp + z * cp;
+          const f = 6 / (6 + z3);
+          const sx = half + x * scale * f;
+          const syy = half - y3 * scale * f;
+          if (k > 0) {
+            const visible = ring.kind !== 'arcs' || k % 40 < 26 || (k % 40 > 30 && k % 40 < 33);
+            if (visible) (z3 < 0 ? front : back).push({ x: prevX, y: prevY }, { x: sx, y: syy });
+            if (ring.kind === 'ticks' && k % 4 === 0) ticks.push({ x: sx, y: syy });
+          }
+          if (ring.kind === 'arcs' && k === 13) markers.push({ x: sx, y: syy });
+          prevX = sx;
+          prevY = syy;
+        }
+      }
+      paint.setColor(ink);
+      paint.setStrokeWidth(Math.max(0.6, size / 520));
+      paint.setAlphaf(prm.ringOpacity * 0.28);
+      c.drawPoints(PointMode.Lines, back, paint);
+      paint.setAlphaf(prm.ringOpacity * 0.75);
+      c.drawPoints(PointMode.Lines, front, paint);
+      paint.setAlphaf(prm.ringOpacity * 0.6);
+      paint.setStrokeWidth(Math.max(1.2, size / 230));
+      c.drawPoints(PointMode.Points, ticks, paint);
+      paint.setColor(red);
+      paint.setAlphaf(Math.min(1, 0.4 + prm.ringOpacity));
+      paint.setStrokeWidth(Math.max(3, size / 70));
+      c.drawPoints(PointMode.Points, markers, paint);
+    }
+
+    // Connections: faint hairlines.
     if (!small && prm.lineOpacity > 0.02) {
       const lines: SkPoint[] = [];
       const e = g.edges;
       for (let k = 0; k < e.length; k += 2) {
         lines.push({ x: px[e[k]], y: py[e[k]] }, { x: px[e[k + 1]], y: py[e[k + 1]] });
       }
-      paint.setColor(red);
+      paint.setColor(ink);
       paint.setAlphaf(prm.lineOpacity);
       paint.setStrokeWidth(0.6);
       c.drawPoints(PointMode.Lines, lines, paint);
@@ -194,7 +288,7 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
     const flashIdx = Math.floor((Math.abs(Math.sin(flashSeed * 12.9898) * 43758.5453) % 1) * n);
     const flashOn = stateIndex.value === 2 && !reduce.value;
 
-    // Points in three depth bins (farther = smaller and dimmer) plus sparkle.
+    // Points in three depth bins (farther = smaller and lighter); sparkle points are red.
     const bins: SkPoint[][] = [[], [], []];
     const sparkles: SkPoint[] = [];
     const flashes: SkPoint[] = [];
@@ -210,22 +304,25 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
         if (dx * dx + dy * dy + dz * dz < 0.06) flashes.push(pt);
       }
     }
-    const dot = Math.max(1.2, size / 150);
-    const binAlpha = [0.35, 0.6, 0.9];
+    const dot = Math.max(1.2, size / 160);
+    const binAlpha = [0.16, 0.38, 0.8];
+    paint.setColor(ink);
     for (let b = 0; b < 3; b++) {
-      paint.setColor(b === 2 ? redGlow : red);
       paint.setAlphaf(Math.min(1, prm.brightness * binAlpha[b]));
-      paint.setStrokeWidth(dot * (0.7 + b * 0.3));
+      paint.setStrokeWidth(dot * (0.65 + b * 0.3));
       c.drawPoints(PointMode.Points, bins[b], paint);
     }
-    paint.setColor(white);
-    paint.setAlphaf(Math.min(1, 0.25 + prm.brightness * 0.6));
-    paint.setStrokeWidth(dot * 1.1);
+    paint.setColor(red);
+    paint.setAlphaf(Math.min(1, 0.15 + prm.brightness * 0.5));
+    paint.setStrokeWidth(dot * 0.95);
     c.drawPoints(PointMode.Points, sparkles, paint);
+    if (sweepPts.length) {
+      paint.setAlphaf(Math.min(1, prm.sweep * 0.85));
+      paint.setStrokeWidth(dot * 1.3);
+      c.drawPoints(PointMode.Points, sweepPts, paint);
+    }
     if (flashes.length) {
-      const fl = 1 - ((t * 3) % 1);
-      paint.setColor(redGlow);
-      paint.setAlphaf(fl);
+      paint.setAlphaf(1 - ((t * 3) % 1));
       paint.setStrokeWidth(dot * 1.6);
       c.drawPoints(PointMode.Points, flashes, paint);
     }
@@ -252,11 +349,11 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
       }
       // Walk PATH_STEPS edges; the head sits at prog along the path.
       const path: number[] = [node];
-      for (let s = 0; s < PATH_STEPS; s++) {
+      for (let st = 0; st < PATH_STEPS; st++) {
         const from = adjStart[node];
         const deg = adjStart[node + 1] - from;
         if (deg <= 0) break;
-        node = adj[from + (Math.floor(Math.abs(Math.sin((seed + s) * 39.425) * 1000)) % deg)];
+        node = adj[from + (Math.floor(Math.abs(Math.sin((seed + st) * 39.425) * 1000)) % deg)];
         path.push(node);
       }
       const segs = path.length - 1;
@@ -269,35 +366,33 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
       const hx = px[A] + (px[B] - px[A]) * f;
       const hy = py[A] + (py[B] - py[A]) * f;
       heads.push({ x: hx, y: hy });
-      for (let s = Math.max(0, si - 1); s < si; s++) trails.push({ x: px[path[s]], y: py[path[s]] }, { x: px[path[s + 1]], y: py[path[s + 1]] });
+      for (let st = Math.max(0, si - 1); st < si; st++) trails.push({ x: px[path[st]], y: py[path[st]] }, { x: px[path[st + 1]], y: py[path[st + 1]] });
       trails.push({ x: px[A], y: py[A] }, { x: hx, y: hy });
     }
+    paint.setColor(red);
     if (trails.length) {
-      paint.setColor(red);
-      paint.setAlphaf(0.75);
-      paint.setStrokeWidth(Math.max(1, size / 260));
+      paint.setAlphaf(0.7);
+      paint.setStrokeWidth(Math.max(1, size / 280));
       c.drawPoints(PointMode.Lines, trails, paint);
     }
     if (heads.length) {
-      paint.setColor(redGlow);
       paint.setAlphaf(1);
-      paint.setStrokeWidth(dot * 2.4);
+      paint.setStrokeWidth(dot * 2.2);
       c.drawPoints(PointMode.Points, heads, paint);
     }
 
-    // Attention core with a soft bloom.
+    // Attention core: a red point with a soft halo.
     const core = Skia.Paint();
     core.setAntiAlias(true);
-    core.setBlendMode(BlendMode.Plus);
-    core.setColor(redGlow);
-    core.setAlphaf(Math.min(1, prm.core));
-    if (bloom) core.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, size * 0.03, true));
-    c.drawCircle(half, half, size * (0.025 + prm.core * 0.03), core);
+    core.setColor(red);
     if (bloom) {
-      core.setAlphaf(Math.min(1, prm.core * 0.35));
-      core.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, size * 0.09, true));
-      c.drawCircle(half, half, size * 0.1, core);
+      core.setAlphaf(Math.min(1, prm.core * 0.22));
+      core.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, size * 0.05, true));
+      c.drawCircle(half, half, size * 0.07, core);
+      core.setMaskFilter(null);
     }
+    core.setAlphaf(Math.min(1, 0.25 + prm.core * 0.75));
+    c.drawCircle(half, half, size * (0.008 + prm.core * 0.012), core);
     return rec.finishRecordingAsPicture();
   });
 

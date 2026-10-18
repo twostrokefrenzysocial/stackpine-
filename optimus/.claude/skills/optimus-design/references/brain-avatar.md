@@ -1,37 +1,37 @@
 # Neural Brain Avatar
 
-An original design: a brain shaped cloud of glowing points joined by thin lines, red and white on black. It should read as a mind at work, sleek and technical, never cartoonish or fleshy.
+An original design: a brain-shaped cloud of ink points joined by hairlines on a white canvas, wrapped in thin orbit rings, with red reserved for activity. It should read as a mind at work, sleek and technical, like an instrument rather than a creature. Never cartoonish, fleshy or blue.
 
-## Geometry (procedural, no model files)
+## Geometry (procedural, no model files) — src/core/brain/geometry.ts
 1. Two ellipsoid hemispheres (radii about 1.0 x 0.8 x 1.2) with a small gap down the middle.
-2. Displace surface points with low frequency 3D simplex or Perlin noise for cortex folds.
+2. Displace surface points with low frequency 3D Perlin noise for cortex folds.
 3. 1,500 to 3,000 surface points plus 200 to 400 inside. Fewer in battery saver.
 4. Link each point to its 2 or 3 nearest neighbors within a distance limit. These edges are the paths pulses travel.
-5. A small bright red core in the center representing attention.
-Points are red-dim at rest, rising to red and red-glow when active. About 5 percent of points are white for sparkle. Lines at opacity 0.08 to 0.15 until a pulse passes. Use additive blending, plus soft bloom if supported.
+5. A small red core in the center representing attention, with a soft halo.
+6. Three orbit rings (radii about 1.4 to 1.55) at different tilts: one dashed, one solid, one with tick marks; a red marker rides the dashed ring. Rings follow the camera tilt but spin on their own; the half nearer the camera is darker.
+Points are ink, farther points smaller and lighter (depth bins about 0.16 / 0.38 / 0.8 opacity). About 5 percent of points are red accents. Lines at opacity 0.06 to 0.16. Normal (source-over) blending; additive blending disappears on white.
 
-## States
+## Motion: it moves as it thinks
+Every point is pushed along its radius by two travelling sine waves (a ripple), so the surface visibly breathes and churns. Amplitude and speed are state parameters.
+
+## States — src/core/brain/state.ts
 Driven by one state value plus micLevel (0 to 1) and speechLevel (0 to 1).
-IDLE: rotate 6 deg/s on Y with slight tilt wobble. Brightness breathes 0.3 to 0.45 over 4.5s. Lines nearly invisible. Core faint.
-LISTENING: rotation slows, brain turns slightly toward camera. Shell brightness = 0.4 + micLevel * 0.6. Core medium.
-THINKING: rotation 25 deg/s. Random clusters flash. 6 to 12 pulses per second travel along random edges with short fading trails. Core bright and pulsing.
-RESPONDING: medium rotation. Glow = 0.5 + speechLevel * 0.5. Pulses radiate outward from core with the words.
-Blend all values between states over 400 to 600ms. Never snap.
-micLevel comes from smoothed recorder or recognizer amplitude. speechLevel comes from TTS amplitude, or pulse per streamed text chunk if unavailable. THINKING runs from request sent until first response token.
+IDLE: rotate 6 deg/s with slight tilt wobble. Brightness breathes 0.45 to 0.60 over 4.5s. Small slow ripple. Rings drift. An occasional pulse. Core faint.
+LISTENING: rotation slows, brain turns slightly toward camera. Brightness = 0.55 + micLevel * 0.45; ripple and outward pulses grow with micLevel.
+THINKING: rotation 22 deg/s. Strong fast ripple. A red activity band sweeps front to back through the cortex. Random clusters flash red. About 12 pulses per second travel along random edges with short red trails. Rings spin up. Core bright and throbbing.
+RESPONDING: medium rotation. Brightness = 0.6 + speechLevel * 0.4. Pulses radiate outward from the core with the words.
+Blend all values between states over about 500ms. Never snap.
+micLevel comes from smoothed recognizer amplitude. speechLevel comes from TTS amplitude, or a pulse per streamed text chunk. THINKING runs from request sent until the first response token.
 
 ## Interaction
-Drag to rotate slightly, then ease back to auto rotation. Tap to start listening. Long press opens assistant settings.
+Drag to rotate, then ease back to auto rotation. Tap to talk. Long press opens assistant settings.
 
 ## Layout
-Home: brain centered in upper half, 60 to 70 percent of screen width, thin HUD corner brackets, status strip above.
-Chat: small 48 to 64dp live brain in the top bar, still reacting to state.
+Home: brain centered near the top, nearly full width (up to 400dp), status strip just below, no frame around it.
+Chat: small 48 to 64dp live brain in the top bar, still reacting to state (rings and edges hidden at that size).
 
-## Implementation by stack
-Keep geometry and the state machine in plain code separate from rendering.
-Jetpack Compose: draw on Canvas with manual 3D rotation and perspective projection, depth sorted, farther points smaller and dimmer, frames via withFrameNanos. For GPU 3D with bloom use Filament, SceneView, or OpenGL ES with point sprites and additive blending.
-React Native: @react-three/fiber with expo-gl (Points, LineSegments, additive blending), or @shopify/react-native-skia with the Canvas approach.
-Flutter: CustomPainter with manual projection driven by a Ticker. FragmentProgram shaders for glow.
-Web or WebView: Three.js with Points, LineSegments, AdditiveBlending and UnrealBloomPass.
+## Implementation (React Native)
+@shopify/react-native-skia: record a Picture each frame in a Reanimated derived value; projection, ripple and pulses run on the UI thread from a frame callback. Geometry and the state machine stay in plain TypeScript, separate from rendering, and are unit tested.
 
 ## Performance
-Target 60fps, 120fps in high refresh mode. Precompute geometry once. Pause when backgrounded or off screen. Battery saver: half the points, no bloom, 30fps cap. Reduce motion: rotation 75 percent slower, keep color changes, no traveling pulses.
+Target 60fps, 120fps in high refresh mode. Precompute geometry once. Pause when backgrounded or off screen. Battery saver: half the points, no halo blur, 30fps cap. Reduce motion: rotation and rings 75 percent slower, keep color changes, no ripple, no travelling pulses.

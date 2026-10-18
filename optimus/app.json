@@ -6,8 +6,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon.png",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#000000",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFFFF",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -21,7 +21,7 @@
       "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/brand/adaptive-foreground.png",
         "monochromeImage": "./assets/brand/adaptive-monochrome.png"
       },
@@ -81,9 +81,9 @@
         {
           "image": "./assets/brand/splash-emblem.png",
           "imageWidth": 160,
-          "backgroundColor": "#000000",
+          "backgroundColor": "#FFFFFF",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#FFFFFF"
           }
         }
       ],
@@ -134,7 +134,7 @@
         "expo-notifications",
         {
           "icon": "./assets/brand/notification-icon.png",
-          "color": "#E31B23"
+          "color": "#E31937"
         }
       ],
       [

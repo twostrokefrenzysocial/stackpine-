@@ -10,10 +10,10 @@ A personal AI assistant for Android (built and tuned for the Samsung Galaxy S24 
 | --- | --- |
 | `src/app/` | Screens (Expo Router). `index` = Command Center, `chat/[id]`, `memory`, `activity`, `settings`, `onboarding`, plus `voice` and `brief` deep-link entries. |
 | `src/core/` | The brain, in plain TypeScript with no React Native imports, so it's unit tested in Node. Memory, tools, the agent loop, confirmation logic, redaction, the daily brief, backup. |
-| `src/platform/` | Device glue: encrypted SQLite, secure storage, the Claude client (via your proxy), real data sources, voice, notifications, background tasks, the widget. |
+| `src/platform/` | Device glue: encrypted SQLite, secure storage, the Claude or OpenAI client (via your proxy), real data sources, voice, notifications, background tasks, the widget. |
 | `src/ui/` | Design system (see `.claude/skills/optimus-design/`): black/white/red tokens, panels, the live 3D neural brain avatar, cards, controls. |
 | `modules/optimus-android/` | A local native module (Kotlin): SMS/MMS, call log, the notification listener (with on-device passcode redaction and an encrypted queue), Samsung setup checks. |
-| `proxy/` | A Cloudflare Worker that holds your Anthropic API key, checks the app token, rate-limits, and enforces the monthly spending cap. See `proxy/README.md`. |
+| `proxy/` | A Cloudflare Worker that holds your Anthropic (and optional OpenAI) API key, checks the app token, rate-limits, and enforces the monthly spending cap. See `proxy/README.md`. |
 | `assets/` | Brand art rendered from the brain geometry (`scripts/render-brand.mjs`), mock photos (`scripts/render-mock-photos.mjs`), sounds. |
 | `.claude/skills/optimus-design/` | The design system skill: colors, type, components, motion, and the brain avatar spec. |
 
@@ -21,6 +21,7 @@ A personal AI assistant for Android (built and tuned for the Samsung Galaxy S24 
 
 - **Conversation:** `src/core/llm/agent.ts` streams from Claude Sonnet 5.5 through the proxy, with tools. Each request is capped at 8 tool calls, after which Optimus must answer with what it has. The system prompt and core "About Me" memories are prompt-cached; per-turn context (time, permissions, relevant memories) is a separate uncached block.
 - **Background jobs:** Claude Haiku 5.5 extracts durable facts and episode summaries after a conversation goes quiet, keeps a rolling summary for long chats, and writes the brief's prose.
+- **Provider switch:** Settings › Connection chooses **Anthropic** or **OpenAI**. With OpenAI, `src/core/llm/openai.ts` converts each request to Chat Completions (tools become functions, tool results become `tool` messages, photos are sent as low-detail images) and converts the streamed reply back, so the agent loop, the 8-call limit, untrusted-data wrapping and confirmation cards behave the same. You enter the OpenAI model ids yourself; they must also be allowed in the proxy's `OPENAI_MODELS`. Both providers go through your proxy, and no key is ever on the phone.
 - **Safety:** third-party content is wrapped in `<untrusted_data>` and scanned for instruction-like text (`src/core/safety/untrusted.ts`). Suspicious items are flagged in chat and in the Activity Log. Tools can only *propose* sends, calls, edits and deletes. Those run only when you tap **Approve** on the card (`src/core/actions/actions.ts`).
 - **Memory:** three layers in encrypted SQLite (SQLCipher, key in the Android Keystore): conversations, long-term facts (FTS5 search, with dedupe, contradiction updates and one entry per person), and episodes. Facts learned from your data wait in **Memory Core › Pending** until you approve them.
 - **Offline:** past conversations, memories and the last brief are local, so they still work offline. Without a proxy configured, an offline *demo brain* (keyword rules, clearly labelled) lets you try every flow in Mock Data Mode.
@@ -48,7 +49,7 @@ The browser preview (`npm run web`) is only for checking layouts. It runs on moc
 
 ## Design
 
-The visual system is defined in `.claude/skills/optimus-design/`: true black for the OLED screen, white for information, and one red used only as a signal. Type is Barlow Semi Condensed, Inter and JetBrains Mono. The avatar is a procedural 3D neural brain (`src/core/brain` for geometry and the state machine, `src/ui/components/BrainImpl.tsx` for Skia rendering on the UI thread). It is idle, listening, thinking or responding, follows the mic level and speech, and slows down for reduce motion and power saving. The app is dark mode only.
+The visual system is defined in `.claude/skills/optimus-design/`: a clean white canvas, near-black ink, flat light-grey cards, pill buttons, and one red used only as a live signal. Type is Inter (thin display, tracked uppercase labels) with JetBrains Mono for telemetry. The avatar is a procedural 3D neural brain wrapped in gyroscope-style orbit rings (`src/core/brain` for geometry and the state machine, `src/ui/components/BrainImpl.tsx` for Skia rendering on the UI thread). It moves as it thinks: the surface ripples, a red activity band scans the cortex, and pulses race along the connections. It is idle, listening, thinking or responding, follows the mic level and speech, and slows down for reduce motion and power saving. The app is light mode only.
 
 ## Verification
 

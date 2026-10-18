@@ -9,7 +9,10 @@ import type { LlmTransport } from '../core/llm/transport';
 import { createMockSources, type MockDataSources } from '../core/mock/sources';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../core/settings/settings';
 import type { DataSources, SourceName } from '../core/sources/types';
+import { z } from 'zod';
+import { OpenAIBackgroundLlm, OpenAITransport, type OpenAIConfig } from '../core/llm/openai';
 import { createClient, ProxyBackgroundLlm, ProxyTransport } from './claude';
+import { fetch as expoFetch } from 'expo/fetch';
 import { openDatabase } from './db';
 import { proxyToken } from './secrets';
 import { loadMockPhoto } from './sources/mockPhotos';
@@ -18,7 +21,7 @@ import { notificationScheduler } from './notify';
 
 /**
  * Process-wide app runtime: database, settings, engine, and the switches
- * between Mock/Real data and Claude/offline demo brain.
+ * between Mock/Real data and Claude, OpenAI or the offline demo brain.
  */
 export interface Runtime {
   db: Db;
@@ -29,6 +32,8 @@ export interface Runtime {
   transportLabel(): string;
   background(): BackgroundLlm;
   isDemoBrain(): boolean;
+  /** Short name of the live provider for status readouts, e.g. "CLAUDE". */
+  providerLabel(): string;
   refreshClient(): Promise<void>;
   mock: MockDataSources;
 }
@@ -62,7 +67,18 @@ async function doBoot(): Promise<Runtime> {
 
   async function refreshClient() {
     const token = await proxyToken.get();
-    if (settings.proxyUrl && token) {
+    if (settings.proxyUrl && token && settings.provider === 'openai') {
+      client = null;
+      const cfg: OpenAIConfig = {
+        baseUrl: settings.proxyUrl,
+        token,
+        model: settings.openaiModel.trim(),
+        backgroundModel: settings.openaiBackgroundModel.trim(),
+        fetch: expoFetch as unknown as typeof globalThis.fetch,
+      };
+      transport = new OpenAITransport(cfg);
+      background = new OpenAIBackgroundLlm(cfg, (schema) => z.toJSONSchema(schema) as Record<string, unknown>);
+    } else if (settings.proxyUrl && token) {
       client = createClient(settings.proxyUrl, token);
       transport = new ProxyTransport(client);
       background = new ProxyBackgroundLlm(client);
@@ -102,7 +118,7 @@ async function doBoot(): Promise<Runtime> {
     },
     async updateSettings(patch) {
       settings = await saveSettings(db, patch);
-      if ('proxyUrl' in patch) await refreshClient();
+      if ('proxyUrl' in patch || 'provider' in patch || 'openaiModel' in patch || 'openaiBackgroundModel' in patch) await refreshClient();
       if ('excludedNotificationApps' in patch || 'notificationCaptureEnabled' in patch) {
         Native.setNotificationCaptureConfig({ enabled: settings.notificationCaptureEnabled, excludedPackages: settings.excludedNotificationApps });
       }
@@ -112,6 +128,7 @@ async function doBoot(): Promise<Runtime> {
     transportLabel: () => transport.label,
     background: () => background,
     isDemoBrain: () => transport === demoTransport,
+    providerLabel: () => (transport === demoTransport ? 'DEMO' : settings.provider === 'openai' ? 'OPENAI' : 'CLAUDE'),
     refreshClient,
     mock,
   } as Runtime;

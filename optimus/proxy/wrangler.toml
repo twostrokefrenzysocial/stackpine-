@@ -4,6 +4,7 @@
 #
 #   npx wrangler secret put ANTHROPIC_API_KEY   # your key from console.anthropic.com
 #   npx wrangler secret put APP_TOKEN           # a long random string, e.g. `openssl rand -hex 32`
+#   npx wrangler secret put OPENAI_API_KEY      # optional: only if you switch the app to OpenAI
 #
 # The same APP_TOKEN goes into the Optimus app's Settings screen. For local
 # development with `npx wrangler dev`, put both in a `.dev.vars` file instead
@@ -27,6 +28,15 @@ DEFAULT_CAP_USD = "20"
 RATE_LIMIT_PER_MINUTE = "30"
 # Comma-separated list of models the app may use.
 ALLOWED_MODELS = "claude-sonnet-5-5,claude-haiku-5-5"
+# Optional OpenAI support. List the model ids the app may use (exactly as on
+# platform.openai.com/docs/models), and their prices in USD per million
+# tokens from platform.openai.com/pricing. A model with no price is billed
+# against the cap at a deliberately high $15 in / $75 out so the cap errs safe.
+# Example:
+#   OPENAI_MODELS = "my-main-model,my-mini-model"
+#   OPENAI_PRICES = '{"my-main-model":{"input":2,"output":10,"cacheRead":0.2},"my-mini-model":{"input":0.25,"output":2,"cacheRead":0.025}}'
+OPENAI_MODELS = ""
+OPENAI_PRICES = "{}"
 
 # The Ledger Durable Object tracks monthly spend and the rate limit.
 [[durable_objects.bindings]]

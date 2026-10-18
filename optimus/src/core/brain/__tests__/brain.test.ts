@@ -70,28 +70,36 @@ describe('brain geometry', () => {
 });
 
 describe('brain state machine', () => {
-  it('idle breathes between 0.30 and 0.45 and rotates 6°/s', () => {
+  it('idle breathes between 0.45 and 0.60, ripples gently and rotates 6°/s', () => {
     const values = Array.from({ length: 45 }, (_, i) => targetParams(0, i / 10, 0, 0, false).brightness);
-    expect(Math.min(...values)).toBeCloseTo(0.3, 2);
-    expect(Math.max(...values)).toBeCloseTo(0.45, 2);
+    expect(Math.min(...values)).toBeCloseTo(0.45, 2);
+    expect(Math.max(...values)).toBeCloseTo(0.6, 2);
+    expect(targetParams(0, 0, 0, 0, false).wave).toBeGreaterThan(0);
+    expect(targetParams(0, 0, 0, 0, false).sweep).toBe(0);
     expect(targetParams(0, 0, 0, 0, false).rotSpeed).toBe(6);
   });
 
   it('listening follows the mic, thinking spins and pulses, responding follows speech', () => {
     expect(targetParams(1, 0, 1, 0, false).brightness).toBeCloseTo(1);
-    expect(targetParams(1, 0, 0, 0, false).brightness).toBeCloseTo(0.4);
+    expect(targetParams(1, 0, 0, 0, false).brightness).toBeCloseTo(0.55);
+    expect(targetParams(1, 0, 1, 0, false).wave).toBeGreaterThan(targetParams(1, 0, 0, 0, false).wave);
     const thinking = targetParams(2, 0, 0, 0, false);
-    expect(thinking.rotSpeed).toBe(25);
+    expect(thinking.rotSpeed).toBe(22);
+    // Thinking visibly works: the surface ripples hardest and the activity band scans.
+    expect(thinking.wave).toBeGreaterThan(targetParams(0, 0, 0, 0, false).wave * 3);
+    expect(thinking.sweep).toBe(1);
+    expect(thinking.ringSpeed).toBeGreaterThan(targetParams(0, 0, 0, 0, false).ringSpeed);
     expect(thinking.pulseRate).toBeGreaterThanOrEqual(6);
     expect(thinking.pulseRate).toBeLessThanOrEqual(12);
     expect(targetParams(3, 0, 0, 1, false).brightness).toBeCloseTo(1);
     expect(targetParams(3, 0, 0, 0, false).radial).toBe(1);
   });
 
-  it('reduce motion slows rotation by 75% and drops pulses', () => {
+  it('reduce motion slows rotation by 75% and drops pulses and ripples', () => {
     const p = targetParams(2, 0, 0, 0, true);
-    expect(p.rotSpeed).toBeCloseTo(25 * 0.25);
+    expect(p.rotSpeed).toBeCloseTo(22 * 0.25);
     expect(p.pulseRate).toBe(0);
+    expect(p.wave).toBe(0);
   });
 
   it('blends smoothly: ~95% of the way after the blend time, never overshooting', () => {
@@ -105,6 +113,6 @@ describe('brain state machine', () => {
       expect(cur.rotSpeed).toBeLessThanOrEqual(target.rotSpeed);
       prev = cur.rotSpeed;
     }
-    expect((cur.rotSpeed - 6) / (25 - 6)).toBeGreaterThan(0.94);
+    expect((cur.rotSpeed - 6) / (22 - 6)).toBeGreaterThan(0.94);
   });
 });

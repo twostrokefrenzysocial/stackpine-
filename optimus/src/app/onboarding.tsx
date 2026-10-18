@@ -84,7 +84,7 @@ export default function Onboarding() {
             </View>
             <Txt variant="display">I’m Optimus.</Txt>
             <Txt variant="body" color={p.textSecondary}>
-              I can read your texts, calls, notifications, calendar, email and photos to help you. Everything stays encrypted on this phone. I only send the snippets a question needs to Claude, through your own proxy. I never send, call, change or delete anything without your approval.
+              I can read your texts, calls, notifications, calendar, email and photos to help you. Everything stays encrypted on this phone. I only send the snippets a question needs to the AI you choose (Claude or OpenAI), through your own proxy. I never send, call, change or delete anything without your approval.
             </Txt>
             <Panel label="Data mode">
               <Txt variant="body">{settings.dataMode === 'mock' ? 'You’re in Mock Data mode: a realistic demo phone. Switch to Real Data in Settings when you’re ready.' : 'You’re using real data from this phone.'}</Txt>
@@ -234,7 +234,7 @@ function SetupStep({
         </Txt>
       </View>
       {steps && (
-        <Panel label="Steps" hud>
+        <Panel label="Steps">
           <View style={{ gap: space.md }}>
             {steps.map((s, n) => (
               <View key={s} style={styles.stepRow}>

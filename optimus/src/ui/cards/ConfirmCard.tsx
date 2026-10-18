@@ -98,7 +98,7 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
   const pending = action.status === 'pending';
   const rows = draftRows(action);
   const st = STATUS[action.status];
-  const tone = action.status === 'failed' ? 'alert' : 'default';
+  const tone = action.status === 'failed' ? 'alert' : pending ? 'inset' : 'default';
   const statusColor = action.status === 'failed' ? p.redGlow : pending ? p.redGlow : action.status === 'executed' ? p.text : p.textSecondary;
 
   const approve = async () => {
@@ -122,7 +122,6 @@ export function ConfirmCard({ actionId }: { actionId: string }) {
         tone={tone}
         code="CONFIRM"
         label={action.title}
-        hud={pending}
         right={
           <View style={styles.status} accessibilityLabel={`Status: ${st.label}`}>
             <Icon name={st.icon} size={16} color={statusColor} />

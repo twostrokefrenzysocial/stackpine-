@@ -53,6 +53,18 @@ export function mergeUsage(into: Usage, raw: unknown): Usage {
   return into;
 }
 
+/** OpenAI usage ({prompt_tokens, completion_tokens, cached}) → the Anthropic shape. */
+export function fromOpenAIUsage(raw: unknown): Usage | null {
+  if (!isObject(raw) || typeof raw.prompt_tokens !== 'number') return null;
+  const details = isObject(raw.prompt_tokens_details) ? raw.prompt_tokens_details : {};
+  const cached = typeof details.cached_tokens === 'number' ? details.cached_tokens : 0;
+  return {
+    input_tokens: Math.max(0, raw.prompt_tokens - cached),
+    output_tokens: typeof raw.completion_tokens === 'number' ? raw.completion_tokens : 0,
+    cache_read_input_tokens: cached,
+  };
+}
+
 /**
  * Incremental Server-Sent Events parser that tracks Messages API usage.
  *
@@ -134,6 +146,14 @@ export class SseUsageParser {
     } else if (event.type === 'message_delta' && isObject(event.usage)) {
       mergeUsage(this.usage, event.usage);
       this.sawUsage = true;
+    } else if (event.object === 'chat.completion.chunk') {
+      // OpenAI: the model is on every chunk; usage arrives in the final one.
+      if (typeof event.model === 'string') this.model = event.model;
+      const oa = fromOpenAIUsage(event.usage);
+      if (oa) {
+        mergeUsage(this.usage, oa);
+        this.sawUsage = true;
+      }
     }
   }
 }
@@ -147,6 +167,8 @@ export function parseJsonUsage(text: string): MeteredResponse | null {
     return null;
   }
   if (!isObject(body) || !isObject(body.usage)) return null;
+  const oa = fromOpenAIUsage(body.usage);
+  if (oa) return { model: typeof body.model === 'string' ? body.model : undefined, usage: oa };
   return {
     model: typeof body.model === 'string' ? body.model : undefined,
     usage: mergeUsage({}, body.usage),

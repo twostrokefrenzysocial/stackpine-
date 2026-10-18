@@ -46,6 +46,15 @@ You can use Optimus right away in **Mock Data mode** with the offline demo brain
 4. [ ] Open **Settings › API keys**, click **Create Key**, name it `optimus-proxy`, and copy the key. It starts with `sk-ant-`.
    - Don't paste this key into the app, a chat or an email. It goes only into Cloudflare, in the next step.
 
+### 1.1 Optional: OpenAI instead of (or as well as) Anthropic
+
+Skip this unless you want to run Optimus on OpenAI. You can switch back and forth in the app later.
+
+1. [ ] Go to <https://platform.openai.com>, create an account and add a payment method under **Settings › Billing**.
+2. [ ] Set a monthly budget under **Settings › Limits** as a backstop.
+3. [ ] Open **API keys**, create a key named `optimus-proxy` and copy it (it starts with `sk-`). Like the Anthropic key, it goes only into Cloudflare.
+4. [ ] Pick the models you want: one main model and, optionally, a cheaper one for background work. Copy their exact ids from <https://platform.openai.com/docs/models> and their prices per million tokens from <https://platform.openai.com/pricing>. You'll need them in section 2.6 and 9.1.
+
 ## 2. Your private proxy on Cloudflare (holds the key, enforces the cap)
 
 Follow **`proxy/README.md`** (about 10 minutes). In short:
@@ -72,6 +81,16 @@ Follow **`proxy/README.md`** (about 10 minutes). In short:
    ```
    and paste it when asked.
 5. [ ] Open `<your proxy URL>/health` in a browser. You should see `{"ok":true}`.
+6. [ ] **Only if you did section 1.1 (OpenAI):**
+   ```sh
+   npx wrangler secret put OPENAI_API_KEY
+   ```
+   Then open `optimus/proxy/wrangler.toml` in a text editor and fill in the two OpenAI lines near the bottom, using your model ids and prices. For example:
+   ```toml
+   OPENAI_MODELS = "your-main-model,your-mini-model"
+   OPENAI_PRICES = '{"your-main-model":{"input":2,"output":10,"cacheRead":0.2},"your-mini-model":{"input":0.25,"output":2,"cacheRead":0.025}}'
+   ```
+   Save, then run `npx wrangler deploy` again.
 
 ## 3. Expo account (builds the app)
 
@@ -144,7 +163,7 @@ Optimus walks you through these, one screen at a time:
 
 ## 9. Connect Optimus to its brain and your data
 
-1. [ ] **Settings › Connection:** paste your **proxy URL** (section 2.2) and **app token** (section 2.4), then tap **Save and test**. You should see "Connected to your proxy." The status line changes from *Offline demo* to the model name.
+1. [ ] **Settings › Connection:** choose **Anthropic** or **OpenAI**. For OpenAI, type the main model id (and optionally the background model id) exactly as in your `OPENAI_MODELS` list. Paste your **proxy URL** (section 2.2) and **app token** (section 2.4), then tap **Save and test**. You should see "Connected to your proxy." The status line changes from *Offline demo* to the model name.
 2. [ ] **Settings › Usage this month:** check the cap (default $20) and change it if you like.
 3. [ ] **Settings › Email:** tap **Connect** for Gmail and/or Outlook and sign in.
 4. [ ] **Settings › Notifications:** exclude apps you don't want logged (banking, health). Passcodes are hidden automatically either way.
@@ -180,3 +199,5 @@ None of these could be checked without your real device:
 11. **App lock:** fingerprint or face on open, and locking again after 5 minutes in the background.
 12. **Brain performance:** smooth on the Home screen (60–120 fps). With Power saving on it should use fewer points.
 13. **Backup:** export, then restore on the same phone (it replaces local data, so do this after a fresh export).
+14. **OpenAI (if you use it):** switch to OpenAI, ask "What's on my calendar today?" and "Text Jen saying hi". Check that you get the same confirmation card, and that **Settings › Usage** goes up.
+15. **New look:** the white theme and the brain's orbit rings, ripple and red activity band while thinking should stay smooth on the phone.

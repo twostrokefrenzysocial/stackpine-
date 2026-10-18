@@ -1,5 +1,6 @@
 import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import { OptimusEngine } from '../engine';
+import { OpenAITransport } from '../llm/openai';
 import { HeuristicBackgroundLlm, ScriptedTransport } from '../llm/scripted';
 import type { ChatRequest, LlmTransport } from '../llm/transport';
 import { createMockSources } from '../mock/sources';
@@ -213,5 +214,38 @@ describe('engine (phase acceptance)', () => {
     await engine.wipeAll();
     expect(await engine.memory.count()).toBe(0);
     expect(await engine.conversations.list()).toHaveLength(0);
+  });
+});
+
+describe('engine on OpenAI', () => {
+  it('runs a tool call through the OpenAI transport and still needs approval to act', async () => {
+    const bodies: { messages: { role: string; tool_call_id?: string }[] }[] = [];
+    const sse = (chunks: unknown[]) => new Response(chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n');
+    const transport = new OpenAITransport({
+      baseUrl: 'https://proxy.example',
+      token: 't',
+      model: 'oa-main',
+      backgroundModel: '',
+      fetch: async (_u, init) => {
+        const body = JSON.parse(String(init!.body));
+        bodies.push(body);
+        if (bodies.length === 1) {
+          return sse([{ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', function: { name: 'propose_send_text', arguments: JSON.stringify({ to: 'Jen', body: 'Running 10 min late' }) } }] }, finish_reason: 'tool_calls' }] }]);
+        }
+        return sse([{ choices: [{ delta: { content: 'Draft ready. Approve it to send.' }, finish_reason: 'stop' }] }]);
+      },
+    });
+    const db = await createMigratedDb();
+    const { engine, sources } = makeEngine(db, transport);
+    const conv = await engine.conversations.create();
+    const { result } = await engine.send(conv.id, 'Text Jen that I am running 10 minutes late', () => {});
+    expect(result.text).toBe('Draft ready. Approve it to send.');
+    // The second request carries the tool result as an OpenAI `tool` message.
+    expect(bodies[1].messages.some((m) => m.role === 'tool' && m.tool_call_id === 'call_1')).toBe(true);
+    const ids = confirmIds(result.cards);
+    expect(ids).toHaveLength(1);
+    expect(sources.sentTexts).toHaveLength(0);
+    await engine.actions.approve(ids[0]);
+    expect(sources.sentTexts).toHaveLength(1);
   });
 });

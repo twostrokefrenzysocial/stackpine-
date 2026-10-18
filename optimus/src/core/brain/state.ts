@@ -13,7 +13,7 @@ export const BRAIN_STATE_INDEX: Record<BrainState, number> = { idle: 0, listenin
 export interface BrainParams {
   /** Degrees per second around Y. */
   rotSpeed: number;
-  /** Shell point brightness 0..1. */
+  /** Point opacity 0..1. */
   brightness: number;
   /** Edge opacity when no pulse is passing. */
   lineOpacity: number;
@@ -25,6 +25,15 @@ export interface BrainParams {
   radial: number;
   /** Extra turn toward the camera (radians), for listening. */
   facing: number;
+  /** Radial ripple amplitude (model units): the surface visibly moves. */
+  wave: number;
+  /** Ripple speed (radians per second). */
+  waveSpeed: number;
+  /** Activity sweep intensity 0..1: a band of red that scans the cortex. */
+  sweep: number;
+  /** Orbit ring speed (radians per second) and opacity. */
+  ringSpeed: number;
+  ringOpacity: number;
 }
 
 export const BLEND_SECONDS = 0.5;
@@ -36,18 +45,46 @@ export function targetParams(state: number, t: number, micLevel: number, speechL
   const breath = 0.375 + 0.075 * Math.sin((t * Math.PI * 2) / 4.5);
   let p: BrainParams;
   if (state === 1) {
-    p = { rotSpeed: 3, brightness: 0.4 + micLevel * 0.6, lineOpacity: 0.1, core: 0.5, pulseRate: 0, radial: 0, facing: 0.35 };
+    p = {
+      rotSpeed: 3,
+      brightness: 0.55 + micLevel * 0.45,
+      lineOpacity: 0.1,
+      core: 0.5 + micLevel * 0.5,
+      pulseRate: micLevel * 6,
+      radial: 1,
+      facing: 0.35,
+      wave: 0.015 + micLevel * 0.06,
+      waveSpeed: 5,
+      sweep: 0,
+      ringSpeed: 0.25,
+      ringOpacity: 0.5,
+    };
   } else if (state === 2) {
     const throb = 0.8 + 0.2 * Math.sin(t * 9);
-    p = { rotSpeed: 25, brightness: 0.62, lineOpacity: 0.15, core: throb, pulseRate: 10, radial: 0, facing: 0 };
+    p = { rotSpeed: 22, brightness: 0.75, lineOpacity: 0.16, core: throb, pulseRate: 12, radial: 0, facing: 0, wave: 0.045, waveSpeed: 7, sweep: 1, ringSpeed: 1.4, ringOpacity: 0.7 };
   } else if (state === 3) {
-    p = { rotSpeed: 12, brightness: 0.5 + speechLevel * 0.5, lineOpacity: 0.12, core: 0.6 + speechLevel * 0.4, pulseRate: 3 + speechLevel * 8, radial: 1, facing: 0.1 };
+    p = {
+      rotSpeed: 10,
+      brightness: 0.6 + speechLevel * 0.4,
+      lineOpacity: 0.12,
+      core: 0.6 + speechLevel * 0.4,
+      pulseRate: 3 + speechLevel * 8,
+      radial: 1,
+      facing: 0.1,
+      wave: 0.02 + speechLevel * 0.05,
+      waveSpeed: 4,
+      sweep: 0.25,
+      ringSpeed: 0.6,
+      ringOpacity: 0.55,
+    };
   } else {
-    p = { rotSpeed: 6, brightness: breath, lineOpacity: 0.06, core: 0.18, pulseRate: 0, radial: 0, facing: 0 };
+    p = { rotSpeed: 6, brightness: breath + 0.15, lineOpacity: 0.07, core: 0.18, pulseRate: 0.6, radial: 0, facing: 0, wave: 0.012, waveSpeed: 1.6, sweep: 0, ringSpeed: 0.12, ringOpacity: 0.35 };
   }
   if (reduceMotion) {
     p.rotSpeed *= 0.25;
     p.pulseRate = 0;
+    p.wave = 0;
+    p.ringSpeed *= 0.25;
   }
   return p;
 }
@@ -56,14 +93,20 @@ export function targetParams(state: number, t: number, micLevel: number, speechL
 export function blend(current: BrainParams, target: BrainParams, dt: number): BrainParams {
   'worklet';
   const a = 1 - Math.exp((-3 * dt) / BLEND_SECONDS);
+  const mix = (c: number, t: number) => c + (t - c) * a;
   return {
-    rotSpeed: current.rotSpeed + (target.rotSpeed - current.rotSpeed) * a,
-    brightness: current.brightness + (target.brightness - current.brightness) * a,
-    lineOpacity: current.lineOpacity + (target.lineOpacity - current.lineOpacity) * a,
-    core: current.core + (target.core - current.core) * a,
-    pulseRate: current.pulseRate + (target.pulseRate - current.pulseRate) * a,
-    radial: current.radial + (target.radial - current.radial) * a,
-    facing: current.facing + (target.facing - current.facing) * a,
+    rotSpeed: mix(current.rotSpeed, target.rotSpeed),
+    brightness: mix(current.brightness, target.brightness),
+    lineOpacity: mix(current.lineOpacity, target.lineOpacity),
+    core: mix(current.core, target.core),
+    pulseRate: mix(current.pulseRate, target.pulseRate),
+    radial: mix(current.radial, target.radial),
+    facing: mix(current.facing, target.facing),
+    wave: mix(current.wave, target.wave),
+    waveSpeed: mix(current.waveSpeed, target.waveSpeed),
+    sweep: mix(current.sweep, target.sweep),
+    ringSpeed: mix(current.ringSpeed, target.ringSpeed),
+    ringOpacity: mix(current.ringOpacity, target.ringOpacity),
   };
 }
 
