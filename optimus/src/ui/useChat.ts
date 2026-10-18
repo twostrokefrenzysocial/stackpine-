@@ -72,7 +72,10 @@ export function useChat(conversationId: string | null) {
 
       try {
         const { assistant } = await rt.engine.send(conversationId, text, onEvent, controller.signal);
-        await reload();
+        // Swap the streaming block for the saved message in one render, so it never shows twice.
+        const fresh = await rt.engine.conversations.messages(conversationId);
+        setMessages(fresh);
+        setStreaming(null);
         bump();
         if (opts.spoken && settings.voiceReplies && assistant.text) {
           setAvatar('responding');

@@ -19,6 +19,11 @@ export interface OpenAIConfig {
   model: string;
   backgroundModel: string;
   fetch: typeof globalThis.fetch;
+  /**
+   * Reasoning effort for chat. Small OpenAI models need more thinking than
+   * Claude to plan tool use well, so this defaults to medium.
+   */
+  effort?: 'low' | 'medium' | 'high';
 }
 
 type OaContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } };
@@ -255,7 +260,7 @@ export class OpenAITransport implements LlmTransport {
       model: this.cfg.model,
       messages: toOpenAIMessages(systemText(req), req.messages),
       max_completion_tokens: req.maxTokens,
-      reasoning_effort: req.effort,
+      reasoning_effort: this.cfg.effort ?? 'medium',
       stream: true,
       stream_options: { include_usage: true },
     };

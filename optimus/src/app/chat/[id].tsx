@@ -77,6 +77,7 @@ export default function Chat() {
   }, [convId]);
 
   const items = chat.messages;
+  const reversed = [...items].reverse();
   const empty = items.length === 0 && !chat.streaming;
 
   return (
@@ -123,14 +124,16 @@ export default function Chat() {
             </View>
           </View>
         ) : (
+          // Inverted: the newest message sits at the bottom and the list stays
+          // anchored there while replies stream in and when they are saved.
           <FlatList
             ref={list}
-            data={items}
+            inverted
+            data={reversed}
             keyExtractor={(m) => m.id}
             renderItem={({ item }) => <MessageView m={item} />}
             contentContainerStyle={{ paddingHorizontal: GUTTER, paddingVertical: space.lg }}
-            onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
-            ListFooterComponent={
+            ListHeaderComponent={
               <>
                 {chat.streaming && <AssistantBlock text={chat.streaming.text} cards={chat.streaming.cards} activity={chat.streaming.activity} streaming />}
                 {chat.error && <Banner title={chat.error.title} body={chat.error.body} tone="alert" onDismiss={() => chat.setError(null)} action={{ label: 'Settings', onPress: () => router.push('/settings') }} />}
