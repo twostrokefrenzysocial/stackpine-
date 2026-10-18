@@ -7,6 +7,7 @@ import { getPermissionStates, requestPermission, type PermissionKey, type Permis
 import { useApp } from '../ui/AppContext';
 import { Brain } from '../ui/components/Brain';
 import { Button } from '../ui/components/Button';
+import { Field, Segmented } from '../ui/components/Controls';
 import { Icon, type IconName } from '../ui/components/Icon';
 import { Panel } from '../ui/components/Panel';
 import { Txt } from '../ui/components/Txt';
@@ -38,11 +39,14 @@ const PERMISSION_STEPS: PermissionStep[] = [
 const STEPS: Step[] = [{ kind: 'welcome' }, { kind: 'battery' }, ...PERMISSION_STEPS, { kind: 'notification-access' }, { kind: 'done' }];
 
 export default function Onboarding() {
-  const { palette: p, settings, updateSettings } = useApp();
+  const { rt, palette: p, settings, updateSettings } = useApp();
   const insets = useSafeAreaInsets();
   const [i, setI] = useState(0);
   const [states, setStates] = useState<PermissionStates | null>(null);
   const [device, setDevice] = useState(() => Native.getDeviceStatus());
+  const [name, setName] = useState(settings.userName ?? '');
+  // null = not chosen yet: defaults to real data once anything has been granted.
+  const [mode, setMode] = useState<'real' | 'mock' | null>(null);
 
   const refresh = useCallback(async () => {
     setStates(await getPermissionStates());
@@ -60,8 +64,12 @@ export default function Onboarding() {
 
   const step = STEPS[i];
   const next = () => setI((n) => Math.min(STEPS.length - 1, n + 1));
+  const anyGranted = !!states && (['contacts', 'calendar', 'texts', 'calls', 'photos', 'notifications'] as PermissionKey[]).some((k) => states[k]);
+  const chosenMode = mode ?? (anyGranted ? 'real' : 'mock');
   const finish = async () => {
-    await updateSettings({ onboardingDone: true });
+    const first = name.trim();
+    if (first) await rt.engine.memory.save({ category: 'About Me', content: `User's name is ${first}`, source: 'conversation' }).catch(() => undefined);
+    await updateSettings({ onboardingDone: true, dataMode: chosenMode, ...(first ? { userName: first } : {}) });
     router.replace('/');
   };
 
@@ -156,8 +164,26 @@ export default function Onboarding() {
             </View>
             <Txt variant="display">Ready.</Txt>
             <Txt variant="body" color={p.textSecondary}>
-              You can change any of this in Settings › Data sources. If you turned off Auto Blocker to install me, you can turn it back on now (Settings › Security and privacy › Auto Blocker).
+              Two last things. You can change both later in Settings. If you turned off Auto Blocker to install me, you can turn it back on now.
             </Txt>
+            <Field label="What should I call you?" value={name} onChangeText={setName} placeholder="Your first name" autoCapitalize="words" autoCorrect={false} />
+            <View style={{ gap: space.xs }}>
+              <Txt variant="label" color={p.textSecondary}>
+                Which data should I use?
+              </Txt>
+              <Segmented
+                label="Which data should I use?"
+                value={chosenMode}
+                onChange={setMode}
+                options={[
+                  { value: 'real', label: 'My phone' },
+                  { value: 'mock', label: 'Demo phone' },
+                ]}
+              />
+              <Txt variant="small" color={p.textSecondary}>
+                {chosenMode === 'real' ? 'I’ll use your real texts, calls, calendar and photos, limited to what you allowed.' : 'A realistic made-up phone, so you can try everything without your own data.'}
+              </Txt>
+            </View>
             {states && (
               <Panel label="What I can see">
                 <View style={{ gap: space.sm }}>

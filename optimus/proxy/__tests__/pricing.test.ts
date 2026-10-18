@@ -1,4 +1,4 @@
-import { costUsd, priceFor } from '../src/pricing';
+import { costUsd, openAICostUsd, openAIPriceFor, parseOpenAIPrices, priceFor } from '../src/pricing';
 
 describe('costUsd', () => {
   it('prices Sonnet 5.5 per million tokens', () => {
@@ -50,5 +50,16 @@ describe('costUsd', () => {
   it('treats missing or invalid counts as zero', () => {
     expect(costUsd('claude-sonnet-5-5', {})).toBe(0);
     expect(costUsd('claude-sonnet-5-5', { input_tokens: -5, output_tokens: NaN })).toBe(0);
+  });
+});
+
+describe('OpenAI prices', () => {
+  it('knows common models out of the box and lets OPENAI_PRICES override them', () => {
+    const table = parseOpenAIPrices(undefined);
+    expect(openAICostUsd('gpt-5-mini', { input_tokens: 1_000_000, output_tokens: 1_000_000 }, table)).toBeCloseTo(2.25, 6);
+    expect(openAIPriceFor('gpt-5-mini-2025-08-07', table).input).toBe(0.25);
+    expect(openAIPriceFor('gpt-5-2025-08-07', table).input).toBe(1.25);
+    const custom = parseOpenAIPrices('{"gpt-5-mini":{"input":1,"output":1}}');
+    expect(openAIPriceFor('gpt-5-mini', custom)).toEqual({ input: 1, output: 1, cacheRead: undefined });
   });
 });

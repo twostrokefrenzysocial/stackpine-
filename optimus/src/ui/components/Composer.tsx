@@ -47,6 +47,8 @@ export interface ComposerProps {
   onStop?: () => void;
   placeholder?: string;
   bottomInset?: number;
+  /** Open the keyboard straight away (coming from the Home "Ask Optimus" field). */
+  autoFocus?: boolean;
 }
 
 /**
@@ -54,7 +56,7 @@ export interface ComposerProps {
  * grey field. The mic turns solid red while listening (a live signal) and
  * the field becomes a waveform.
  */
-export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0 }: ComposerProps) {
+export function Composer({ onSend, onMic, onStopMic, listening, partial, level, busy, onStop, placeholder = 'Ask Optimus', bottomInset = 0, autoFocus }: ComposerProps) {
   const { palette: p, reduceMotion } = useApp();
   const [text, setText] = useState('');
   const shown = useSharedValue(0);
@@ -84,6 +86,7 @@ export function Composer({ onSend, onMic, onStopMic, listening, partial, level, 
               placeholderTextColor={p.textTertiary}
               selectionColor={p.text}
               cursorColor={p.text}
+              autoFocus={autoFocus}
               onSubmitEditing={send}
               returnKeyType="send"
               multiline

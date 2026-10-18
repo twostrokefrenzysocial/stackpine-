@@ -6,6 +6,7 @@ import { formatTime } from '../../core/util/time';
 import { ChatCardView } from '../cards/DataCards';
 import { useApp } from '../AppContext';
 import { radius, space } from '../theme';
+import { RichText } from './RichText';
 import { Txt } from './Txt';
 
 /** User message: light grey block, right aligned. */
@@ -41,9 +42,9 @@ export function AssistantBlock({ text, cards, streaming, activity, at }: { text:
   return (
     <View style={styles.assistant}>
       {text ? (
-        <Txt variant="bodyLarge" selectable accessibilityLiveRegion={streaming ? 'polite' : 'none'}>
-          {text}
-        </Txt>
+        <View accessibilityLiveRegion={streaming ? 'polite' : 'none'}>
+          <RichText text={text} selectable={!streaming} />
+        </View>
       ) : null}
       {streaming && !text && !activity && <Cursor />}
       {activity && (

@@ -270,7 +270,7 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
         const page = await MediaLibrary.getAssetsAsync({
           mediaType: MediaLibrary.MediaType.photo,
           sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-          first: q.near ? 300 : Math.min(q.limit ?? 40, 200),
+          first: q.near ? 300 : Math.min(q.limit ?? 40, 600),
           createdAfter: q.since ? new Date(q.since) : undefined,
           createdBefore: q.until ? new Date(q.until) : undefined,
         });
@@ -284,10 +284,16 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
             const km = haversineKm(location, q.near);
             if (km > (q.near.radiusKm ?? 2)) continue;
           }
-          out.push({ id: a.id, uri: a.uri, filename: a.filename, takenAt: new Date(a.creationTime).toISOString(), width: a.width, height: a.height, location });
+          const screenshot = /screenshot|screen_?record|screen ?capture/i.test(`${a.filename} ${a.uri}`);
+          out.push({ id: a.id, uri: a.uri, filename: a.filename, takenAt: new Date(a.creationTime).toISOString(), width: a.width, height: a.height, location, screenshot });
           if (out.length >= (q.limit ?? 40)) break;
         }
         return out;
+      },
+      async get(id) {
+        const a = await MediaLibrary.getAssetInfoAsync(id).catch(() => null);
+        if (!a) return null;
+        return { id: a.id, uri: a.uri, filename: a.filename, takenAt: new Date(a.creationTime).toISOString(), width: a.width, height: a.height, screenshot: /screenshot/i.test(`${a.filename} ${a.uri}`) };
       },
       async loadForVision(id, maxEdge) {
         const info = await MediaLibrary.getAssetInfoAsync(id);

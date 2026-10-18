@@ -20,6 +20,13 @@ import { Txt } from '../ui/components/Txt';
 import { feedback } from '../ui/feedback';
 import { space } from '../ui/theme';
 
+/** Accepts "optimus-proxy.name.workers.dev", with or without https:// or a trailing slash. */
+function normalizeProxyUrl(raw: string): string {
+  const t = raw.trim().replace(/\s+/g, '').replace(/\/+$/, '');
+  if (!t) return '';
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
+
 /** Apps people usually keep out of the notification log. */
 const SENSITIVE_APPS = [
   { packageName: 'com.chase.sig.android', appName: 'Chase' },
@@ -86,9 +93,26 @@ export default function Settings() {
       setBusy(null);
       return;
     }
-    await updateSettings({ proxyUrl: url.trim(), provider, openaiModel: oaModel.trim(), openaiBackgroundModel: oaBgModel.trim() });
+    const clean = normalizeProxyUrl(url);
+    setUrl(clean);
+    await updateSettings({ proxyUrl: clean, provider, openaiModel: oaModel.trim(), openaiBackgroundModel: oaBgModel.trim() });
     setToken('');
-    await refreshUsage(url.trim());
+    const t = await proxyToken.get();
+    if (!clean || !t) {
+      setConnMsg({ ok: false, text: 'Enter both the proxy URL and the app token.' });
+      setBusy(null);
+      return;
+    }
+    try {
+      setUsage(await proxyApi.usage(clean, t));
+      setConnMsg({ ok: true, text: 'Proxy found. Asking the AI a test question…' });
+      // End to end: proxy, key, credit and model name all have to work for this to pass.
+      await rt.testModel();
+      setConnMsg({ ok: true, text: `All set. ${provider === 'openai' ? `OpenAI (${oaModel.trim()})` : 'Claude'} answered through your proxy.` });
+      feedback.fire('confirm');
+    } catch (e) {
+      setConnMsg({ ok: false, text: friendlyError(e).body });
+    }
     setBusy(null);
   };
 
@@ -196,7 +220,7 @@ export default function Settings() {
           )}
           <Field label="Proxy URL" value={url} onChangeText={setUrl} placeholder="https://optimus-proxy.example.workers.dev" autoCapitalize="none" autoCorrect={false} keyboardType="url" />
           <Field label="App token" value={token} onChangeText={setToken} placeholder={settings.proxyUrl ? 'Saved — enter a new one to replace it' : 'Paste the APP_TOKEN you created'} autoCapitalize="none" autoCorrect={false} secureTextEntry />
-          <Button label={busy === 'conn' ? 'Checking' : 'Save and test'} onPress={saveConnection} disabled={busy === 'conn'} />
+          <Button label={busy === 'conn' ? 'Testing…' : 'Save and test'} onPress={saveConnection} disabled={busy === 'conn'} />
           {connMsg && (
             <Txt variant="small" color={connMsg.ok ? p.text : p.redGlow}>
               {connMsg.text}

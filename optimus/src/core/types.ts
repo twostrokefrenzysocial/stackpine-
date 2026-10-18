@@ -85,6 +85,8 @@ export interface PhotoAsset {
   width: number;
   height: number;
   location?: { latitude: number; longitude: number; placeName?: string };
+  /** Screenshots are skipped when searching for real-world things. */
+  screenshot?: boolean;
   // Mock photos ship a caption so vision can be simulated offline.
   mockCaption?: string;
 }

@@ -88,3 +88,19 @@ describe('rolling summary', () => {
     expect(await maybeRollSummary({ llm: new HeuristicBackgroundLlm(), conversations }, c.id)).toBe(false);
   });
 });
+
+describe('markdown in replies', () => {
+  const { parseMarkdown, parseInline } = jest.requireActual<typeof import('../util/markdown')>('../util/markdown');
+  it('renders headings, bullets, numbers and inline styles without raw symbols', () => {
+    const blocks = parseMarkdown('### Today\n**3:00 PM** — Q4 review\n\n- Call *Mom* back\n  - about `dinner`\n2) Reply to [Sarah](https://x.y)');
+    expect(blocks.map((b) => b.kind)).toEqual(['heading', 'paragraph', 'bullet', 'bullet', 'bullet']);
+    expect(blocks[1].spans[0]).toEqual({ text: '3:00 PM', bold: true });
+    expect(blocks[3]).toMatchObject({ depth: 1, marker: '•' });
+    expect(blocks[4]).toMatchObject({ marker: '2.' });
+    expect(blocks[4].spans.map((s) => s.text).join('')).toBe('Reply to Sarah');
+    expect(JSON.stringify(blocks)).not.toMatch(/\*\*|###/);
+  });
+  it('leaves ordinary text alone', () => {
+    expect(parseInline('5 * 3 = 15 and snake_case_name')).toEqual([{ text: '5 * 3 = 15 and snake_case_name' }]);
+  });
+});

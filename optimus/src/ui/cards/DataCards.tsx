@@ -163,8 +163,8 @@ export function PhotoGrid({ photos, index }: { photos: PhotoAsset[]; index?: num
         {photos.map((ph) => (
           <Pressable key={ph.id} style={[styles.thumb, { borderColor: p.line }]} accessibilityRole="image" accessibilityLabel={`Photo from ${formatDay(ph.takenAt)}${ph.location?.placeName ? ` at ${ph.location.placeName}` : ''}`}>
             <Image source={ph.uri.startsWith('mock://') ? mockPhotoSource(ph) : { uri: ph.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={120} />
-            <View style={[styles.thumbMeta, { backgroundColor: p.scrim }]}>
-              <Txt variant="mono" color={p.text} style={{ fontSize: 11 }} numberOfLines={1}>
+            <View style={styles.thumbMeta}>
+              <Txt variant="mono" color="#FFFFFF" style={{ fontSize: 10 }} numberOfLines={1} maxFontSizeMultiplier={1.2}>
                 {formatDay(ph.takenAt).toUpperCase()}
               </Txt>
             </View>
@@ -237,6 +237,6 @@ const styles = StyleSheet.create({
   timeCol: { width: 84, borderRightWidth: 2, paddingRight: space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   thumb: { width: '31%', aspectRatio: 1, borderWidth: 1, borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
-  thumbMeta: { paddingHorizontal: 4, paddingVertical: 2 },
+  thumbMeta: { paddingHorizontal: 4, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.45)' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, borderRadius: 999, paddingHorizontal: space.md, paddingVertical: 6, alignSelf: 'flex-start', maxWidth: '100%' },
 });

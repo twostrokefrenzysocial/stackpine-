@@ -6,7 +6,8 @@ import { OptimusEngine } from '../core/engine';
 import type { Db } from '../core/db/types';
 import type { BackgroundLlm } from '../core/llm/background';
 import { HeuristicBackgroundLlm, ScriptedTransport } from '../core/llm/scripted';
-import type { LlmTransport } from '../core/llm/transport';
+import { MAIN_MODEL } from '../core/llm/prompts';
+import { LlmError, type LlmTransport } from '../core/llm/transport';
 import { createMockSources, type MockDataSources } from '../core/mock/sources';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../core/settings/settings';
 import type { DataSources, SourceName } from '../core/sources/types';
@@ -36,6 +37,8 @@ export interface Runtime {
   /** Short name of the live provider for status readouts, e.g. "CLAUDE". */
   providerLabel(): string;
   refreshClient(): Promise<void>;
+  /** Sends a one-line request through the proxy to the chosen model. Throws an LlmError on failure. */
+  testModel(): Promise<void>;
   mock: MockDataSources;
 }
 
@@ -134,6 +137,20 @@ async function doBoot(): Promise<Runtime> {
     isDemoBrain: () => transport === demoTransport,
     providerLabel: () => (transport === demoTransport ? 'DEMO' : settings.provider === 'openai' ? 'OPENAI' : 'CLAUDE'),
     refreshClient,
+    async testModel() {
+      if (transport === demoTransport) throw new LlmError('not-configured', 'not configured');
+      await transport.stream(
+        {
+          model: MAIN_MODEL,
+          system: [{ type: 'text', text: 'Connection test. Reply with the single word OK.' }],
+          messages: [{ role: 'user', content: 'Test' }],
+          tools: [],
+          maxTokens: 2000,
+          effort: 'low',
+        },
+        () => undefined,
+      );
+    },
     mock,
   } as Runtime;
   Native.setNotificationCaptureConfig({ enabled: settings.notificationCaptureEnabled, excludedPackages: settings.excludedNotificationApps });

@@ -21,11 +21,14 @@ import { activeConversation } from '../../ui/useAppLifecycle';
 import { useChat } from '../../ui/useChat';
 import { GUTTER, radius, space } from '../../ui/theme';
 
-const SUGGESTIONS = ['What did I miss?', "What's on my schedule today?", 'Reply to Sarah about her email', 'Find the photo of my parking spot'];
+const SUGGESTIONS = {
+  mock: ['What did I miss?', "What's on my schedule today?", 'Reply to Sarah about her email', 'Find the photo of my parking spot'],
+  real: ['What did I miss?', "What's on my schedule today?", 'Who called me today?', 'Remind me to call Mom tonight'],
+};
 
 export default function Chat() {
-  const { id, voice, q } = useLocalSearchParams<{ id: string; voice?: string; q?: string }>();
-  const { rt, palette: p } = useApp();
+  const { id, voice, q, focus } = useLocalSearchParams<{ id: string; voice?: string; q?: string; focus?: string }>();
+  const { rt, settings, palette: p } = useApp();
   const insets = useSafeAreaInsets();
   const keyboardUp = useKeyboardVisible();
   const [created, setCreated] = useState<string | null>(null);
@@ -88,9 +91,16 @@ export default function Chat() {
         <Button label="Back" icon="chevronLeft" iconOnly variant="ghost" compact onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
         <Brain size={56} state={chat.avatar} micLevel={mic.level} speechLevel={chat.speechLevel} interactive={false} onPress={mic.listening ? mic.stop : mic.start} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Txt variant="heading" numberOfLines={1}>
-            Optimus
-          </Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <Txt variant="heading" numberOfLines={1}>
+              Optimus
+            </Txt>
+            {settings.dataMode === 'mock' && (
+              <Txt variant="mono" color={p.textTertiary} accessibilityLabel="Using demo data">
+                DEMO DATA
+              </Txt>
+            )}
+          </View>
           <StatusStrip state={chat.avatar} />
         </View>
         <Button label="Conversation history" icon="history" iconOnly variant="ghost" compact onPress={() => setHistoryOpen(true)} />
@@ -118,7 +128,7 @@ export default function Chat() {
               </Txt>
             )}
             <View style={{ gap: space.sm, alignSelf: 'stretch' }}>
-              {SUGGESTIONS.map((s) => (
+              {SUGGESTIONS[settings.dataMode].map((s) => (
                 <Button key={s} label={s} variant="secondary" compact onPress={() => chat.send(s)} />
               ))}
             </View>
@@ -152,6 +162,7 @@ export default function Chat() {
         <View>
           <Composer
             bottomInset={keyboardUp ? 0 : insets.bottom}
+            autoFocus={focus === '1'}
             onSend={(t) => chat.send(t)}
             onMic={mic.start}
             onStopMic={mic.stop}

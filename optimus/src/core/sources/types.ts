@@ -83,6 +83,8 @@ export interface EmailSource {
 
 export interface PhotosSource {
   list(q: { limit?: number; near?: GeoPoint & { radiusKm?: number } } & DateRange): Promise<PhotoAsset[]>;
+  /** One photo by id (for ids older than a list page). */
+  get?(id: string): Promise<PhotoAsset | null>;
   /** Base64 JPEG, resized so the long edge is <= maxEdge. */
   loadForVision(id: string, maxEdge: number): Promise<{ base64: string; mediaType: 'image/jpeg' } | null>;
 }

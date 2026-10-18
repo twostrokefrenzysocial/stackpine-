@@ -34,6 +34,8 @@ export function toLlmError(e: unknown): LlmError {
     const type = body.error?.type ?? '';
     if (e.status === 402 || type === 'optimus_spending_cap_reached') return new LlmError('spending-cap', e.message, { capUsd: body.error?.capUsd, spentUsd: body.error?.spentUsd });
     if (e.status === 401 || type === 'optimus_unauthorized' || type === 'authentication_error') return new LlmError('unauthorized', e.message);
+    if (type === 'optimus_model_not_allowed') return new LlmError('model-not-allowed', e.message);
+    if (e.status === 404 && /model/i.test(e.message)) return new LlmError('model-not-found', e.message);
     if (e.status === 429) return new LlmError('rate-limited', e.message);
     if (e.status === 529 || e.status === 503 || type === 'overloaded_error') return new LlmError('overloaded', e.message);
     return new LlmError('unknown', e.message, { status: e.status, type });

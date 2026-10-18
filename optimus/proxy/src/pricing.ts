@@ -116,7 +116,25 @@ export interface OpenAIPrice {
  */
 export const OPENAI_FALLBACK_PRICE: OpenAIPrice = { input: 15, output: 75, cacheRead: 15 };
 
+/**
+ * Built-in list prices for common OpenAI models (USD per million tokens, as
+ * published by OpenAI when these models launched). OPENAI_PRICES overrides
+ * any of them; check https://platform.openai.com/pricing for changes.
+ */
+export const DEFAULT_OPENAI_PRICES: Record<string, OpenAIPrice> = {
+  'gpt-5': { input: 1.25, output: 10, cacheRead: 0.125 },
+  'gpt-5-mini': { input: 0.25, output: 2, cacheRead: 0.025 },
+  'gpt-5-nano': { input: 0.05, output: 0.4, cacheRead: 0.005 },
+  'gpt-4.1': { input: 2, output: 8, cacheRead: 0.5 },
+  'gpt-4.1-mini': { input: 0.4, output: 1.6, cacheRead: 0.1 },
+  'gpt-4o-mini': { input: 0.15, output: 0.6, cacheRead: 0.075 },
+};
+
 export function parseOpenAIPrices(raw: string | undefined): Record<string, OpenAIPrice> {
+  return { ...DEFAULT_OPENAI_PRICES, ...parseConfiguredPrices(raw) };
+}
+
+function parseConfiguredPrices(raw: string | undefined): Record<string, OpenAIPrice> {
   if (!raw) return {};
   try {
     const parsed: unknown = JSON.parse(raw);

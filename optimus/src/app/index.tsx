@@ -219,7 +219,7 @@ export default function Home() {
       {/* Primary controls in the thumb zone. */}
       <LinearFade style={[styles.fade, { height: insets.bottom + 64 + TOUCH + 48 }]} />
       <View style={[styles.ask, { bottom: insets.bottom + 72 }]}>
-        <Pressable onPress={() => router.push('/chat/new')} style={[styles.askField, { backgroundColor: p.surface }]} accessibilityRole="button" accessibilityLabel="Ask Optimus" accessibilityHint="Opens a new conversation">
+        <Pressable onPress={() => router.push('/chat/new?focus=1')} style={[styles.askField, { backgroundColor: p.surface }]} accessibilityRole="button" accessibilityLabel="Ask Optimus" accessibilityHint="Opens a new conversation">
           <Txt variant="body" color={p.textTertiary}>
             Ask Optimus
           </Txt>

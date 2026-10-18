@@ -39,7 +39,16 @@ function configureGoogle() {
 export async function connectGmail(): Promise<string> {
   configureGoogle();
   await GoogleSignin.hasPlayServices();
-  const res = await GoogleSignin.signIn();
+  let res: Awaited<ReturnType<typeof GoogleSignin.signIn>>;
+  try {
+    res = await GoogleSignin.signIn();
+  } catch (e) {
+    // DEVELOPER_ERROR means Google doesn't know this app yet: the one-time Google Cloud setup is missing.
+    if (/DEVELOPER_ERROR|10:/.test(String((e as { code?: unknown; message?: string })?.code ?? '') + String((e as Error)?.message ?? ''))) {
+      throw new Error('Gmail needs a one-time Google setup before it can connect (SETUP_CHECKLIST.md, section 4). Everything else works without it.');
+    }
+    throw e;
+  }
   if (res.type !== 'success') throw new Error('Google sign-in was cancelled.');
   return res.data.user.email;
 }

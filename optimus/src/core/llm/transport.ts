@@ -33,6 +33,8 @@ export type LlmErrorKind =
   | 'spending-cap'
   | 'rate-limited'
   | 'no-credit'
+  | 'model-not-allowed'
+  | 'model-not-found'
   | 'overloaded'
   | 'refused'
   | 'aborted'
@@ -65,6 +67,10 @@ export function friendlyError(e: unknown): { title: string; body: string; kind: 
     }
     case 'rate-limited':
       return { kind, title: 'Cooling down', body: 'Too many requests in a minute. Give me a moment and try again.' };
+    case 'model-not-allowed':
+      return { kind, title: 'Model not allowed by your proxy', body: 'The model in Settings › Connection isn’t on your proxy’s allowed list. Use the same name in both places (on GitHub it’s the OPENAI_MODELS variable).' };
+    case 'model-not-found':
+      return { kind, title: 'Model name not recognized', body: 'The AI service doesn’t know that model name. Check the spelling in Settings › Connection (for example gpt-5-mini) and on your proxy.' };
     case 'no-credit':
       return { kind, title: 'No API credit', body: 'Your AI account has no credit left. Add credit in its billing settings (for OpenAI: platform.openai.com › Settings › Billing), then try again.' };
     case 'overloaded':
