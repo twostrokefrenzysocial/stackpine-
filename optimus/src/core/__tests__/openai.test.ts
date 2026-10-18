@@ -126,6 +126,13 @@ describe('OpenAITransport', () => {
     expect('reasoning_effort' in bodies[1]).toBe(false);
   });
 
+  it('tells an empty account apart from a rate limit', async () => {
+    const t = new OpenAITransport(cfg(async () => new Response(JSON.stringify({ error: { type: 'insufficient_quota', code: 'insufficient_quota', message: 'You exceeded your current quota, please check your plan and billing details.' } }), { status: 429 })));
+    await expect(t.stream(baseReq, () => {})).rejects.toMatchObject({ kind: 'no-credit' });
+    const busy = new OpenAITransport(cfg(async () => new Response(JSON.stringify({ error: { type: 'requests', message: 'Rate limit reached' } }), { status: 429 })));
+    await expect(busy.stream(baseReq, () => {})).rejects.toMatchObject({ kind: 'rate-limited' });
+  });
+
   it('maps proxy errors to friendly kinds', async () => {
     const t = new OpenAITransport(cfg(async () => new Response(JSON.stringify({ error: { type: 'optimus_spending_cap_reached', message: 'cap', capUsd: 20 } }), { status: 402 })));
     await expect(t.stream(baseReq, () => {})).rejects.toMatchObject({ kind: 'spending-cap' });

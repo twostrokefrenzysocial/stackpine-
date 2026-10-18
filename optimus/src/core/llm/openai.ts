@@ -203,6 +203,8 @@ async function errorFrom(res: Response): Promise<LlmError> {
   const msg = body.error?.message ?? `HTTP ${res.status}`;
   if (res.status === 402 || type === 'optimus_spending_cap_reached') return new LlmError('spending-cap', msg, { capUsd: body.error?.capUsd, spentUsd: body.error?.spentUsd });
   if (res.status === 401 || type === 'optimus_unauthorized') return new LlmError('unauthorized', msg);
+  // OpenAI answers 429 both for rate limits and for an account with no credit.
+  if (res.status === 429 && (type === 'insufficient_quota' || /quota|billing/i.test(msg))) return new LlmError('no-credit', msg);
   if (res.status === 429) return new LlmError('rate-limited', msg);
   if (res.status === 503 || res.status === 529) return new LlmError('overloaded', msg);
   return new LlmError('unknown', msg, { status: res.status, type });

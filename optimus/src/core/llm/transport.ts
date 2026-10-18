@@ -32,6 +32,7 @@ export type LlmErrorKind =
   | 'unauthorized'
   | 'spending-cap'
   | 'rate-limited'
+  | 'no-credit'
   | 'overloaded'
   | 'refused'
   | 'aborted'
@@ -64,6 +65,8 @@ export function friendlyError(e: unknown): { title: string; body: string; kind: 
     }
     case 'rate-limited':
       return { kind, title: 'Cooling down', body: 'Too many requests in a minute. Give me a moment and try again.' };
+    case 'no-credit':
+      return { kind, title: 'No API credit', body: 'Your AI account has no credit left. Add credit in its billing settings (for OpenAI: platform.openai.com › Settings › Billing), then try again.' };
     case 'overloaded':
       return { kind, title: 'Servers are busy', body: 'The AI service is overloaded right now. Try again in a minute.' };
     case 'refused':
