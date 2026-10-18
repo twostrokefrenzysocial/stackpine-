@@ -135,10 +135,23 @@
   </div>
 </header>
 
-<main id="main" data-stack>
+<main id="main">
 
 <section class="hero ch ch--ground">
-  <svg class="hero__shape" viewBox="0 0 32 36" aria-hidden="true" focusable="false">
+  <div class="wrap hero__in">
+    <div class="hero__copy" data-enter>
+      <h1>Custom software.<br> One monthly fee.</h1>
+      <p class="hero__lede">Stackpine builds the business software, apps, websites and online stores that small businesses run on, shaped around how you actually work. Then we host it, support it and keep improving it for you.</p>
+      <form class="start" action="/contact/" method="get">
+        <label for="start-problem">What’s slowing your business down?</label>
+        <div class="start__row">
+          <input id="start-problem" name="problem" maxlength="3000" autocomplete="off" placeholder="We lose track of jobs that come in by text">
+          <button class="btn" type="submit">Start my free quote</button>
+        </div>
+        <p class="start__note">Free quote, no upfront build cost. You’ll finish the details on the next page.</p>
+      </form>
+    </div>
+    <svg class="hero__shape" viewBox="0 0 32 36" aria-hidden="true" focusable="false">
     <g class="pl" style="--n:0"><rect class="pl__in" x="11.5" y="32" width="9" height="3"/></g>
     <g class="pl" style="--n:1"><path class="pl__in pl__stroke" d="M3.4 29L16 22.6 28.6 29"/></g>
     <g class="pl" style="--n:2"><path class="pl__in pl__stroke" d="M5.4 24.6L16 19.2l10.6 5.4"/></g>
@@ -147,17 +160,6 @@
     <g class="pl" style="--n:5"><path class="pl__in pl__stroke" d="M11.4 11.4L16 9l4.6 2.4"/></g>
     <g class="pl" style="--n:6"><path class="pl__in" d="M16 1.5l3.6 5.4h-7.2z"/></g>
   </svg>
-  <div class="wrap hero__in" data-enter>
-    <h1>Built around<br> how you work.</h1>
-    <p class="hero__lede">Custom business software, apps and websites for small businesses, on one monthly fee that covers the build, hosting, support and every improvement after.</p>
-    <form class="start" action="/contact/" method="get">
-      <label for="start-problem">What’s slowing your business down?</label>
-      <div class="start__row">
-        <input id="start-problem" name="problem" maxlength="3000" autocomplete="off" placeholder="We lose track of jobs that come in by text">
-        <button class="btn" type="submit">Start my free quote</button>
-      </div>
-      <p class="start__note">Free quote, no upfront build cost. You’ll finish the details on the next page.</p>
-    </form>
   </div>
 </section>
 
@@ -175,6 +177,24 @@
       <figure data-enter><img src="/assets/img/forest-edge.jpg" width="960" height="640" loading="lazy" alt="Stackpine illustration: navy and green pine forest"></figure>
     </div>
     <p class="stair__note">The spreadsheet only one person understands. Requests by phone, text and sticky note. A $40,000 quote, then a developer who vanished after launch.</p>
+  </div>
+</section>
+
+<section class="what ch ch--leaf">
+  <div class="wrap what__in">
+    <div class="what__intro" data-enter>
+      <h2>Describe it. We’ll build it.</h2>
+      <p>Most owners don’t arrive with a feature list. They arrive with a frustration. Here are the shapes the fix usually takes.</p>
+      <p class="what__more"><a class="tlink" href="/what-we-build/">Everything we build <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
+    </div>
+    <ul class="what__list" data-enter="rows">
+      <li><h3>Intake and triage</h3><p>Every request in one place, sorted and routed, so nothing falls through the cracks.</p></li>
+      <li><h3>Scheduling and booking</h3><p>Appointments, shifts, rentals and sign-ups, booked online and confirmed automatically.</p></li>
+      <li><h3>Customer portals</h3><p>A live window for clients and staff into orders, jobs, balances and progress.</p></li>
+      <li><h3>Dashboards and reporting</h3><p>The numbers you now pull together by hand, live in one place.</p></li>
+      <li><h3>Websites and online stores</h3><p>A professional site or store that’s actually yours, hosted and kept fresh for you.</p></li>
+      <li><h3>Automation and AI assistants</h3><p>Tools that sort your email, answer staff questions from your own documents and take over repetitive paperwork.</p></li>
+    </ul>
   </div>
 </section>
 
@@ -210,7 +230,7 @@
   <div class="wrap">
     <p class="names__text"><b>Built so far:</b>
       <a href="/results/">Leadership dashboard</a>, <a href="/results/">Custom online store</a>, <a href="/results/">Expense tracker</a>, <a href="/builds/">Email Triage Agent</a>, <a href="/builds/">On-Prem AI Server</a>, <a href="/builds/">RevLane</a>, <a href="/builds/">Staff Knowledge Assistant</a>, <a href="/builds/">Resume Screening Pipeline</a>, <a href="/builds/">Operational Dashboards</a>, <a href="/builds/">Funeral Triage</a>.</p>
-    <p class="names__note">Ten systems in production use, for healthcare, retail, motorsports and service businesses. Client details stay anonymous.</p>
+    <p class="names__note">Real systems in daily use for healthcare, retail, motorsports and service businesses. One sorts 50 emails in 13 seconds instead of 8 minutes. Another absorbs about 30 hours a week of staff questions. A reporting dashboard turned hours of weekly spreadsheet work into minutes. Client details stay anonymous.</p>
   </div>
 </section>
 

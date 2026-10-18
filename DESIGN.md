@@ -106,7 +106,7 @@ The audience is non-technical small-business owners, often on a phone. The rules
 - **Rose** (`rose` #B4493A): errors and the "old way" crosses only.
 
 ### Neutral
-- `ground` #F5F8F4 is the page; `land` #E7EFE6 is the quiet field; `paper` #FFF is used for panels on land (ticket, results, builds, FAQ, form).
+- `pine-200` #B9D6BE is also a full field (the what-we-build chapter) with navy ink. `ground` #F5F8F4 is the page; `land` #E7EFE6 is the quiet field; `paper` #FFF is used for panels on land (ticket, results, builds, FAQ, form).
 - Text on dark fields is `on-dark` #F5F8F4; `on-dark-soft` #C9DCCB is for secondary notes only.
 
 ### Named Rules
@@ -129,7 +129,7 @@ League Spartan 700 is the display face (tight tracking, leading 0.92–1.02). Fi
 
 ## Layout
 
-Max width 1240px with one fluid gutter. Sections pad `clamp(80px,10vw,160px)` and butt together. Home chapters in order: ground (hero), navy (staircase), land (stages), pine (names), blaze (ticket), ground (action tile), navy (footer). Sub-pages open with a pine header split with a cover-art picture (48vw on desktop, 16:9 on phones), then alternate ground and land.
+Max width 1240px with one fluid gutter. Sections pad `clamp(80px,10vw,160px)` and butt together. Home chapters in order: ground (hero), navy (staircase: the problem), leaf green `pine-200` (what we build), land (stages: how it works), pine (names: proof), blaze (ticket: price), ground (action tile), navy (footer). The page tells one story: what we sell, what's wrong now, what we build, how it works, proof, price, then the action. Sub-pages open with a pine header split with a cover-art picture (48vw on desktop, 16:9 on phones), then alternate ground and land.
 
 ## Elevation & Depth
 
@@ -165,14 +165,14 @@ The name comes first, spanning the content width, then contact lines in blaze-li
 ## Do's and Don'ts
 
 ### Do:
+- Never scale or stack whole sections on scroll (an earlier version did; it was removed because it felt like flash cards).
 - Keep the motion layer: one shutter picture per page as the signature move, plus entrances by content (lines rise, rows slide along the row, pictures settle, long pages reveal block by block). Use transform and opacity only. Everything is visible without script, and reduced motion holds nothing back.
 - Use real pictures. Today these are crops of `cover.jpg` (Stackpine's own art); replace them with real photographs when available.
 
 ### Effects layer (`assets/fx.js`)
 A single requestAnimationFrame loop that eases every value and writes only transform, opacity and visibility. It never runs under `prefers-reduced-motion`, and the page works without it.
 - **Pine build:** on load the trunk lands, then each chevron stacks on, then the tip (110ms apart, 720ms each, ease-out).
-- **Pine reacts:** scrolling spreads the layers into an exploded view; on hover-capable pointers the layers drift by depth.
-- **Chapter stack:** home sections are sticky (pinned at their bottom edge when taller than the screen). Each slides over the last, which scales to 0.94 and dims to 55% over a #0B1320 backdrop, then stops painting once fully covered. This deliberately breaks taste-skill's covered-text rule.
+- **Pine reacts:** scrolling spreads the layers into an exploded view; on hover-capable pointers the layers drift by depth. The pine sits in its own right-hand column and never behind text.
 - **Word reveal:** page and home H1s rise word by word from a mask (70ms apart).
 - **Scroll-lit text:** the staircase lights line by line and the names paragraph name by name.
 - **Countdown:** the price counts from $40,000 to $0 (1.6s, ease-out). The real "$0" is in screen-reader text.
