@@ -22,7 +22,11 @@
 
   // Carry over what was typed into the homepage "start" box.
   var carried = new URLSearchParams(location.search).get('problem');
-  if (carried && !form.elements.problem.value) form.elements.problem.value = carried.slice(0, 3000);
+  if (carried && !form.elements.problem.value) {
+    form.elements.problem.value = carried.slice(0, 3000);
+    document.getElementById('form-carried').hidden = false;
+    form.elements.name.focus({ preventScroll: true });
+  }
 
   function endpoint() {
     var e = (typeof window.STACKPINE_ANALYTICS_ENDPOINT === 'string') ? window.STACKPINE_ANALYTICS_ENDPOINT : '';

@@ -67,7 +67,7 @@
       <a href="/pricing/">Pricing</a>
       <a href="/results/">Results</a>
       <a href="/builds/">Builds</a>
-      <a class="btn btn--sm nav__cta" href="/contact/">Get in touch</a>
+      <a class="btn btn--sm nav__cta" href="/contact/">Get a free quote</a>
     </nav>
   </div>
 </header>
@@ -87,58 +87,68 @@
 
       <div class="form-card">
         <form class="form" id="enquiry" novalidate data-enter="rows">
+          <p class="form__carried" id="form-carried" hidden>Good start. Add your name and email and we&rsquo;ll take it from here.</p>
           <div class="form__grid">
             <div class="f"><label for="f-name">Your name <i>*</i></label>
               <input id="f-name" name="name" autocomplete="name" maxlength="120" required></div>
             <div class="f"><label for="f-email">Email <i>*</i></label>
               <input id="f-email" name="email" type="email" autocomplete="email" maxlength="200" required></div>
-            <div class="f"><label for="f-company">Company</label>
-              <input id="f-company" name="company" autocomplete="organization" maxlength="160"></div>
-            <div class="f"><label for="f-phone">Phone <span>(optional)</span></label>
-              <input id="f-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div>
           </div>
-
-          <div class="f"><label for="f-business">What does your business do?</label>
-            <textarea id="f-business" name="business" rows="2" maxlength="1500"
-              placeholder="e.g. We run a landscaping company with three crews."></textarea></div>
 
           <div class="f"><label for="f-problem">What&rsquo;s slowing your business down? <i>*</i></label>
             <textarea id="f-problem" name="problem" rows="4" maxlength="3000" required
               placeholder="&ldquo;Requests come in by text and we lose track of them&rdquo; is a perfect start."></textarea></div>
 
-          <div class="f"><label for="f-vision">What would you like built?</label>
-            <textarea id="f-vision" name="vision" rows="4" maxlength="3000"
-              placeholder="Describe it the way you&rsquo;d explain it to a friend. Screens, features, anything you picture."></textarea></div>
+          <details class="form__more">
+            <summary>Add more detail <span>(optional, helps us quote faster)</span></summary>
+            <div class="form__more-body">
+              <div class="form__grid">
+                <div class="f"><label for="f-company">Company</label>
+                  <input id="f-company" name="company" autocomplete="organization" maxlength="160"></div>
+                <div class="f"><label for="f-phone">Phone</label>
+                  <input id="f-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div>
+              </div>
 
-          <div class="f"><label for="f-current">How do you handle this today?</label>
-            <textarea id="f-current" name="current" rows="3" maxlength="1500"
-              placeholder="Spreadsheets, sticky notes, an app that only half fits&hellip;"></textarea></div>
+              <div class="f"><label for="f-business">What does your business do?</label>
+                <textarea id="f-business" name="business" rows="2" maxlength="1500"
+                  placeholder="e.g. We run a landscaping company with three crews."></textarea></div>
 
-          <div class="form__grid form__grid--3">
-            <div class="f"><label for="f-people">People who&rsquo;d use it</label>
-              <select id="f-people" name="people">
-                <option value="">Select&hellip;</option>
-                <option>Just me</option><option>2&ndash;5</option><option>6&ndash;15</option>
-                <option>16&ndash;50</option><option>50+</option>
-              </select></div>
-            <div class="f"><label for="f-timeline">When would you like to start?</label>
-              <select id="f-timeline" name="timeline">
-                <option value="">Select&hellip;</option>
-                <option>As soon as possible</option><option>Within a month</option>
-                <option>In 1&ndash;3 months</option><option>Just exploring</option>
-              </select></div>
-            <div class="f"><label for="f-heard">How did you hear about us?</label>
-              <input id="f-heard" name="heard" maxlength="200"></div>
-          </div>
+              <div class="f"><label for="f-vision">What would you like built?</label>
+                <textarea id="f-vision" name="vision" rows="4" maxlength="3000"
+                  placeholder="Describe it the way you&rsquo;d explain it to a friend. Screens, features, anything you picture."></textarea></div>
+
+              <div class="f"><label for="f-current">How do you handle this today?</label>
+                <textarea id="f-current" name="current" rows="3" maxlength="1500"
+                  placeholder="Spreadsheets, sticky notes, an app that only half fits&hellip;"></textarea></div>
+
+              <div class="form__grid form__grid--3">
+                <div class="f"><label for="f-people">People who&rsquo;d use it</label>
+                  <select id="f-people" name="people">
+                    <option value="">Select&hellip;</option>
+                    <option>Just me</option><option>2&ndash;5</option><option>6&ndash;15</option>
+                    <option>16&ndash;50</option><option>50+</option>
+                  </select></div>
+                <div class="f"><label for="f-timeline">When would you like to start?</label>
+                  <select id="f-timeline" name="timeline">
+                    <option value="">Select&hellip;</option>
+                    <option>As soon as possible</option><option>Within a month</option>
+                    <option>In 1&ndash;3 months</option><option>Just exploring</option>
+                  </select></div>
+                <div class="f"><label for="f-heard">How did you hear about us?</label>
+                  <input id="f-heard" name="heard" maxlength="200"></div>
+              </div>
+            </div>
+          </details>
 
           <div class="hp" aria-hidden="true">
             <label>Leave this empty<input name="website" tabindex="-1" autocomplete="off"></label>
           </div>
 
           <div class="form__foot">
-            <button class="btn" type="submit" id="f-submit">Send enquiry</button>
+            <button class="btn" type="submit" id="f-submit">Get my free quote</button>
             <p class="form__status" id="form-status" role="status" aria-live="polite"></p>
           </div>
+          <p class="form__reassure">Free, no pressure, and usually a same-day reply.</p>
         </form>
 
         <div class="form__done" id="form-done" hidden>
