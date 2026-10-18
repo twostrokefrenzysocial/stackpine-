@@ -146,6 +146,33 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
         msgs = [...msgs, ...rcs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, q.limit ?? 20);
         return msgs;
       },
+      async thread(q) {
+        await requireAndroidPermission('texts', P.READ_SMS);
+        let phones: string[] = [];
+        let name: string | undefined;
+        if (/\d{7,}/.test(digits(q.contact))) phones = [q.contact];
+        else {
+          const c = (await contactsAll().catch(() => [])).find((x) => x.name.toLowerCase().includes(q.contact.toLowerCase()));
+          phones = c?.phones ?? [];
+          name = c?.name;
+        }
+        const mine = new Set(phones.map(digits).filter((d) => d.length >= 7));
+        const sinceMs = q.since ? Date.parse(q.since) : undefined;
+        let untilMs = q.until ? Date.parse(q.until) + 1 : undefined;
+        const out: SmsMessage[] = [];
+        // Page back a thousand at a time until the range is covered (capped at ~20k messages).
+        for (let page = 0; page < 20 && mine.size; page++) {
+          const raw = await Native.getSmsMessages({ sinceMs, untilMs, limit: 1000 });
+          if (!raw.length) break;
+          for (const r of raw) if (mine.has(digits(r.address))) out.push(await smsToMessage(r));
+          untilMs = Math.min(...raw.map((r) => r.dateMs));
+          if (raw.length < 1000) break;
+        }
+        const first = name?.split(' ')[0].toLowerCase();
+        const rcs = first ? (await rcsFromNotifications({ since: q.since, until: q.until, limit: 2000 }).catch(() => [] as SmsMessage[])).filter((m) => m.contactName?.toLowerCase().includes(first)) : [];
+        const seen = new Set<string>();
+        return [...out, ...rcs].filter((m) => !seen.has(m.id) && seen.add(m.id)).sort((a, b) => a.date.localeCompare(b.date));
+      },
       async recentThreads(limit = 12) {
         await requireAndroidPermission('texts', P.READ_SMS);
         const raw = await Native.getSmsMessages({ limit: 300 });

@@ -61,7 +61,7 @@ export interface DeviceStatus {
 }
 
 interface NativeModuleShape {
-  getSmsMessages(opts: { sinceMs?: number; limit?: number; query?: string; threadId?: string }): Promise<RawSms[]>;
+  getSmsMessages(opts: { sinceMs?: number; untilMs?: number; limit?: number; query?: string; threadId?: string }): Promise<RawSms[]>;
   sendSms(to: string, body: string): Promise<{ id: string }>;
   getMessagingDiagnostics(): Promise<MessagingDiagnostics>;
   getCallLog(opts: { sinceMs?: number; limit?: number; number?: string }): Promise<RawCall[]>;
@@ -87,7 +87,7 @@ export function isAvailable(): boolean {
 }
 
 /** Newest first. `sinceMs` enables incremental sync. Requires READ_SMS. */
-export function getSmsMessages(opts: { sinceMs?: number; limit?: number; query?: string; threadId?: string } = {}): Promise<RawSms[]> {
+export function getSmsMessages(opts: { sinceMs?: number; untilMs?: number; limit?: number; query?: string; threadId?: string } = {}): Promise<RawSms[]> {
   return need().getSmsMessages(opts);
 }
 

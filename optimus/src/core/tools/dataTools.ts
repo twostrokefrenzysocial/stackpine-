@@ -1,5 +1,6 @@
 import type { BetaImageBlockParam, BetaTextBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { CalendarEvent, CallLogEntry, CapturedNotification, EmailMessage, PhotoAsset, SmsMessage } from '../types';
+import { analyzeThread, sampleWeeks } from '../analysis/threadStats';
 import { photoIndexStats, searchPhotoIndex } from '../photos/photoIndex';
 import { DAY, HOUR, addDays, endOfDay, formatTime, startOfDay } from '../util/time';
 import { errorOutcome, isoOrUndefined, num, resolveContact, scanItems, str, truncate, untrustedContent } from './helpers';
@@ -202,6 +203,51 @@ export const searchTexts: ToolDef = {
         cards: messages.length ? [{ type: 'texts', messages: messages.slice(0, 8) }] : [],
         suspicious: findings,
         activity: `Searched texts${contact ? ` with ${str(input.contact)}` : ''}${input.query ? ` for “${truncate(String(input.query), 30)}”` : ''} (${messages.length})`,
+      };
+    }),
+};
+
+export const analyzeConversation: ToolDef = {
+  name: 'analyze_conversation',
+  kind: 'read',
+  description:
+    'Deep read of the whole text thread with one person over months or years (relationship check-ins, "how are we doing", communication patterns, who initiates, response times, warmth over time). Counts EVERY message on the phone (per-person totals, questions, length, initiations, median reply time, flat replies, phrases like love/sorry/thanks/pet names/stress, month-by-month volume and warmth, longest silence) and returns a spread of sampled weeks to read for tone. One call covers the full range: do not page with search_texts for this.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      contact: { type: 'string', description: 'Name, relationship or number' },
+      months: { type: 'integer', description: 'How far back (default 6, max 36)' },
+      ...rangeProps,
+      sample_weeks: { type: 'integer', description: 'Weeks of messages to include verbatim for tone (default 20, max 30)' },
+    },
+    required: ['contact'],
+  },
+  run: (input, ctx) =>
+    guarded('analyze_conversation', async () => {
+      const q = str(input.contact) ?? '';
+      const c = await resolveContact(ctx, q);
+      const contact = c?.phones[0] ?? c?.name ?? q;
+      const label = c?.name ?? q;
+      const now = ctx.now();
+      const months = Math.min(36, Math.max(1, num(input.months) ?? 6));
+      const since = isoOrUndefined(input.since) ?? new Date(now.getTime() - months * 30.44 * DAY).toISOString();
+      const until = isoOrUndefined(input.until) ?? now.toISOString();
+      const messages = await ctx.sources.texts.thread({ contact, since, until });
+      const limits = await ctx.sources.texts.limitations();
+      const stats = analyzeThread(label, messages);
+      if (!stats) return { content: `No texts with ${label} between ${since.slice(0, 10)} and ${until.slice(0, 10)}.${limits.length ? ` Note: ${limits.join(' ')}` : ''}`, cards: [], activity: `Analyzed texts with ${label} (none found)` };
+      const weeks = sampleWeeks(messages, { weeks: Math.min(30, num(input.sample_weeks) ?? 20), them: label.split(' ')[0] });
+      const findings = scanItems('text message', messages, (m) => [m.body]);
+      const payload = {
+        coverage: { asked_for: { since: since.slice(0, 10), until: until.slice(0, 10) }, found: stats.range, note: 'Every message in "found" is counted in the statistics; the sampled weeks are a spread for reading tone, not the whole thread.' },
+        statistics: stats,
+        sampled_weeks: weeks.map((w) => ({ week_of: w.week, messages: w.lines })),
+      };
+      return {
+        content: untrustedContent('texts', payload, findings) + (limits.length ? `\nNote: ${limits.join(' ')}` : ''),
+        cards: [],
+        suspicious: findings,
+        activity: `Analyzed ${stats.total} texts with ${label} over ${stats.range.days} days`,
       };
     }),
 };
@@ -674,6 +720,7 @@ export const DATA_TOOLS = [
   proposeEditEvent,
   proposeDeleteEvent,
   searchTexts,
+  analyzeConversation,
   recentTextThreads,
   proposeSendText,
   getCallLog,

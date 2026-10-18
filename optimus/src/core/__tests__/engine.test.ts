@@ -302,6 +302,28 @@ describe('situational awareness', () => {
   });
 });
 
+describe('relationship check-in', () => {
+  it('analyzes the whole thread with one person in a single call: counts plus sampled weeks', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport((req, n) => {
+      if (n === 0) return { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'a1', name: 'analyze_conversation', input: { contact: 'my wife', months: 12 } }] };
+      return { content: [{ type: 'text', text: 'Here is how it looks.', citations: null }] };
+    });
+    const { engine } = makeEngine(db, fake);
+    const conv = await engine.conversations.create();
+    const activity: string[] = [];
+    await engine.send(conv.id, 'How are Jen and I doing?', (e) => {
+      if (e.type === 'tool-done') activity.push(e.summary);
+    });
+    const result = (fake.requests[1].messages[fake.requests[1].messages.length - 1].content as { content: string }[])[0].content;
+    expect(result).toContain('"statistics"');
+    expect(result).toContain('"sampled_weeks"');
+    expect(result).toMatch(/"contact": "Jennifer Ruiz"/);
+    expect(result).toMatch(/"medianReplyMinutes"/);
+    expect(activity.some((a) => /Analyzed \d+ texts with Jennifer Ruiz/.test(a))).toBe(true);
+  });
+});
+
 describe('finding photos', () => {
   it('searches the photo index and shows only the matches, tappable full screen', async () => {
     const db = await createMigratedDb();

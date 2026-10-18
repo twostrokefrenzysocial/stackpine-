@@ -47,6 +47,8 @@ export interface DateRange {
 export interface TextsSource {
   search(q: { query?: string; contact?: string; limit?: number } & DateRange): Promise<SmsMessage[]>;
   recentThreads(limit?: number): Promise<SmsMessage[]>; // latest message per thread
+  /** Every message with one person in the range (oldest first), for on-phone analysis. */
+  thread(q: { contact: string } & DateRange): Promise<SmsMessage[]>;
   send(to: string, body: string): Promise<{ id: string }>;
   /** Message types the device couldn't expose (e.g. RCS). */
   limitations(): Promise<string[]>;

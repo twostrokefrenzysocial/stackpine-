@@ -14,6 +14,10 @@ class SmsQueryOptions : Record {
   @Field
   var sinceMs: Double? = null
 
+  /** Only messages with date strictly less than this (epoch ms): pages back through long threads. */
+  @Field
+  var untilMs: Double? = null
+
   /** Default 200, clamped to 1..1000. */
   @Field
   var limit: Int? = null
@@ -70,17 +74,18 @@ class SmsReader(private val resolver: ContentResolver) {
     val query = opts.query?.trim()?.takeIf { it.isNotEmpty() }
     val threadId = opts.threadId?.trim()?.takeIf { it.isNotEmpty() }
     val sinceMs = opts.sinceMs?.toLong()
+    val untilMs = opts.untilMs?.toLong()
 
-    val sms = readSms(limit, sinceMs, query, threadId)
+    val sms = readSms(limit, sinceMs, untilMs, query, threadId)
     val mms = try {
-      readMms(limit, sinceMs, query, threadId)
+      readMms(limit, sinceMs, untilMs, query, threadId)
     } catch (e: Throwable) {
       // MMS is best effort: some OEM providers reject these queries.
       Log.w(TAG, "Failed to read MMS", e)
       emptyList()
     }
     val rcs = try {
-      readSamsungRcs(limit, sinceMs, query)
+      readSamsungRcs(limit, sinceMs, untilMs, query)
     } catch (e: Throwable) {
       // Only present when Samsung Messages is the RCS client.
       Log.i(TAG, "Samsung RCS provider not readable: ${e.message}")
@@ -111,7 +116,7 @@ class SmsReader(private val resolver: ContentResolver) {
 
   // region Samsung RCS (best effort)
 
-  private fun readSamsungRcs(limit: Int, sinceMs: Long?, query: String?): List<Map<String, Any?>> {
+  private fun readSamsungRcs(limit: Int, sinceMs: Long?, untilMs: Long?, query: String?): List<Map<String, Any?>> {
     val out = ArrayList<Map<String, Any?>>()
     val needle = query?.lowercase(Locale.ROOT)
     resolver.query(SAMSUNG_RCS_URI, null, null, null, "date DESC")?.use { c ->
@@ -129,6 +134,7 @@ class SmsReader(private val resolver: ContentResolver) {
         var dateMs = c.getLong(dateIdx)
         if (dateMs in 1..99_999_999_999L) dateMs *= 1000L // seconds
         if (sinceMs != null && dateMs <= sinceMs) continue
+        if (untilMs != null && dateMs >= untilMs) continue
         val body = c.stringOrEmpty(bodyIdx)
         val address = if (addressIdx >= 0) c.stringOrEmpty(addressIdx) else ""
         if (body.isEmpty()) continue
@@ -155,7 +161,7 @@ class SmsReader(private val resolver: ContentResolver) {
 
   // region SMS
 
-  private fun readSms(limit: Int, sinceMs: Long?, query: String?, threadId: String?): List<Map<String, Any?>> {
+  private fun readSms(limit: Int, sinceMs: Long?, untilMs: Long?, query: String?, threadId: String?): List<Map<String, Any?>> {
     val selection = StringBuilder()
     val args = ArrayList<String>()
     fun addClause(clause: String) {
@@ -166,6 +172,10 @@ class SmsReader(private val resolver: ContentResolver) {
     if (sinceMs != null) {
       addClause("${Telephony.Sms.DATE} > ?")
       args.add(sinceMs.toString())
+    }
+    if (untilMs != null) {
+      addClause("${Telephony.Sms.DATE} < ?")
+      args.add(untilMs.toString())
     }
     if (threadId != null) {
       addClause("${Telephony.Sms.THREAD_ID} = ?")
@@ -237,7 +247,7 @@ class SmsReader(private val resolver: ContentResolver) {
 
   // region MMS (best effort)
 
-  private fun readMms(limit: Int, sinceMs: Long?, query: String?, threadId: String?): List<Map<String, Any?>> {
+  private fun readMms(limit: Int, sinceMs: Long?, untilMs: Long?, query: String?, threadId: String?): List<Map<String, Any?>> {
     val selection = StringBuilder()
     val args = ArrayList<String>()
     fun addClause(clause: String) {
@@ -286,6 +296,7 @@ class SmsReader(private val resolver: ContentResolver) {
         val id = c.getLong(idIdx)
         val dateMs = c.getLong(dateIdx) * 1000L
         if (sinceMs != null && dateMs < (sinceMs / 1000) * 1000) continue
+        if (untilMs != null && dateMs >= untilMs) continue
         val box = if (c.isNull(boxIdx)) -1 else c.getInt(boxIdx)
         val body = mmsText(id)
         val address = mmsAddress(id, box)

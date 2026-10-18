@@ -150,6 +150,12 @@ export function createMockSources(opts: MockSourcesOptions = {}): MockDataSource
         .sort(newestFirst)
         .slice(0, q.limit ?? DEFAULT_LIMITS.texts);
     },
+    async thread(q) {
+      return dataset.texts
+        .filter((m) => inRange(m.date, q))
+        .filter((m) => addressMatches(m.address, m.contactName, q.contact))
+        .sort((a, b) => time(a.date) - time(b.date));
+    },
     async recentThreads(limit = DEFAULT_LIMITS.texts) {
       const latest = new Map<string, SmsMessage>();
       for (const m of dataset.texts) {

@@ -65,6 +65,7 @@ const TOOL_LABELS: Record<string, string> = {
   propose_edit_event: 'Drafting a change',
   propose_delete_event: 'Preparing deletion',
   search_texts: 'Searching texts',
+  analyze_conversation: 'Reading the whole conversation',
   recent_text_threads: 'Scanning conversations',
   propose_send_text: 'Drafting a text',
   get_call_log: 'Reading call log',
