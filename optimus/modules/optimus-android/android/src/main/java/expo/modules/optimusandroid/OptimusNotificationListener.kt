@@ -73,6 +73,37 @@ class OptimusNotificationListener : NotificationListenerService() {
       if (sbn.isOngoing) return
 
       val extras = notification.extras ?: Bundle()
+      // Chat apps (Google Messages, Samsung Messages, WhatsApp...) post one
+      // notification per conversation holding its recent messages. Capture each
+      // message on its own, with the sender and the time it arrived, so RCS
+      // chats that never reach the SMS database are still readable.
+      val chatMessages = messagingStyleMessages(extras)
+      if (chatMessages.isNotEmpty()) {
+        val conversation = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
+        val fallbackSender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+        val baseKey = sbn.key ?: "$pkg:${sbn.id}"
+        for (m in chatMessages) {
+          val sender = m.sender.ifEmpty { fallbackSender }
+          val title = if (conversation.isNotEmpty() && conversation != sender) "$sender · $conversation" else sender
+          val at = if (m.time > 0) m.time else sbn.postTime
+          if (Dedupe.isDuplicate("$baseKey#$at", title, m.text, at)) continue
+          val redaction = OtpRedactor.redact(title.take(MAX_TITLE), m.text.take(MAX_TEXT))
+          EncryptedQueue.append(
+            context,
+            JSONObject().apply {
+              put("key", "$baseKey#$at")
+              put("packageName", pkg)
+              put("appName", appLabel(context, pkg))
+              put("title", redaction.title)
+              put("text", redaction.text)
+              put("postedAtMs", at)
+              put("category", notification.category ?: JSONObject.NULL)
+              put("redacted", redaction.redacted)
+            }
+          )
+        }
+        return
+      }
       val title = (
         extras.getCharSequence(Notification.EXTRA_TITLE)
           ?: extras.getCharSequence(Notification.EXTRA_TITLE_BIG)
@@ -108,6 +139,40 @@ class OptimusNotificationListener : NotificationListenerService() {
     } catch (e: Throwable) {
       Log.w(TAG, "Failed to capture notification", e)
     }
+  }
+
+  private class ChatMessage(val text: String, val sender: String, val time: Long)
+
+  /** Every message a MessagingStyle notification carries (oldest first), with sender and time. */
+  private fun messagingStyleMessages(extras: Bundle): List<ChatMessage> {
+    val messages: Array<out Parcelable>? = try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        extras.getParcelableArray(Notification.EXTRA_MESSAGES, Parcelable::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+      }
+    } catch (e: Throwable) {
+      null
+    }
+    if (messages.isNullOrEmpty()) return emptyList()
+    val out = ArrayList<ChatMessage>()
+    for (item in messages) {
+      val bundle = item as? Bundle ?: continue
+      val text = bundle.getCharSequence("text")?.toString()?.trim().orEmpty()
+      if (text.isEmpty()) continue
+      val sender = (
+        bundle.getCharSequence("sender")?.toString()
+          ?: try {
+            @Suppress("DEPRECATION")
+            (bundle.getParcelable("sender_person") as? android.app.Person)?.name?.toString()
+          } catch (e: Throwable) {
+            null
+          }
+        )?.trim().orEmpty()
+      out.add(ChatMessage(text, sender, bundle.getLong("time", 0L)))
+    }
+    return out
   }
 
   /** MessagingStyle notifications keep the conversation in EXTRA_MESSAGES (array of Bundles with "text"). */

@@ -15,7 +15,17 @@ export interface RawSms {
   dateMs: number;
   type: 'inbox' | 'sent' | 'draft' | 'outbox' | 'failed' | 'queued' | 'other';
   read: boolean;
-  kind: 'sms' | 'mms';
+  kind: 'sms' | 'mms' | 'rcs';
+}
+
+export interface MessagingDiagnostics {
+  readSmsGranted: boolean;
+  /** Row counts, or 'unavailable' when a store can't be read on this phone. */
+  sms?: number | 'unavailable';
+  mms?: number | 'unavailable';
+  samsungRcs?: number | 'unavailable';
+  defaultSmsApp: string | null;
+  notificationAccessGranted: boolean;
 }
 
 export interface RawCall {
@@ -53,6 +63,7 @@ export interface DeviceStatus {
 interface NativeModuleShape {
   getSmsMessages(opts: { sinceMs?: number; limit?: number; query?: string; threadId?: string }): Promise<RawSms[]>;
   sendSms(to: string, body: string): Promise<{ id: string }>;
+  getMessagingDiagnostics(): Promise<MessagingDiagnostics>;
   getCallLog(opts: { sinceMs?: number; limit?: number; number?: string }): Promise<RawCall[]>;
   startCall(number: string): Promise<void>;
   getDeviceStatus(): DeviceStatus;
@@ -78,6 +89,11 @@ export function isAvailable(): boolean {
 /** Newest first. `sinceMs` enables incremental sync. Requires READ_SMS. */
 export function getSmsMessages(opts: { sinceMs?: number; limit?: number; query?: string; threadId?: string } = {}): Promise<RawSms[]> {
   return need().getSmsMessages(opts);
+}
+
+/** Which message stores this phone exposes (SMS, MMS, Samsung RCS) and the chat-notification state. */
+export async function getMessagingDiagnostics(): Promise<MessagingDiagnostics | null> {
+  return Native ? Native.getMessagingDiagnostics() : null;
 }
 
 /** Sends via SmsManager (multipart when long). Requires SEND_SMS. */

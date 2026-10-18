@@ -51,6 +51,13 @@ class SmsReader(private val resolver: ContentResolver) {
     private val MMS_URI: Uri = Uri.parse("content://mms")
     private val MMS_PART_URI: Uri = Uri.parse("content://mms/part")
 
+    /**
+     * Samsung Messages keeps RCS chats in its own (undocumented) provider rather
+     * than the SMS database. Columns seen in the wild: _id, msg_id, address,
+     * body, date, type, read. Everything about it is best effort.
+     */
+    private val SAMSUNG_RCS_URI: Uri = Uri.parse("content://im/chat")
+
     fun clampLimit(limit: Int?): Int = (limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
 
     /** Escapes LIKE wildcards so user input is matched literally (used with ESCAPE '\'). */
@@ -72,11 +79,79 @@ class SmsReader(private val resolver: ContentResolver) {
       Log.w(TAG, "Failed to read MMS", e)
       emptyList()
     }
+    val rcs = try {
+      readSamsungRcs(limit, sinceMs, query)
+    } catch (e: Throwable) {
+      // Only present when Samsung Messages is the RCS client.
+      Log.i(TAG, "Samsung RCS provider not readable: ${e.message}")
+      emptyList()
+    }
 
-    return (sms + mms)
+    return (sms + mms + rcs)
       .sortedByDescending { (it["dateMs"] as Double) }
       .take(limit)
   }
+
+  /**
+   * What this phone lets us see, for Settings and for the model's own
+   * honesty about gaps: row counts per store, and the default SMS app.
+   */
+  fun diagnostics(): Map<String, Any?> {
+    fun count(uri: Uri): Any = try {
+      resolver.query(uri, arrayOf("_id"), null, null, null)?.use { it.count } ?: "unavailable"
+    } catch (e: Throwable) {
+      "unavailable"
+    }
+    return mapOf(
+      "sms" to count(Telephony.Sms.CONTENT_URI),
+      "mms" to count(MMS_URI),
+      "samsungRcs" to count(SAMSUNG_RCS_URI)
+    )
+  }
+
+  // region Samsung RCS (best effort)
+
+  private fun readSamsungRcs(limit: Int, sinceMs: Long?, query: String?): List<Map<String, Any?>> {
+    val out = ArrayList<Map<String, Any?>>()
+    val needle = query?.lowercase(Locale.ROOT)
+    resolver.query(SAMSUNG_RCS_URI, null, null, null, "date DESC")?.use { c ->
+      val idIdx = c.getColumnIndex("_id")
+      val addressIdx = c.getColumnIndex("address")
+      val bodyIdx = c.getColumnIndex("body")
+      val dateIdx = c.getColumnIndex("date")
+      val typeIdx = c.getColumnIndex("type")
+      val readIdx = c.getColumnIndex("read")
+      val threadIdx = c.getColumnIndex("thread_id").takeIf { it >= 0 } ?: c.getColumnIndex("chat_session_id")
+      if (idIdx < 0 || bodyIdx < 0 || dateIdx < 0) return emptyList()
+      var scanned = 0
+      while (c.moveToNext() && out.size < limit && scanned < 5000) {
+        scanned++
+        var dateMs = c.getLong(dateIdx)
+        if (dateMs in 1..99_999_999_999L) dateMs *= 1000L // seconds
+        if (sinceMs != null && dateMs <= sinceMs) continue
+        val body = c.stringOrEmpty(bodyIdx)
+        val address = if (addressIdx >= 0) c.stringOrEmpty(addressIdx) else ""
+        if (body.isEmpty()) continue
+        if (needle != null && !body.lowercase(Locale.ROOT).contains(needle) && !address.lowercase(Locale.ROOT).contains(needle)) continue
+        val type = if (typeIdx >= 0 && !c.isNull(typeIdx)) c.getInt(typeIdx) else -1
+        out.add(
+          mapOf(
+            "id" to "rcs:${c.getLong(idIdx)}",
+            "threadId" to (if (threadIdx >= 0) "rcs:${c.stringOrEmpty(threadIdx)}" else "rcs:$address"),
+            "address" to address,
+            "body" to body,
+            "dateMs" to dateMs.toDouble(),
+            "type" to smsType(type),
+            "read" to (readIdx < 0 || c.isNull(readIdx) || c.getInt(readIdx) != 0),
+            "kind" to "rcs"
+          )
+        )
+      }
+    }
+    return out
+  }
+
+  // endregion
 
   // region SMS
 
@@ -259,12 +334,12 @@ class SmsReader(private val resolver: ContentResolver) {
       )?.use { c ->
         val idIdx = c.getColumnIndexOrThrow("_id")
         val textIdx = c.getColumnIndexOrThrow("text")
-        val dataIdx = c.getColumnIndexOrThrow("_data")
+        val dataIdx = c.getColumnIndex("_data")
         while (c.moveToNext()) {
           val inline = if (c.isNull(textIdx)) null else c.getString(textIdx)
           val text = if (!inline.isNullOrEmpty()) {
             inline
-          } else if (!c.isNull(dataIdx)) {
+          } else if (dataIdx >= 0 && !c.isNull(dataIdx)) {
             readPartStream(c.getLong(idIdx))
           } else {
             null

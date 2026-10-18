@@ -150,22 +150,30 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
         await requireAndroidPermission('texts', P.READ_SMS);
         const raw = await Native.getSmsMessages({ limit: 300 });
         const seen = new Set<string>();
-        const latest: Native.RawSms[] = [];
-        for (const r of raw) {
-          if (seen.has(r.threadId)) continue;
-          seen.add(r.threadId);
-          latest.push(r);
+        const latest: SmsMessage[] = [];
+        // RCS chats captured from notifications count as threads too.
+        const rcs = await rcsFromNotifications({ limit: 60 }).catch(() => [] as SmsMessage[]);
+        const all = [...(await Promise.all(raw.map(smsToMessage))), ...rcs].sort((a, b) => b.date.localeCompare(a.date));
+        for (const m of all) {
+          const key = m.kind === 'rcs-notification' ? `name:${(m.contactName ?? m.address).toLowerCase()}` : m.threadId;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          latest.push(m);
           if (latest.length >= limit) break;
         }
-        return Promise.all(latest.map(smsToMessage));
+        return latest;
       },
       async send(to, body) {
         await requireAndroidPermission('texts', P.SEND_SMS);
         return Native.sendSms(to, body);
       },
       async limitations() {
-        const notes = ["Some RCS chat messages (Samsung Messages / Google Messages) aren't stored in the SMS database. Optimus reads incoming ones from their notifications instead, so replies you sent from another device and RCS media may be missing."];
-        if (!(await kvGet(deps.db, 'notifications.listenerSeen'))) notes.push('Notification access is off, so RCS chats are not visible at all.');
+        const d = await Native.getMessagingDiagnostics().catch(() => null);
+        const notes: string[] = [];
+        if (d && typeof d.samsungRcs === 'number' && d.samsungRcs > 0) notes.push('RCS chats from Samsung Messages are readable in full.');
+        else notes.push("RCS chats from Google Messages aren't stored where apps can read them. Optimus keeps the ones that arrive as notifications (each message, with its sender), so older chats and replies sent from this phone may be missing.");
+        const listener = d ? d.notificationAccessGranted : !!(await kvGet(deps.db, 'notifications.listenerSeen'));
+        if (!listener) notes.push('Notification access is off, so incoming RCS chats are not visible at all. Settings › Data sources turns it on.');
         return notes;
       },
     },

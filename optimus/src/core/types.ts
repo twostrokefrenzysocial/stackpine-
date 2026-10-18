@@ -26,7 +26,7 @@ export interface SmsMessage {
   date: ISODate;
   direction: 'incoming' | 'outgoing';
   read: boolean;
-  kind: 'sms' | 'mms' | 'rcs-notification';
+  kind: 'sms' | 'mms' | 'rcs' | 'rcs-notification';
 }
 
 export interface CallLogEntry {

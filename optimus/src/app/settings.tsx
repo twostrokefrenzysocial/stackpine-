@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { MAIN_MODEL, BACKGROUND_MODEL } from '../core/llm/prompts';
 import { friendlyError } from '../core/llm/transport';
 import { photoIndexStats } from '../core/photos/photoIndex';
+import * as Native from '../../modules/optimus-android';
 import { proxyApi, type ProxyUsage } from '../platform/claude';
 import { exportBackup, importBackup } from '../platform/backupFiles';
 import { proxyToken, oauthTokens } from '../platform/secrets';
@@ -66,6 +67,15 @@ export default function Settings() {
 
   const { data: routines } = useData(() => rt.engine.routines.list(), []);
   const { data: photoStats, reload: refreshPhotoStats } = useData(() => photoIndexStats(rt.db), []);
+  const { data: msgDiag } = useData(() => (settings.dataMode === 'real' ? Native.getMessagingDiagnostics() : Promise.resolve(null)), [settings.dataMode]);
+  const n = (v: number | 'unavailable' | undefined) => (typeof v === 'number' ? v.toLocaleString() : null);
+  const chatNotifs = msgDiag ? (msgDiag.notificationAccessGranted ? 'ON' : 'OFF') : null;
+  const msgLine =
+    msgDiag && msgDiag.readSmsGranted
+      ? [`${n(msgDiag.sms) ?? '0'} SMS`, `${n(msgDiag.mms) ?? '0'} MMS`, typeof msgDiag.samsungRcs === 'number' ? `${n(msgDiag.samsungRcs)} SAMSUNG RCS` : 'RCS VIA NOTIFICATIONS', `CHAT NOTIFICATIONS ${chatNotifs}`].join(' · ')
+      : msgDiag
+        ? 'TEXT MESSAGE PERMISSION OFF'
+        : null;
   useEffect(() => {
     // Live progress while indexing runs.
     const t = setInterval(refreshPhotoStats, 5000);
@@ -322,6 +332,16 @@ export default function Settings() {
           <Txt variant="small" color={p.textSecondary}>
             {settings.dataMode === 'mock' ? 'Using a realistic demo phone. Nothing on this device is read.' : 'Reading this phone’s data, limited to the permissions you granted.'}
           </Txt>
+          {msgLine && (
+            <Txt variant="mono" color={p.textTertiary} accessibilityLabel={`Messages readable on this phone: ${msgLine}`}>
+              {msgLine}
+            </Txt>
+          )}
+          {msgDiag && !msgDiag.notificationAccessGranted && (
+            <Txt variant="small" color={p.textSecondary}>
+              RCS chats from Google Messages only reach me through notifications. Turn on notification access under Data sources so I can read them.
+            </Txt>
+          )}
           <Button label="Data sources and permissions" icon="chevronRight" variant="secondary" onPress={() => router.push('/onboarding')} />
           <Toggle label="Location" hint="Off by default. Only for context like “when I get home”." value={settings.locationEnabled} onChange={(v) => updateSettings({ locationEnabled: v })} />
         </Section>

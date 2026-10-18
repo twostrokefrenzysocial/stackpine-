@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
+import android.provider.Telephony
 import android.service.notification.NotificationListenerService
 import android.telephony.SmsManager
 import android.util.Log
@@ -33,6 +34,20 @@ class OptimusAndroidModule : Module() {
     AsyncFunction("getSmsMessages") { opts: SmsQueryOptions ->
       requirePermission(Manifest.permission.READ_SMS)
       SmsReader(context.contentResolver).read(opts)
+    }
+
+    AsyncFunction("getMessagingDiagnostics") {
+      val counts = if (granted(Manifest.permission.READ_SMS)) SmsReader(context.contentResolver).diagnostics() else emptyMap()
+      val defaultSmsApp = try {
+        Telephony.Sms.getDefaultSmsPackage(context)
+      } catch (e: Throwable) {
+        null
+      }
+      counts + mapOf(
+        "readSmsGranted" to granted(Manifest.permission.READ_SMS),
+        "defaultSmsApp" to defaultSmsApp,
+        "notificationAccessGranted" to notificationAccessGranted()
+      )
     }
 
     AsyncFunction("sendSms") { to: String, body: String ->
