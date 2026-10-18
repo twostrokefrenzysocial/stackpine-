@@ -27,6 +27,8 @@ export interface Settings {
   locationEnabled: boolean;
   /** Describe photos in the background so search finds anything in the library. */
   photoIndexEnabled: boolean;
+  /** Let Optimus search the web for facts, news, weather, places. */
+  webSearchEnabled: boolean;
   spendingCapUsd: number;
   onboardingDone: boolean;
   emailAccounts: ('gmail' | 'outlook' | 'icloud')[];
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notificationCaptureEnabled: true,
   locationEnabled: false,
   photoIndexEnabled: true,
+  webSearchEnabled: true,
   spendingCapUsd: 20,
   onboardingDone: false,
   emailAccounts: [],

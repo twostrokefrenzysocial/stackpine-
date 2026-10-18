@@ -65,6 +65,20 @@ export function fromOpenAIUsage(raw: unknown): Usage | null {
   };
 }
 
+/** OpenAI Responses usage ({input_tokens, output_tokens, cached}) plus web searches run. */
+export function fromResponsesUsage(raw: unknown, output: unknown): Usage | null {
+  if (!isObject(raw) || typeof raw.input_tokens !== 'number') return null;
+  const details = isObject(raw.input_tokens_details) ? raw.input_tokens_details : {};
+  const cached = typeof details.cached_tokens === 'number' ? details.cached_tokens : 0;
+  const searches = Array.isArray(output) ? output.filter((i) => isObject(i) && i.type === 'web_search_call').length : 0;
+  return {
+    input_tokens: Math.max(0, raw.input_tokens - cached),
+    output_tokens: typeof raw.output_tokens === 'number' ? raw.output_tokens : 0,
+    cache_read_input_tokens: cached,
+    ...(searches ? { server_tool_use: { web_search_requests: searches } } : {}),
+  };
+}
+
 /**
  * Incremental Server-Sent Events parser that tracks Messages API usage.
  *
@@ -146,6 +160,14 @@ export class SseUsageParser {
     } else if (event.type === 'message_delta' && isObject(event.usage)) {
       mergeUsage(this.usage, event.usage);
       this.sawUsage = true;
+    } else if ((event.type === 'response.completed' || event.type === 'response.incomplete') && isObject(event.response)) {
+      // OpenAI Responses API: the final event carries the model, usage and output.
+      if (typeof event.response.model === 'string') this.model = event.response.model;
+      const oa = fromResponsesUsage(event.response.usage, event.response.output);
+      if (oa) {
+        mergeUsage(this.usage, oa);
+        this.sawUsage = true;
+      }
     } else if (event.object === 'chat.completion.chunk') {
       // OpenAI: the model is on every chunk; usage arrives in the final one.
       if (typeof event.model === 'string') this.model = event.model;

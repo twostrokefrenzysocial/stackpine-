@@ -8,7 +8,7 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { ActionStore } from '../actions/actions';
 import { buildMemoryContext } from '../memory/retrieval';
-import { apiTools, toolByName, ALL_TOOLS } from '../tools';
+import { apiTools, toolByName, ALL_TOOLS, WEB_SEARCH_TOOL } from '../tools';
 import type { ToolContext, ToolDef } from '../tools/types';
 import type { ChatCard, ChatMessage } from '../types';
 import { describeNow } from '../util/time';
@@ -37,6 +37,8 @@ export interface TurnInput {
   tools?: ToolDef[];
   /** The user is talking in voice mode and will hear the reply, not read it. */
   voice?: boolean;
+  /** Let the model search the web (server-side, through the proxy). */
+  webSearch?: boolean;
 }
 
 export interface TurnResult {
@@ -100,6 +102,9 @@ export async function buildHistory(history: ChatMessage[], actions: ActionStore)
         if (c.type === 'confirm') {
           const a = await actions.get(c.actionId);
           if (a) notes.push(`[Card “${a.title}”: ${STATUS_WORDS[a.status]}${a.resultMessage ? ` — ${a.resultMessage}` : ''}]`);
+        } else {
+          const note = cardNote(c);
+          if (note) notes.push(note);
         }
       }
       if (notes.length) text = `${text}\n${notes.join('\n')}`.trim();
@@ -115,6 +120,48 @@ export async function buildHistory(history: ChatMessage[], actions: ActionStore)
   // The API requires the first message to be from the user.
   while (out.length && out[0].role !== 'user') out.shift();
   return out;
+}
+
+/**
+ * What an earlier reply showed, with ids, so follow-ups work ("reply to the
+ * second one", "open that photo again", "call him back"). Ids and names
+ * only: the content itself was third-party data and isn't repeated.
+ */
+export function cardNote(c: ChatCard): string | null {
+  const list = (label: string, items: string[]) => (items.length ? `[${label} shown, in order: ${items.slice(0, 8).join('; ')}]` : null);
+  switch (c.type) {
+    case 'emails':
+      return list('Emails', c.emails.map((e, i) => `${i + 1}. id ${e.id} from ${e.fromName ?? e.from}`));
+    case 'texts':
+      return list('Texts', c.messages.map((t, i) => `${i + 1}. ${t.contactName ?? t.address} (${t.direction})`));
+    case 'events':
+      return list('Events', c.events.map((e, i) => `${i + 1}. id ${e.id} at ${e.start}`));
+    case 'photos':
+      return list('Photos', c.photos.map((p, i) => `${i + 1}. id ${p.id}`));
+    case 'calls':
+      return list('Calls', c.calls.map((x, i) => `${i + 1}. ${x.contactName ?? x.number} ${x.type}`));
+    case 'sources':
+      return list('Web sources', c.sources.map((x, i) => `${i + 1}. ${x.url}`));
+    default:
+      return null;
+  }
+}
+
+/** Web pages the reply cited (Claude citations or OpenAI url citations), for a Sources card. */
+function collectSources(content: { type: string; [k: string]: unknown }[], into: Map<string, string>) {
+  for (const b of content) {
+    if (b.type !== 'text' || !Array.isArray(b.citations)) continue;
+    for (const c of b.citations as { url?: string; title?: string }[]) {
+      if (!c.url || !/^https?:\/\//.test(c.url) || into.has(c.url)) continue;
+      let host = c.url;
+      try {
+        host = new URL(c.url).hostname;
+      } catch {
+        // keep the url
+      }
+      into.set(c.url, (c.title || host).slice(0, 90));
+    }
+  }
 }
 
 export function buildSystem(parts: {
@@ -187,6 +234,8 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   let text = '';
   let toolCalls = 0;
   let stopReason: string | null = null;
+  let pauses = 0;
+  const sources = new Map<string, string>();
 
   for (let round = 0; round < MAX_TOOL_CALLS_PER_REQUEST + 2; round++) {
     if (input.signal?.aborted) throw new LlmError('aborted', 'aborted');
@@ -198,10 +247,11 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         model: MAIN_MODEL,
         system,
         messages,
-        tools: apiTools(tools),
+        tools: input.webSearch ? [...apiTools(tools), WEB_SEARCH_TOOL] : apiTools(tools),
         toolChoice: budgetLeft <= 0 ? { type: 'none' } : { type: 'auto' },
         maxTokens: 16000,
-        effort: 'low',
+        // Medium for everyday multi-step work; low keeps voice replies quick.
+        effort: input.voice ? 'low' : 'medium',
       },
       (delta) => {
         // Separate text from different rounds with a paragraph break.
@@ -217,6 +267,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     );
     stopReason = message.stop_reason;
     apiContent.push(...message.content);
+    collectSources(message.content as unknown as { type: string; [k: string]: unknown }[], sources);
 
     if (message.stop_reason === 'refusal') {
       const note = 'I can’t help with that request.';
@@ -225,6 +276,13 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         onEvent({ type: 'text', delta: note });
       }
       break;
+    }
+
+    // A long server-side web search can pause the turn: resend as is and it resumes.
+    if (message.stop_reason === 'pause_turn' && pauses < 3) {
+      pauses++;
+      messages.push({ role: 'assistant', content: message.content as unknown as BetaContentBlockParam[] });
+      continue;
     }
 
     const toolUses = message.content.filter((b): b is BetaToolUseBlock => b.type === 'tool_use');
@@ -276,5 +334,6 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     if (cards.some((c) => c.type === 'suspicious')) onEvent({ type: 'cards', cards: [...cards] });
   }
 
+  if (sources.size) cards.push({ type: 'sources', sources: [...sources].slice(0, 6).map(([url, title]) => ({ url, title })) });
   return { text: text.trim(), cards, toolCalls, apiContent, stopReason, usedMemoryIds: memory.usedIds };
 }

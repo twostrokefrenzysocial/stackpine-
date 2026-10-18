@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import type { CalendarEvent, CallLogEntry, CapturedNotification, ChatCard, EmailMessage, PhotoAsset, SmsMessage } from '../../core/types';
 import { formatDay, formatTime, relativeTime } from '../../core/util/time';
 import { mockPhotoSource } from '../../platform/sources/mockPhotos';
@@ -185,6 +185,40 @@ export function PhotoGrid({ photos, title, index }: { photos: PhotoAsset[]; titl
   );
 }
 
+/** Web pages a reply was based on; tap to open in the browser. */
+export function SourcesCard({ sources }: { sources: { title: string; url: string }[] }) {
+  const { palette: p } = useApp();
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, '');
+    } catch {
+      return u;
+    }
+  };
+  return (
+    <View style={styles.sources} accessibilityLabel={`Sources: ${sources.map((s) => s.title).join(', ')}`}>
+      <Txt variant="label" color={p.textTertiary}>
+        Sources
+      </Txt>
+      {sources.map((s, i) => (
+        <Pressable key={s.url} onPress={() => Linking.openURL(s.url)} accessibilityRole="link" accessibilityLabel={`${s.title}, ${host(s.url)}`} style={({ pressed }) => [styles.source, { opacity: pressed ? 0.6 : 1 }]}>
+          <Txt variant="mono" color={p.textTertiary}>
+            {i + 1}
+          </Txt>
+          <View style={{ flex: 1 }}>
+            <Txt variant="small" numberOfLines={1}>
+              {s.title}
+            </Txt>
+            <Txt variant="mono" color={p.textTertiary} numberOfLines={1}>
+              {host(s.url)}
+            </Txt>
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export function SuspiciousCard({ source, excerpt, reason }: { source: string; excerpt: string; reason: string }) {
   const { palette: p } = useApp();
   return (
@@ -236,10 +270,14 @@ export function ChatCardView({ card, index }: { card: ChatCard; index?: number }
       return <SuspiciousCard source={card.source} excerpt={card.excerpt} reason={card.reason} />;
     case 'memory-saved':
       return <MemorySavedChip content={card.content} />;
+    case 'sources':
+      return <SourcesCard sources={card.sources} />;
   }
 }
 
 const styles = StyleSheet.create({
+  sources: { gap: space.sm, paddingTop: space.xs },
+  source: { flexDirection: 'row', gap: space.md, alignItems: 'center', minHeight: 40 },
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   rowIcon: { width: 32, height: 32, borderWidth: 1, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

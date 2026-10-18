@@ -179,7 +179,8 @@ export type ChatCard =
   | { type: 'notifications'; notifications: CapturedNotification[] }
   | { type: 'confirm'; actionId: string }
   | { type: 'suspicious'; source: string; excerpt: string; reason: string }
-  | { type: 'memory-saved'; memoryId: string; content: string };
+  | { type: 'memory-saved'; memoryId: string; content: string }
+  | { type: 'sources'; sources: { title: string; url: string }[] };
 
 export interface ChatMessage {
   id: string;

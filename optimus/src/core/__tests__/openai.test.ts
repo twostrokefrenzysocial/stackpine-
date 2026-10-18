@@ -106,7 +106,7 @@ describe('OpenAITransport', () => {
     expect(body.model).toBe('oa-main');
     expect(body.messages[0]).toEqual({ role: 'system', content: 'STATIC\n\nMEMORY' });
     expect(body.tools[0].function.name).toBe('get_calendar_events');
-    expect(body.reasoning_effort).toBe('medium');
+    expect(body.reasoning_effort).toBe('low');
     expect(streamed).toBe('Lunch is at noon.');
     expect(m.stop_reason).toBe('end_turn');
   });

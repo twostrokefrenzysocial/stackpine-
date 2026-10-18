@@ -326,6 +326,15 @@ export default function Settings() {
           <Toggle label="Location" hint="Off by default. Only for context like “when I get home”." value={settings.locationEnabled} onChange={(v) => updateSettings({ locationEnabled: v })} />
         </Section>
 
+        <Section title="Web">
+          <Toggle
+            label="Search the web"
+            hint="For news, weather, opening hours, facts and how-tos. Searches run through your proxy and count toward Usage (about 1¢ each); I list the pages I used under the answer."
+            value={settings.webSearchEnabled}
+            onChange={(v) => updateSettings({ webSearchEnabled: v })}
+          />
+        </Section>
+
         <Section title="Photo search">
           <Toggle
             label="Make my photos searchable"

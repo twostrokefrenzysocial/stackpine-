@@ -1,4 +1,4 @@
-import type { BetaContentBlockParam, BetaMessage, BetaMessageParam, BetaTool, BetaToolChoice } from '@anthropic-ai/sdk/resources/beta/messages/messages';
+import type { BetaContentBlockParam, BetaMessage, BetaMessageParam, BetaTool, BetaToolChoice, BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { z } from 'zod';
 import type { BackgroundLlm } from './background';
 import { LlmError, type ChatRequest, type LlmTransport } from './transport';
@@ -96,8 +96,8 @@ export function toOpenAIMessages(system: string, messages: BetaMessageParam[]): 
   return out;
 }
 
-export function toOpenAITools(tools: BetaTool[]) {
-  return tools.map((t) => ({ type: 'function' as const, function: { name: t.name, description: t.description ?? '', parameters: t.input_schema } }));
+export function toOpenAITools(tools: BetaToolUnion[]) {
+  return tools.filter((t): t is BetaTool => 'input_schema' in t).map((t) => ({ type: 'function' as const, function: { name: t.name, description: t.description ?? '', parameters: t.input_schema } }));
 }
 
 export function toOpenAIToolChoice(choice: BetaToolChoice | undefined): unknown {
@@ -262,7 +262,7 @@ export class OpenAITransport implements LlmTransport {
       model: this.cfg.model,
       messages: toOpenAIMessages(systemText(req), req.messages),
       max_completion_tokens: req.maxTokens,
-      reasoning_effort: this.cfg.effort ?? 'medium',
+      reasoning_effort: this.cfg.effort ?? req.effort,
       stream: true,
       stream_options: { include_usage: true },
     };

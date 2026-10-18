@@ -2,7 +2,7 @@ import type {
   BetaMessage,
   BetaMessageParam,
   BetaTextBlockParam,
-  BetaTool,
+  BetaToolUnion,
   BetaToolChoice,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
@@ -10,7 +10,8 @@ export interface ChatRequest {
   model: string;
   system: BetaTextBlockParam[];
   messages: BetaMessageParam[];
-  tools: BetaTool[];
+  /** Function tools plus, optionally, the web search server tool. */
+  tools: BetaToolUnion[];
   toolChoice?: BetaToolChoice;
   maxTokens: number;
   effort: 'low' | 'medium' | 'high';

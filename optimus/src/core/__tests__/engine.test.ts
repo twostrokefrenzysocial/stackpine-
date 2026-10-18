@@ -308,3 +308,46 @@ describe('finding photos', () => {
     expect((card as { photos: unknown[] }).photos).toHaveLength(1);
   });
 });
+
+describe('web search and follow-ups', () => {
+  it('offers web search when on, resumes a paused server turn, and lists cited sources', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport((_req, n) =>
+      n === 0
+        ? { stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'Cleveland weather' } }] as never }
+        : { content: [{ type: 'text', text: '54°F and cloudy.', citations: [{ type: 'web_search_result_location', url: 'https://weather.example/cle', title: 'Cleveland forecast', cited_text: '', encrypted_index: 'x' }] }] as never },
+    );
+    const sources = createMockSources({ now: () => NOW });
+    const engine = new OptimusEngine({ db, sources: () => sources, transport: () => fake, background: () => new HeuristicBackgroundLlm(), now: () => NOW, webSearch: () => true });
+    const conv = await engine.conversations.create();
+    const { result } = await engine.send(conv.id, 'What is the weather in Cleveland?', () => {});
+    expect(fake.requests[0].tools.some((t) => (t as { type?: string }).type === 'web_search_20260209')).toBe(true);
+    expect(fake.requests).toHaveLength(2);
+    expect(fake.requests[1].messages[fake.requests[1].messages.length - 1].role).toBe('assistant');
+    expect(result.cards.find((c) => c.type === 'sources')).toEqual({ type: 'sources', sources: [{ url: 'https://weather.example/cle', title: 'Cleveland forecast' }] });
+  });
+
+  it('leaves web search out when it is off', async () => {
+    const db = await createMigratedDb();
+    const fake = new FakeTransport(() => ({ content: [{ type: 'text', text: 'ok', citations: null }] }));
+    const { engine } = makeEngine(db, fake);
+    const conv = await engine.conversations.create();
+    await engine.send(conv.id, 'hi', () => {});
+    expect(fake.requests[0].tools.some((t) => (t as { type?: string }).type === 'web_search_20260209')).toBe(false);
+  });
+
+  it('remembers what it showed, with ids, so "the second one" works later', async () => {
+    const db = await createMigratedDb();
+    let n = 0;
+    const fake = new FakeTransport(() =>
+      n++ === 0 ? { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'e1', name: 'search_email', input: { unread_only: true } }] } : { content: [{ type: 'text', text: 'Here are your unread emails.', citations: null }] },
+    );
+    const { engine } = makeEngine(db, fake);
+    const conv = await engine.conversations.create();
+    await engine.send(conv.id, 'Show my unread email', () => {});
+    await engine.send(conv.id, 'Reply to the second one', () => {});
+    const last = fake.requests[fake.requests.length - 1];
+    const history = last.messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
+    expect(history).toMatch(/\[Emails shown, in order: 1\. id \S+ from [^;]+; 2\. id /);
+  });
+});

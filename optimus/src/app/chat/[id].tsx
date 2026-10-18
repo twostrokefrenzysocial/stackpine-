@@ -4,6 +4,7 @@ import { FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } fr
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage } from '../../core/types';
+import { followUps } from '../../core/util/followUps';
 import { formatDay } from '../../core/util/time';
 import { useVoiceInput } from '../../platform/voice';
 import { useApp, useData } from '../../ui/AppContext';
@@ -146,6 +147,13 @@ export default function Chat() {
             ListHeaderComponent={
               <>
                 {chat.streaming && <AssistantBlock text={chat.streaming.text} cards={chat.streaming.cards} activity={chat.streaming.activity} streaming />}
+                {!chat.streaming && !chat.error && (
+                  <View style={styles.chips}>
+                    {followUps(items[items.length - 1]).map((f) => (
+                      <Button key={f} label={f} variant="secondary" compact onPress={() => chat.send(f)} />
+                    ))}
+                  </View>
+                )}
                 {chat.error && <Banner title={chat.error.title} body={chat.error.body} tone="alert" onDismiss={() => chat.setError(null)} action={{ label: 'Settings', onPress: () => router.push('/settings') }} />}
               </>
             }
@@ -237,6 +245,7 @@ function HistoryDrawer({ open, onClose, current }: { open: boolean; onClose: () 
 }
 
 const styles = StyleSheet.create({
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs },
   top: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth * 2 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg, paddingHorizontal: space.xl },
   drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '84%', maxWidth: 380, overflow: 'hidden', borderRightWidth: 1 },

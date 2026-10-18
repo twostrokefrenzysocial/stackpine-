@@ -12,7 +12,8 @@ import { createMockSources, type MockDataSources } from '../core/mock/sources';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, upgradeModelDefaults, type Settings } from '../core/settings/settings';
 import type { DataSources, SourceName } from '../core/sources/types';
 import { z } from 'zod';
-import { OpenAIBackgroundLlm, OpenAITransport, type OpenAIConfig } from '../core/llm/openai';
+import { OpenAIBackgroundLlm, type OpenAIConfig } from '../core/llm/openai';
+import { OpenAIResponsesTransport } from '../core/llm/openaiResponses';
 import { createClient, ProxyBackgroundLlm, ProxyTransport } from './claude';
 import { fetch as expoFetch } from 'expo/fetch';
 import { openDatabase } from './db';
@@ -82,7 +83,7 @@ async function doBoot(): Promise<Runtime> {
         backgroundModel: settings.openaiBackgroundModel.trim(),
         fetch: expoFetch as unknown as typeof globalThis.fetch,
       };
-      transport = new OpenAITransport(cfg);
+      transport = new OpenAIResponsesTransport(cfg);
       background = new OpenAIBackgroundLlm(cfg, (schema) => z.toJSONSchema(schema) as Record<string, unknown>);
     } else if (settings.proxyUrl && token) {
       client = createClient(settings.proxyUrl, token);
@@ -118,6 +119,7 @@ async function doBoot(): Promise<Runtime> {
     scheduler: notificationScheduler,
     routineScheduler,
     locationEnabled: () => settings.locationEnabled,
+    webSearch: () => settings.webSearchEnabled,
     unavailableSources: () => unavailableSources(settings),
   });
   engineRef.engine = engine;

@@ -127,3 +127,13 @@ describe('voice mode', () => {
     expect(buildSystem({ coreMemory: '', relevantMemory: '', now: new Date(), dataMode: 'real', unavailable: [] }).map((b) => b.text).join('\n')).not.toMatch(/# Voice mode/);
   });
 });
+
+describe('follow-up suggestions', () => {
+  const { followUps } = jest.requireActual<typeof import('../util/followUps')>('../util/followUps');
+  it('suggests the obvious next step for what was shown', () => {
+    const base = { id: 'm', conversationId: 'c', role: 'assistant' as const, text: '', createdAt: '' };
+    expect(followUps({ ...base, cards: [{ type: 'calls', calls: [{ id: '1', number: '555', contactName: 'Linda Ruiz', type: 'missed', date: '', durationSec: 0 }] }] } as never)).toEqual(['Call Linda Ruiz back']);
+    expect(followUps({ ...base, cards: [] })).toEqual([]);
+    expect(followUps({ ...base, role: 'user', cards: [] } as never)).toEqual([]);
+  });
+});

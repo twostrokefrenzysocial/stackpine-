@@ -165,5 +165,6 @@ export function openAIPriceFor(model: string | undefined | null, table: Record<s
 export function openAICostUsd(model: string | undefined | null, usage: Usage, table: Record<string, OpenAIPrice>): number {
   const price = openAIPriceFor(model, table);
   const cacheRead = price.cacheRead ?? price.input;
-  return (n(usage.input_tokens) * price.input + n(usage.output_tokens) * price.output + n(usage.cache_read_input_tokens) * cacheRead) / 1_000_000;
+  // OpenAI web search is billed per call (about $10 per 1,000).
+  return (n(usage.input_tokens) * price.input + n(usage.output_tokens) * price.output + n(usage.cache_read_input_tokens) * cacheRead) / 1_000_000 + n(usage.server_tool_use?.web_search_requests) * WEB_SEARCH_USD_PER_REQUEST;
 }

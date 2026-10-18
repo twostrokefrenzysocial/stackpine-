@@ -51,7 +51,7 @@ export interface HandlerDeps {
   openConn?: OpenConn;
 }
 
-type Route = 'messages' | 'count_tokens' | 'openai_chat';
+type Route = 'messages' | 'count_tokens' | 'openai_chat' | 'openai_responses';
 
 /** Text-to-speech models the app may use, and their price per million input characters (USD). */
 export const TTS_PRICES_PER_M_CHARS: Record<string, number> = { 'gpt-4o-mini-tts': 15, 'tts-1': 15, 'tts-1-hd': 30 };
@@ -61,6 +61,7 @@ const UPSTREAM_PATHS: Record<Route, string> = {
   messages: '/v1/messages',
   count_tokens: '/v1/messages/count_tokens',
   openai_chat: '/v1/chat/completions',
+  openai_responses: '/v1/responses',
 };
 
 /** Response headers that describe the upstream connection, not the body we relay. */
@@ -104,7 +105,7 @@ export async function handle(request: Request, env: HandlerEnv, deps: HandlerDep
   if (!isAuthorized(request.headers.get('x-optimus-token'), env.APP_TOKEN)) {
     return errorResponse(401, 'optimus_unauthorized', 'Missing or invalid x-optimus-token header.');
   }
-  const isOpenAI = path === '/openai/v1/chat/completions';
+  const isOpenAI = path === '/openai/v1/chat/completions' || path === '/openai/v1/responses';
   if (method === 'POST' && (path === '/v1/messages' || path === '/v1/messages/count_tokens') && !env.ANTHROPIC_API_KEY) {
     return errorResponse(500, 'optimus_misconfigured', 'Proxy has no ANTHROPIC_API_KEY secret. Add it, or switch the app to OpenAI.');
   }
@@ -117,7 +118,7 @@ export async function handle(request: Request, env: HandlerEnv, deps: HandlerDep
     if (method === 'POST' && path === '/v1/messages/count_tokens') {
       return await forward('count_tokens', request, url, env, deps);
     }
-    if (method === 'POST' && isOpenAI) return await forward('openai_chat', request, url, env, deps);
+    if (method === 'POST' && isOpenAI) return await forward(path.endsWith('/responses') ? 'openai_responses' : 'openai_chat', request, url, env, deps);
     if (method === 'POST' && path === '/openai/v1/audio/speech') return await speech(request, env, deps);
     if (path.startsWith('/mail/icloud/')) return await icloudMail(method, path, request, env, deps);
     if (method === 'GET' && path === '/usage') return json(await ledgerCall(() => deps.ledger.usage()));
@@ -272,7 +273,7 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
     return errorResponse(400, 'optimus_invalid_request', 'Request body must be a JSON object.');
   }
 
-  const openai = route === 'openai_chat';
+  const openai = route === 'openai_chat' || route === 'openai_responses';
   const model = payload.model;
   const allowed = openai ? allowedOpenAIModels(env) : allowedModels(env);
 
@@ -281,7 +282,7 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
       allowedModels: allowed,
     });
   }
-  const maxTokens = openai ? (payload.max_completion_tokens ?? payload.max_tokens) : payload.max_tokens;
+  const maxTokens = openai ? (payload.max_completion_tokens ?? payload.max_output_tokens ?? payload.max_tokens) : payload.max_tokens;
   if (typeof maxTokens === 'number' && maxTokens > MAX_TOKENS_LIMIT) {
     return errorResponse(400, 'optimus_max_tokens_too_large', `max_tokens must be at most ${MAX_TOKENS_LIMIT}.`, {
       maxTokens: MAX_TOKENS_LIMIT,
@@ -312,7 +313,7 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
 
   // --- Forward. Only an explicit allowlist of headers goes upstream; the
   // app's placeholder x-api-key and its x-optimus-token are dropped. -------
-  if (openai) return forwardOpenAI(payload, model, request, env, deps);
+  if (openai) return forwardOpenAI(route, payload, model, request, env, deps);
   const headers = new Headers({
     'content-type': 'application/json',
     'x-api-key': env.ANTHROPIC_API_KEY!,
@@ -358,15 +359,16 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
  * OpenAI Chat Completions. Streaming requests always ask for a final usage
  * chunk so the cap can be enforced; nothing else in the body is changed.
  */
-async function forwardOpenAI(payload: Record<string, unknown>, model: string, request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
-  const body = payload.stream === true ? { ...payload, stream_options: { ...(payload.stream_options as object | undefined), include_usage: true } } : payload;
+async function forwardOpenAI(route: 'openai_chat' | 'openai_responses', payload: Record<string, unknown>, model: string, request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+  // Chat Completions only reports usage on a stream when asked; Responses always does.
+  const body = route === 'openai_chat' && payload.stream === true ? { ...payload, stream_options: { ...(payload.stream_options as object | undefined), include_usage: true } } : payload;
   const headers = new Headers({ 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` });
   const accept = request.headers.get('accept');
   if (accept) headers.set('accept', accept);
   let upstream: Response;
   try {
     upstream = await deps.upstreamFetch(
-      new Request(`${OPENAI_API_ORIGIN}${UPSTREAM_PATHS.openai_chat}`, { method: 'POST', headers, body: JSON.stringify(body), signal: request.signal }),
+      new Request(`${OPENAI_API_ORIGIN}${UPSTREAM_PATHS[route]}`, { method: 'POST', headers, body: JSON.stringify(body), signal: request.signal }),
     );
   } catch {
     return errorResponse(502, 'optimus_upstream_unreachable', 'Could not reach the OpenAI API.');
