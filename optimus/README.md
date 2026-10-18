@@ -45,3 +45,25 @@ The browser preview (`npm run web`) is only for checking layouts. It runs on moc
 
 - **Mock** uses a realistic fake phone (`src/core/mock/`): the Ruiz family, Dave's moved 3 PM, Sarah waiting on feedback, a phishing email, passcode notifications and illustrated photos.
 - **Real** reads the phone, using only the permissions you've granted. Anything Optimus can't see, it tells you.
+
+## Design
+
+The visual system is defined in `.claude/skills/optimus-design/`: true black for the OLED screen, white for information, and one red used only as a signal. Type is Barlow Semi Condensed, Inter and JetBrains Mono. The avatar is a procedural 3D neural brain (`src/core/brain` for geometry and the state machine, `src/ui/components/BrainImpl.tsx` for Skia rendering on the UI thread). It is idle, listening, thinking or responding, follows the mic level and speech, and slows down for reduce motion and power saving. The app is dark mode only.
+
+## Verification
+
+```bash
+npm run verify                     # typecheck + lint + 151 unit tests
+./scripts/check-android-kotlin.sh  # compiles the native Kotlin against the Android 15 framework (no SDK needed)
+npx expo prebuild --platform android --no-install   # config plugins → Android project
+npx expo export --platform android # Hermes JS bundle
+```
+
+The unit tests cover memory (save, dedupe, contradictions, people, forget cascades, retrieval budget and ranking), confirmation logic, tools through the agent loop (8-call cap, untrusted-data wrapping, injection flags, missing permissions), redaction and retention, the brief, backup/restore, email parsing, the brain geometry and state machine, and the proxy (auth, cap, rate limit, streaming cost accounting).
+
+## Known limitations
+
+- **No arrival reminders yet.** "Remind me when I get home" would need geofencing, which needs always-on background location; that's blocked in this build for privacy. Location is used only as on-demand context.
+- **RCS.** Samsung Messages RCS chats aren't in the SMS database, so Optimus reads incoming RCS from notifications (with notification access on). Messages you sent from another device, and RCS media, can be missing. Optimus says so when it matters.
+- **Background timing.** Android and One UI decide when background work runs. The brief's notification fires on time, and the brief itself is built when you open the app if the background run was late.
+- **Shortcuts** (long-press icon) are registered on first launch, so they appear after you've opened the app once.
