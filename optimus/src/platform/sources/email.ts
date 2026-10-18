@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { AccessError, type EmailSource } from '../../core/sources/types';
 import type { EmailMessage } from '../../core/types';
+import { b64urlEncode, buildRfc822, fromGmail, fromGraph, gmailQuery, type GraphMessage } from '../../core/email/format';
 import { oauthTokens } from '../secrets';
 
 /**
@@ -57,39 +58,6 @@ async function gmailToken(): Promise<string | null> {
   return accessToken;
 }
 
-const b64urlDecode = (s: string) => {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  try {
-    return decodeURIComponent(escape(atob(b64)));
-  } catch {
-    return atob(b64);
-  }
-};
-const b64urlEncode = (s: string) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-interface GmailPart {
-  mimeType?: string;
-  body?: { data?: string };
-  parts?: GmailPart[];
-  headers?: { name: string; value: string }[];
-}
-
-function gmailText(part: GmailPart | undefined): string {
-  if (!part) return '';
-  if (part.mimeType === 'text/plain' && part.body?.data) return b64urlDecode(part.body.data);
-  for (const p of part.parts ?? []) {
-    const t = gmailText(p);
-    if (t) return t;
-  }
-  if (part.mimeType === 'text/html' && part.body?.data) return b64urlDecode(part.body.data).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  return '';
-}
-
-function parseAddress(v: string): { email: string; name?: string } {
-  const m = v.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>/);
-  return m ? { name: m[1].trim() || undefined, email: m[2].trim() } : { email: v.trim() };
-}
-
 async function gmailFetch(token: string, path: string, init?: RequestInit) {
   const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
   if (res.status === 401) throw new AccessError('email', 'not-connected', 'Gmail sign-in expired');
@@ -98,25 +66,7 @@ async function gmailFetch(token: string, path: string, init?: RequestInit) {
 }
 
 async function gmailGet(token: string, id: string): Promise<EmailMessage & { messageIdHeader?: string }> {
-  const m = await gmailFetch(token, `messages/${id}?format=full`);
-  const h = (name: string) => (m.payload?.headers ?? []).find((x: { name: string }) => x.name.toLowerCase() === name)?.value ?? '';
-  const from = parseAddress(h('from'));
-  return {
-    id: `gmail:${m.id}`,
-    threadId: m.threadId,
-    account: 'gmail',
-    from: from.email,
-    fromName: from.name,
-    to: h('to').split(',').map((x: string) => parseAddress(x).email).filter(Boolean),
-    subject: h('subject') || '(no subject)',
-    snippet: m.snippet ?? '',
-    body: gmailText(m.payload),
-    date: new Date(Number(m.internalDate)).toISOString(),
-    unread: (m.labelIds ?? []).includes('UNREAD'),
-    important: (m.labelIds ?? []).includes('IMPORTANT'),
-    labels: m.labelIds,
-    messageIdHeader: h('message-id'),
-  };
+  return fromGmail(await gmailFetch(token, `messages/${id}?format=full`));
 }
 
 // ---------- Outlook ----------
@@ -158,34 +108,6 @@ async function graph(token: string, path: string, init?: RequestInit) {
   return res.status === 202 || res.status === 204 ? null : res.json();
 }
 
-interface GraphMessage {
-  id: string;
-  conversationId: string;
-  subject?: string;
-  bodyPreview?: string;
-  body?: { content?: string; contentType?: string };
-  from?: { emailAddress?: { address?: string; name?: string } };
-  toRecipients?: { emailAddress?: { address?: string } }[];
-  receivedDateTime: string;
-  isRead: boolean;
-  importance?: string;
-}
-
-const toOutlook = (m: GraphMessage): EmailMessage => ({
-  id: `outlook:${m.id}`,
-  threadId: m.conversationId,
-  account: 'outlook',
-  from: m.from?.emailAddress?.address ?? '',
-  fromName: m.from?.emailAddress?.name,
-  to: (m.toRecipients ?? []).map((r) => r.emailAddress?.address ?? '').filter(Boolean),
-  subject: m.subject || '(no subject)',
-  snippet: m.bodyPreview ?? '',
-  body: m.body?.contentType === 'html' ? (m.body.content ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : (m.body?.content ?? ''),
-  date: m.receivedDateTime,
-  unread: !m.isRead,
-  important: m.importance === 'high',
-});
-
 // ---------- Combined source ----------
 
 export function createEmailSource(): EmailSource {
@@ -206,8 +128,7 @@ export function createEmailSource(): EmailSource {
       const limit = q.limit ?? 15;
       const results: EmailMessage[] = [];
       if (g) {
-        const parts = [q.query, q.from ? `from:${q.from}` : '', q.unreadOnly ? 'is:unread' : '', q.since ? `after:${Math.floor(Date.parse(q.since) / 1000)}` : '', q.until ? `before:${Math.floor(Date.parse(q.until) / 1000)}` : '', 'in:inbox'].filter(Boolean);
-        const list = await gmailFetch(g, `messages?maxResults=${limit}&q=${encodeURIComponent(parts.join(' '))}`);
+        const list = await gmailFetch(g, `messages?maxResults=${limit}&q=${encodeURIComponent(gmailQuery(q))}`);
         for (const { id } of list.messages ?? []) results.push(await gmailGet(g, id));
       }
       if (o) {
@@ -217,7 +138,7 @@ export function createEmailSource(): EmailSource {
         else params.push('$orderby=receivedDateTime desc');
         if (filters.length && !q.query) params.push(`$filter=${encodeURIComponent(filters.join(' and '))}`);
         const res = await graph(o, `mailFolders/inbox/messages?${params.join('&')}`);
-        let items = ((res?.value ?? []) as GraphMessage[]).map(toOutlook);
+        let items = ((res?.value ?? []) as GraphMessage[]).map(fromGraph);
         if (q.query) items = items.filter((m) => (!q.unreadOnly || m.unread) && (!q.since || m.date >= q.since) && (!q.from || m.from === q.from));
         results.push(...items);
       }
@@ -229,7 +150,7 @@ export function createEmailSource(): EmailSource {
       if (id.startsWith('gmail:') && g) return gmailGet(g, id.slice(6));
       if (id.startsWith('outlook:') && o) {
         const m = (await graph(o, `messages/${id.slice(8)}`)) as GraphMessage;
-        return toOutlook(m);
+        return fromGraph(m);
       }
       return null;
     },
@@ -248,13 +169,7 @@ export function createEmailSource(): EmailSource {
       }
       if (!g) throw new AccessError('email', 'not-connected');
       const original = replyTo?.startsWith('gmail:') ? await gmailGet(g, replyTo.slice(6)) : null;
-      const headers = [
-        `To: ${draft.to.join(', ')}`,
-        `Subject: ${draft.subject}`,
-        'Content-Type: text/plain; charset="UTF-8"',
-        ...(original?.messageIdHeader ? [`In-Reply-To: ${original.messageIdHeader}`, `References: ${original.messageIdHeader}`] : []),
-      ];
-      const raw = b64urlEncode(`${headers.join('\r\n')}\r\n\r\n${draft.body}`);
+      const raw = b64urlEncode(buildRfc822(draft, original ?? undefined));
       const sent = await gmailFetch(g, 'messages/send', { method: 'POST', body: JSON.stringify({ raw, ...(original ? { threadId: original.threadId } : {}) }) });
       return { id: `gmail:${sent.id}` };
     },

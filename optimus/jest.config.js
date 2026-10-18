@@ -5,5 +5,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
+    // @noble/* ship ESM only.
+    '^.+\\.js$': ['ts-jest', { tsconfig: { allowJs: true, module: 'commonjs', target: 'ES2022', isolatedModules: true } }],
   },
+  transformIgnorePatterns: ['/node_modules/(?!@noble/)'],
 };
