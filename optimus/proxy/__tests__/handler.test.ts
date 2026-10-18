@@ -413,3 +413,40 @@ describe('OpenAI route', () => {
     expect((await onlyOpenAI.call(messagesRequest(validBody))).status).toBe(500);
   });
 });
+
+describe('text-to-speech route', () => {
+  const ttsEnv: HandlerEnv = { ...env, OPENAI_API_KEY: 'sk-openai-real' };
+  const ttsRequest = (body: unknown) =>
+    new Request(`${BASE}/openai/v1/audio/speech`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-optimus-token': TOKEN }, body: JSON.stringify(body) });
+
+  it('streams audio back and bills by characters', async () => {
+    const clock = fakeClock('2026-10-18T12:00:00Z');
+    const ledger = new LedgerCore(new MemoryStorage(), { defaultCapUsd: 20, rateLimitPerMinute: 30 }, clock.now);
+    const pending: Promise<unknown>[] = [];
+    const upstreamRequests: Request[] = [];
+    const audio = new Uint8Array([73, 68, 51]);
+    const res = await handle(ttsRequest({ model: 'gpt-4o-mini-tts', input: 'a'.repeat(1000), voice: 'onyx' }), ttsEnv, {
+      ledger,
+      upstreamFetch: async (r) => {
+        upstreamRequests.push(r);
+        return new Response(audio, { headers: { 'content-type': 'audio/mpeg' } });
+      },
+      waitUntil: (p) => pending.push(p),
+    });
+    await Promise.all(pending);
+    expect(res.headers.get('content-type')).toBe('audio/mpeg');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(audio);
+    expect(upstreamRequests[0].url).toBe('https://api.openai.com/v1/audio/speech');
+    expect(upstreamRequests[0].headers.get('authorization')).toBe('Bearer sk-openai-real');
+    expect((await ledger.usage()).spentUsd).toBeCloseTo(0.015, 6);
+  });
+
+  it('rejects unknown voices models and oversized text', async () => {
+    const { call } = setup();
+    expect((await call(ttsRequest({ model: 'gpt-5', input: 'hi' }))).status).toBe(500); // no OpenAI key in the base env
+    const ledger = new LedgerCore(new MemoryStorage(), { defaultCapUsd: 20, rateLimitPerMinute: 30 }, fakeClock('2026-10-18T12:00:00Z').now);
+    const deps = { ledger, upstreamFetch: async () => new Response('x'), waitUntil: () => {} };
+    expect((await handle(ttsRequest({ model: 'gpt-5', input: 'hi' }), ttsEnv, deps)).status).toBe(400);
+    expect((await handle(ttsRequest({ model: 'tts-1', input: 'a'.repeat(5000) }), ttsEnv, deps)).status).toBe(400);
+  });
+});

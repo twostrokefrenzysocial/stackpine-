@@ -64,7 +64,7 @@ export default function Home() {
   const brainSize = Math.round(Math.min(width - GUTTER * 2, 400));
   const voice = () => {
     feedback.fire('tap');
-    router.push('/chat/new?voice=1');
+    router.push('/voice');
   };
 
   const regenerate = async () => {

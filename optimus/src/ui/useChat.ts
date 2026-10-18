@@ -4,7 +4,8 @@ import type { BrainState } from '../core/brain/state';
 import type { TurnEvent } from '../core/llm/agent';
 import { friendlyError } from '../core/llm/transport';
 import type { ChatCard, ChatMessage } from '../core/types';
-import { speak, stopSpeaking } from '../platform/voice';
+import { proxyToken } from '../platform/secrets';
+import { speakNatural, stopSpeaking } from '../platform/voice';
 import { useApp } from './AppContext';
 import { feedback } from './feedback';
 
@@ -37,8 +38,8 @@ export function useChat(conversationId: string | null) {
   }, [conversationId, rt]);
 
   const send = useCallback(
-    async (text: string, opts: { spoken?: boolean } = {}) => {
-      if (!conversationId || streaming) return;
+    async (text: string, opts: { spoken?: boolean; voice?: boolean; onSpoken?: () => void } = {}): Promise<ChatMessage | null> => {
+      if (!conversationId || streaming) return null;
       setError(null);
       stopSpeaking();
       const optimistic: ChatMessage = { id: `local-${Date.now()}`, conversationId, role: 'user', text, cards: [], createdAt: new Date().toISOString() };
@@ -71,30 +72,32 @@ export function useChat(conversationId: string | null) {
       };
 
       try {
-        const { assistant } = await rt.engine.send(conversationId, text, onEvent, controller.signal);
+        const { assistant } = await rt.engine.send(conversationId, text, onEvent, controller.signal, { voice: opts.voice });
         // Swap the streaming block for the saved message in one render, so it never shows twice.
         const fresh = await rt.engine.conversations.messages(conversationId);
         setMessages(fresh);
         setStreaming(null);
         bump();
-        if (opts.spoken && settings.voiceReplies && assistant.text) {
+        if ((opts.spoken || opts.voice) && settings.voiceReplies && assistant.text) {
           setAvatar('responding');
-          let t: ReturnType<typeof setInterval> | null = null;
-          speak(assistant.text, {
+          const token = settings.provider === 'openai' ? await proxyToken.get().catch(() => null) : null;
+          await speakNatural(assistant.text, {
+            proxyUrl: settings.provider === 'openai' ? settings.proxyUrl : undefined,
+            token,
             rate: settings.voiceRate,
             pitch: settings.voicePitch,
-            onStart: () => {
-              t = setInterval(() => speechLevel.set(0.3 + Math.random() * 0.7), 120);
-            },
+            onLevel: (v) => speechLevel.set(v),
             onDone: () => {
-              if (t) clearInterval(t);
               speechLevel.set(0);
               setAvatar('idle');
+              opts.onSpoken?.();
             },
           });
         } else {
           setAvatar('idle');
+          opts.onSpoken?.();
         }
+        return assistant;
       } catch (e) {
         const f = friendlyError(e);
         if (f.kind !== 'aborted') {
@@ -103,12 +106,14 @@ export function useChat(conversationId: string | null) {
         }
         await reload();
         setAvatar('idle');
+        opts.onSpoken?.();
+        return null;
       } finally {
         setStreaming(null);
         abortRef.current = null;
       }
     },
-    [conversationId, streaming, rt, reload, bump, settings.voiceReplies, settings.voiceRate, settings.voicePitch, speechLevel],
+    [conversationId, streaming, rt, reload, bump, settings.voiceReplies, settings.voiceRate, settings.voicePitch, settings.provider, settings.proxyUrl, speechLevel],
   );
 
   const stop = useCallback(() => {

@@ -114,3 +114,16 @@ describe('model upgrade', () => {
     expect(upgradeModelDefaults({ ...DEFAULT_SETTINGS, openaiModel: 'my-custom-model' })).toEqual({ modelDefaultsVersion: 1 });
   });
 });
+
+describe('voice mode', () => {
+  const { forSpeech } = jest.requireActual<typeof import('../util/speech')>('../util/speech');
+  const { buildSystem } = jest.requireActual<typeof import('../llm/agent')>('../llm/agent');
+  it('reads replies without Markdown, bullets or links', () => {
+    expect(forSpeech('**Today:**\n- 3:00 PM standup\n- Call [Mom](https://x.y)\n\nSee https://example.com')).toBe('Today:, 3:00 PM standup, Call Mom. See');
+  });
+  it('tells the model to answer briefly, for listening', () => {
+    const sys = buildSystem({ coreMemory: '', relevantMemory: '', now: new Date(), dataMode: 'real', unavailable: [], voice: true }).map((b) => b.text).join('\n');
+    expect(sys).toMatch(/# Voice mode/);
+    expect(buildSystem({ coreMemory: '', relevantMemory: '', now: new Date(), dataMode: 'real', unavailable: [] }).map((b) => b.text).join('\n')).not.toMatch(/# Voice mode/);
+  });
+});

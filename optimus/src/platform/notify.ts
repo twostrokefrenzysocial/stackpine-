@@ -76,7 +76,7 @@ export function routeNotificationTaps(go: (href: string) => void): () => void {
   if (Platform.OS === 'web') return () => undefined;
   const open = (url: unknown) => {
     if (typeof url !== 'string') return;
-    go(url.includes('voice') ? '/chat/new?voice=1' : '/');
+    go(url.includes('voice') ? '/voice' : '/');
   };
   const last = Notifications.getLastNotificationResponse();
   if (last) open(last.notification.request.content.data?.url);

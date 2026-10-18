@@ -35,6 +35,8 @@ export interface TurnInput {
   onEvent: (e: TurnEvent) => void;
   signal?: AbortSignal;
   tools?: ToolDef[];
+  /** The user is talking in voice mode and will hear the reply, not read it. */
+  voice?: boolean;
 }
 
 export interface TurnResult {
@@ -123,6 +125,7 @@ export function buildSystem(parts: {
   unavailable: string[];
   rollingSummary?: string;
   situation?: string;
+  voice?: boolean;
 }): BetaTextBlockParam[] {
   const blocks: BetaTextBlockParam[] = [{ type: 'text', text: OPTIMUS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
   if (parts.coreMemory) {
@@ -132,6 +135,9 @@ export function buildSystem(parts: {
     `# Right now\n${describeNow(parts.now)}. ${parts.dataMode === 'mock' ? 'Data mode: MOCK (demo data, not the user’s real phone). Behave exactly as you would with real data.' : 'Data mode: real device data.'}`,
     parts.unavailable.length ? `Optimus cannot currently see: ${parts.unavailable.join(', ')}. If a question needs them, say so.` : '',
     parts.situation ?? '',
+    parts.voice
+      ? '# Voice mode\nThe user is talking to you hands-free and will hear your reply read aloud. Answer like a person on a call: one to three short, natural sentences, no lists, no Markdown, no links, no reading out long numbers or addresses. If you drafted something that needs approval or showed photos, say in a few words that it is on the screen.'
+      : '',
     parts.rollingSummary ? `# Earlier in this conversation (summary)\n${parts.rollingSummary}` : '',
     parts.relevantMemory ? `# Relevant memories\n${parts.relevantMemory}` : '',
   ]
@@ -164,6 +170,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     unavailable: input.unavailableSources,
     rollingSummary: input.rollingSummary,
     situation,
+    voice: input.voice,
   });
 
   const messages = await buildHistory(input.history, input.actions);

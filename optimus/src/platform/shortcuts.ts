@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 const ACTIONS: QuickActions.Action[] = [
   { id: 'ask', title: 'Ask Optimus', params: { href: '/chat/new' } },
   { id: 'brief', title: 'Today’s brief', params: { href: '/' } },
-  { id: 'voice', title: 'Voice', params: { href: '/chat/new?voice=1' } },
+  { id: 'voice', title: 'Voice', params: { href: '/voice' } },
 ];
 
 export async function installShortcuts(): Promise<void> {

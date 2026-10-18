@@ -52,6 +52,7 @@ function Shell() {
         >
           <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right', animationDuration: 300 }} />
           <Stack.Screen name="onboarding" options={{ animation: 'fade_from_bottom', animationDuration: 300 }} />
+          <Stack.Screen name="voice" options={{ animation: 'fade', animationDuration: 250 }} />
         </Stack>
       </LockGate>
     </View>

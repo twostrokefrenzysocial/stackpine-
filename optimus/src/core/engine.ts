@@ -74,6 +74,7 @@ export class OptimusEngine {
     text: string,
     onEvent: (e: TurnEvent) => void,
     signal?: AbortSignal,
+    opts: { voice?: boolean } = {},
   ): Promise<{ user: ChatMessage; assistant: ChatMessage; result: TurnResult }> {
     const conv = await this.conversations.get(conversationId);
     if (!conv) throw new Error('Conversation not found');
@@ -104,6 +105,7 @@ export class OptimusEngine {
       unavailableSources: (await this.deps.unavailableSources?.()) ?? [],
       onEvent,
       signal,
+      voice: opts.voice,
     });
 
     const assistant = await this.conversations.addMessage(

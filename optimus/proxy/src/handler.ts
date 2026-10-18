@@ -46,6 +46,10 @@ export interface HandlerDeps {
 
 type Route = 'messages' | 'count_tokens' | 'openai_chat';
 
+/** Text-to-speech models the app may use, and their price per million input characters (USD). */
+export const TTS_PRICES_PER_M_CHARS: Record<string, number> = { 'gpt-4o-mini-tts': 15, 'tts-1': 15, 'tts-1-hd': 30 };
+const MAX_TTS_CHARS = 4096;
+
 const UPSTREAM_PATHS: Record<Route, string> = {
   messages: '/v1/messages',
   count_tokens: '/v1/messages/count_tokens',
@@ -107,6 +111,7 @@ export async function handle(request: Request, env: HandlerEnv, deps: HandlerDep
       return await forward('count_tokens', request, url, env, deps);
     }
     if (method === 'POST' && isOpenAI) return await forward('openai_chat', request, url, env, deps);
+    if (method === 'POST' && path === '/openai/v1/audio/speech') return await speech(request, env, deps);
     if (method === 'GET' && path === '/usage') return json(await ledgerCall(() => deps.ledger.usage()));
     if (method === 'PUT' && path === '/cap') return await putCap(request, deps.ledger);
     if (method === 'PUT' && path === '/usage') return await putSpent(request, deps.ledger);
@@ -146,6 +151,53 @@ async function putCap(request: Request, ledger: LedgerApi): Promise<Response> {
 }
 
 /** Lets the owner correct this month's total to match the provider's bill. */
+/**
+ * Natural voice for spoken replies (OpenAI text-to-speech). Billed by the
+ * characters sent, against the same cap and rate limit. The audio streams
+ * straight back to the phone.
+ */
+async function speech(request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+  if (!env.OPENAI_API_KEY) return errorResponse(500, 'optimus_misconfigured', 'Proxy has no OPENAI_API_KEY secret, so the natural voice is unavailable.');
+  let payload: Record<string, unknown>;
+  try {
+    payload = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return errorResponse(400, 'optimus_invalid_request', 'Request body must be a JSON object.');
+  }
+  const model = payload.model;
+  if (typeof model !== 'string' || !(model in TTS_PRICES_PER_M_CHARS)) {
+    return errorResponse(400, 'optimus_model_not_allowed', `Model must be one of: ${Object.keys(TTS_PRICES_PER_M_CHARS).join(', ')}.`, { allowedModels: Object.keys(TTS_PRICES_PER_M_CHARS) });
+  }
+  const input = typeof payload.input === 'string' ? payload.input : '';
+  if (!input || input.length > MAX_TTS_CHARS) return errorResponse(400, 'optimus_invalid_request', `input must be 1 to ${MAX_TTS_CHARS} characters.`);
+  const verdict = await ledgerCall(() => deps.ledger.check({ enforceCap: true }));
+  if (!verdict.ok) {
+    return verdict.reason === 'spending_cap'
+      ? errorResponse(402, 'optimus_spending_cap_reached', `Monthly spending cap of $${verdict.capUsd.toFixed(2)} reached`, { spentUsd: verdict.spentUsd, capUsd: verdict.capUsd })
+      : errorResponse(429, 'optimus_rate_limited', `Too many requests; try again in ${verdict.retryAfterSeconds}s.`, { retryAfterSeconds: verdict.retryAfterSeconds }, { 'retry-after': String(verdict.retryAfterSeconds) });
+  }
+  let upstream: Response;
+  try {
+    upstream = await deps.upstreamFetch(
+      new Request(`${OPENAI_API_ORIGIN}/v1/audio/speech`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        body: JSON.stringify({ model, input, voice: payload.voice, instructions: payload.instructions, response_format: payload.response_format ?? 'mp3' }),
+        signal: request.signal,
+      }),
+    );
+  } catch {
+    return errorResponse(502, 'optimus_upstream_unreachable', 'Could not reach the OpenAI API.');
+  }
+  if (upstream.ok) {
+    const cost = (input.length * TTS_PRICES_PER_M_CHARS[model]) / 1_000_000;
+    deps.waitUntil(ledgerCall(() => deps.ledger.record(cost)).catch(() => undefined));
+  }
+  const headers = new Headers(upstream.headers);
+  for (const name of HOP_BY_HOP_RESPONSE_HEADERS) headers.delete(name);
+  return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+}
+
 async function putSpent(request: Request, ledger: LedgerApi): Promise<Response> {
   let body: unknown;
   try {

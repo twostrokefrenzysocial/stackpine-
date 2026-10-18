@@ -1,4 +1,7 @@
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { File, Paths } from 'expo-file-system';
 import * as Speech from 'expo-speech';
+import { forSpeech } from '../core/util/speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useCallback, useRef, useState } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
@@ -102,6 +105,80 @@ export async function speak(text: string, opts: { rate: number; pitch: number; o
   });
 }
 
+let player: AudioPlayer | null = null;
+let speechToken = 0;
+
+/**
+ * Speaks with OpenAI's natural voice through the proxy, falling back to the
+ * phone's own voice when that isn't available (Anthropic only, offline, or
+ * an error). `onLevel` gets a rough loudness for the brain while speaking.
+ */
+export async function speakNatural(
+  text: string,
+  opts: { proxyUrl?: string; token?: string | null; voice?: string; rate: number; pitch: number; onStart?: () => void; onDone?: () => void; onLevel?: (v: number) => void },
+): Promise<void> {
+  const my = ++speechToken;
+  stopSpeaking();
+  const clean = forSpeech(text);
+  if (!clean) return opts.onDone?.();
+  let pulse: ReturnType<typeof setInterval> | null = null;
+  const done = () => {
+    if (pulse) clearInterval(pulse);
+    opts.onLevel?.(0);
+    if (my === speechToken) opts.onDone?.();
+  };
+  const startPulse = () => {
+    opts.onStart?.();
+    pulse = setInterval(() => opts.onLevel?.(0.3 + Math.random() * 0.7), 110);
+  };
+  if (opts.proxyUrl && opts.token) {
+    try {
+      const res = await fetch(`${opts.proxyUrl.replace(/\/+$/, '')}/openai/v1/audio/speech`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-optimus-token': opts.token },
+        body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice: opts.voice ?? 'onyx', input: clean, instructions: 'Calm, warm, confident and unhurried, like a trusted personal assistant. Natural conversational pacing.', response_format: 'mp3' }),
+      });
+      if (!res.ok) throw new Error(`tts ${res.status}`);
+      const bytes = await res.arrayBuffer();
+      if (my !== speechToken) return;
+      const file = new File(Paths.cache, `optimus-reply-${my}.mp3`);
+      if (file.exists) file.delete();
+      file.create();
+      await file.write(bytes);
+      player = createAudioPlayer(file.uri);
+      const sub = player.addListener('playbackStatusUpdate', (st) => {
+        if (st.didJustFinish) {
+          sub.remove();
+          player?.remove();
+          player = null;
+          try {
+            file.delete();
+          } catch {
+            // cache file; fine to leave
+          }
+          done();
+        }
+      });
+      startPulse();
+      player.play();
+      return;
+    } catch {
+      // Fall through to the phone's voice.
+    }
+  }
+  if (my !== speechToken) return;
+  await speak(clean, { rate: opts.rate, pitch: opts.pitch, onStart: startPulse, onDone: done });
+}
+
 export function stopSpeaking() {
   Speech.stop();
+  if (player) {
+    try {
+      player.pause();
+      player.remove();
+    } catch {
+      // already gone
+    }
+    player = null;
+  }
 }
