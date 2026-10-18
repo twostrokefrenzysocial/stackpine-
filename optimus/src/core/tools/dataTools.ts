@@ -1,10 +1,10 @@
 import type { BetaImageBlockParam, BetaTextBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { CalendarEvent, CallLogEntry, CapturedNotification, EmailMessage, PhotoAsset, SmsMessage } from '../types';
 import { DAY, HOUR, addDays, endOfDay, formatTime, startOfDay } from '../util/time';
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 import { errorOutcome, isoOrUndefined, num, resolveContact, scanItems, str, truncate, untrustedContent } from './helpers';
 import type { ToolContext, ToolDef, ToolOutcome } from './types';
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const rangeProps = {
   since: { type: 'string', description: 'ISO date/time lower bound' },
