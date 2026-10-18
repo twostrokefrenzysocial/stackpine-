@@ -5,7 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { AccessError, type EmailSource } from '../../core/sources/types';
 import type { EmailMessage } from '../../core/types';
 import { b64urlEncode, buildRfc822, fromGmail, fromGraph, gmailQuery, type GraphMessage } from '../../core/email/format';
-import { oauthTokens } from '../secrets';
+import { oauthTokens, proxyToken } from '../secrets';
 
 /**
  * Email via OAuth: Gmail (Google Sign-In + Gmail REST) and Outlook
@@ -117,25 +117,57 @@ async function graph(token: string, path: string, init?: RequestInit) {
   return res.status === 202 || res.status === 204 ? null : res.json();
 }
 
+// ---------- iCloud (through the proxy, which signs in with an app-specific password) ----------
+
+type IcloudItem = Omit<EmailMessage, 'labels' | 'important'> & { messageId?: string };
+
+export async function icloudCall<T>(proxyUrl: string, path: string, body?: unknown): Promise<T> {
+  const token = await proxyToken.get();
+  if (!token) throw new AccessError('email', 'not-connected', 'Proxy token missing');
+  const res = await fetch(`${proxyUrl.replace(/\/+$/, '')}/mail/icloud/${path}`, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json', 'x-optimus-token': token },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: { type?: string; message?: string } };
+  if (!res.ok) {
+    if (data.error?.type === 'optimus_icloud_not_configured' || data.error?.type === 'optimus_icloud_auth_failed') throw new AccessError('email', 'not-connected', data.error.message);
+    throw new Error(data.error?.message ?? `iCloud error ${res.status}`);
+  }
+  return data;
+}
+
+/** Is iCloud Mail set up on the proxy? Returns the address when it is. */
+export async function icloudStatus(proxyUrl: string): Promise<{ configured: boolean; address?: string }> {
+  return icloudCall(proxyUrl, 'status');
+}
+
+const fromIcloud = (m: IcloudItem): EmailMessage => ({ ...m, important: false });
+
 // ---------- Combined source ----------
 
-export function createEmailSource(): EmailSource {
+export function createEmailSource(opts: { icloudProxy?: () => string | null } = {}): EmailSource {
   async function tokens() {
     const [g, o] = await Promise.all([gmailToken().catch(() => null), outlookToken().catch(() => null)]);
-    if (!g && !o) throw new AccessError('email', 'not-connected');
-    return { g, o };
+    const i = opts.icloudProxy?.() ?? null;
+    if (!g && !o && !i) throw new AccessError('email', 'not-connected');
+    return { g, o, i };
   }
 
   return {
     async accounts() {
-      const { g, o } = await tokens().catch(() => ({ g: null, o: null }));
-      return [...(g ? (['gmail'] as const) : []), ...(o ? (['outlook'] as const) : [])];
+      const { g, o, i } = await tokens().catch(() => ({ g: null, o: null, i: null }));
+      return [...(g ? (['gmail'] as const) : []), ...(o ? (['outlook'] as const) : []), ...(i ? (['icloud'] as const) : [])];
     },
 
     async search(q) {
-      const { g, o } = await tokens();
+      const { g, o, i } = await tokens();
       const limit = q.limit ?? 15;
       const results: EmailMessage[] = [];
+      if (i) {
+        const r = await icloudCall<{ messages: IcloudItem[] }>(i, 'search', { query: q.query, from: q.from, unreadOnly: q.unreadOnly, since: q.since, until: q.until, limit });
+        results.push(...r.messages.map(fromIcloud));
+      }
       if (g) {
         const list = await gmailFetch(g, `messages?maxResults=${limit}&q=${encodeURIComponent(gmailQuery(q))}`);
         for (const { id } of list.messages ?? []) results.push(await gmailGet(g, id));
@@ -155,7 +187,11 @@ export function createEmailSource(): EmailSource {
     },
 
     async get(id) {
-      const { g, o } = await tokens();
+      const { g, o, i } = await tokens();
+      if (id.startsWith('icloud:') && i) {
+        const r = await icloudCall<{ message: IcloudItem | null }>(i, 'get', { id });
+        return r.message ? fromIcloud(r.message) : null;
+      }
       if (id.startsWith('gmail:') && g) return gmailGet(g, id.slice(6));
       if (id.startsWith('outlook:') && o) {
         const m = (await graph(o, `messages/${id.slice(8)}`)) as GraphMessage;
@@ -165,8 +201,12 @@ export function createEmailSource(): EmailSource {
     },
 
     async send(draft) {
-      const { g, o } = await tokens();
+      const { g, o, i } = await tokens();
       const replyTo = draft.inReplyToId;
+      // Replies go from the account the email came to; new mail from iCloud only if it's the only account.
+      if (i && (replyTo?.startsWith('icloud:') || (!replyTo && !g && !o))) {
+        return icloudCall<{ id: string }>(i, 'send', { to: draft.to, subject: draft.subject, body: draft.body, inReplyToId: replyTo });
+      }
       const useOutlook = replyTo ? replyTo.startsWith('outlook:') : !g && !!o;
       if (useOutlook && o) {
         if (replyTo) {

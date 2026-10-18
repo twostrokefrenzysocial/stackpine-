@@ -64,7 +64,7 @@ export interface CalendarEvent {
 export interface EmailMessage {
   id: string;
   threadId: string;
-  account: 'gmail' | 'outlook' | 'mock';
+  account: 'gmail' | 'outlook' | 'icloud' | 'mock';
   from: string;
   fromName?: string;
   to: string[];

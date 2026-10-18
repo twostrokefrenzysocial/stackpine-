@@ -8,7 +8,7 @@ import { photoIndexStats } from '../core/photos/photoIndex';
 import { proxyApi, type ProxyUsage } from '../platform/claude';
 import { exportBackup, importBackup } from '../platform/backupFiles';
 import { proxyToken, oauthTokens } from '../platform/secrets';
-import { connectGmail, connectOutlook, disconnectGmail, disconnectOutlook } from '../platform/sources/email';
+import { connectGmail, connectOutlook, disconnectGmail, disconnectOutlook, icloudStatus } from '../platform/sources/email';
 import { speak } from '../platform/voice';
 import { useApp, useData } from '../ui/AppContext';
 import { Banner } from '../ui/components/Banner';
@@ -169,22 +169,32 @@ export default function Settings() {
     updateSettings({ excludedNotificationApps: [...set] });
   };
 
-  const connect = async (which: 'gmail' | 'outlook') => {
+  const connect = async (which: 'gmail' | 'outlook' | 'icloud') => {
     setEmailMsg(null);
     try {
-      if (which === 'gmail') await connectGmail();
+      if (which === 'icloud') {
+        if (!settings.proxyUrl) throw new Error('Connect your proxy first (Settings › Connection).');
+        const st = await icloudStatus(settings.proxyUrl);
+        if (!st.configured) {
+          throw new Error(
+            'iCloud needs a one-time step: 1) At appleid.apple.com › Sign-In and Security › App-Specific Passwords, create one named Optimus. 2) On GitHub add two secrets: ICLOUD_EMAIL (your iCloud address) and ICLOUD_APP_PASSWORD (that password). 3) Re-run the Optimus proxy job, then tap Connect again.',
+          );
+        }
+        setEmailMsg(null);
+      } else if (which === 'gmail') await connectGmail();
       else await connectOutlook();
       await updateSettings({ emailAccounts: [...new Set([...settings.emailAccounts, which])] });
-      await rt.engine.activity.add({ kind: 'system', summary: `Connected ${which === 'gmail' ? 'Gmail' : 'Outlook'}` });
+      await rt.engine.activity.add({ kind: 'system', summary: `Connected ${which === 'gmail' ? 'Gmail' : which === 'outlook' ? 'Outlook' : 'iCloud Mail'}` });
     } catch (e) {
       setEmailMsg(e instanceof Error ? e.message : 'Sign-in didn’t complete.');
     }
   };
-  const disconnect = async (which: 'gmail' | 'outlook') => {
+  const disconnect = async (which: 'gmail' | 'outlook' | 'icloud') => {
     if (which === 'gmail') await disconnectGmail();
-    else await disconnectOutlook();
+    else if (which === 'outlook') await disconnectOutlook();
     await updateSettings({ emailAccounts: settings.emailAccounts.filter((a) => a !== which) });
   };
+
 
   const doExport = async () => {
     setBusy('export');
@@ -343,12 +353,12 @@ export default function Settings() {
         </Section>
 
         <Section title="Email">
-          {(['gmail', 'outlook'] as const).map((a) => {
+          {(['gmail', 'outlook', 'icloud'] as const).map((a) => {
             const on = settings.emailAccounts.includes(a);
             return (
               <View key={a} style={styles.rowBetween}>
                 <View style={{ flex: 1 }}>
-                  <Txt variant="bodyStrong">{a === 'gmail' ? 'Gmail' : 'Outlook'}</Txt>
+                  <Txt variant="bodyStrong">{a === 'gmail' ? 'Gmail' : a === 'outlook' ? 'Outlook' : 'iCloud Mail'}</Txt>
                   <Txt variant="mono" color={on ? p.text : p.textTertiary}>
                     {on ? 'CONNECTED' : 'NOT CONNECTED'}
                   </Txt>
@@ -363,7 +373,7 @@ export default function Settings() {
             </Txt>
           )}
           <Txt variant="small" color={p.textTertiary}>
-            Mail stays with Google or Microsoft. I read it on demand and send only what you approve.
+            Mail stays with Google, Microsoft or Apple. I read it on demand and send only what you approve.
           </Txt>
         </Section>
 

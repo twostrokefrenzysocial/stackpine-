@@ -13,6 +13,8 @@ import { errorResponse, json } from './http';
 import { isValidCap, MAX_CAP_USD, type LedgerApi } from './ledgerCore';
 import { costUsd, DEFAULT_OPENAI_PRICES, openAICostUsd, parseOpenAIPrices } from './pricing';
 import { readUsage } from './usage';
+import type { OpenConn } from './mail/conn';
+import { icloudGet, icloudSearch, icloudSend } from './mail/icloud';
 
 export const ANTHROPIC_API_ORIGIN = 'https://api.anthropic.com';
 export const OPENAI_API_ORIGIN = 'https://api.openai.com';
@@ -31,6 +33,9 @@ export interface HandlerEnv {
   OPENAI_MODELS?: string;
   /** JSON price table, USD per million tokens: {"model": {"input": 1, "output": 8, "cacheRead": 0.1}}. */
   OPENAI_PRICES?: string;
+  /** Optional iCloud Mail: the Apple ID email and an app-specific password from appleid.apple.com. */
+  ICLOUD_EMAIL?: string;
+  ICLOUD_APP_PASSWORD?: string;
   DEFAULT_CAP_USD?: string;
   RATE_LIMIT_PER_MINUTE?: string;
 }
@@ -42,6 +47,8 @@ export interface HandlerDeps {
   /** Keeps background work (usage metering) alive after the response is returned. */
   waitUntil: (promise: Promise<unknown>) => void;
   log?: (message: string) => void;
+  /** Opens TCP/TLS connections to mail servers (cloudflare:sockets in production). */
+  openConn?: OpenConn;
 }
 
 type Route = 'messages' | 'count_tokens' | 'openai_chat';
@@ -112,6 +119,7 @@ export async function handle(request: Request, env: HandlerEnv, deps: HandlerDep
     }
     if (method === 'POST' && isOpenAI) return await forward('openai_chat', request, url, env, deps);
     if (method === 'POST' && path === '/openai/v1/audio/speech') return await speech(request, env, deps);
+    if (path.startsWith('/mail/icloud/')) return await icloudMail(method, path, request, env, deps);
     if (method === 'GET' && path === '/usage') return json(await ledgerCall(() => deps.ledger.usage()));
     if (method === 'PUT' && path === '/cap') return await putCap(request, deps.ledger);
     if (method === 'PUT' && path === '/usage') return await putSpent(request, deps.ledger);
@@ -196,6 +204,46 @@ async function speech(request: Request, env: HandlerEnv, deps: HandlerDeps): Pro
   const headers = new Headers(upstream.headers);
   for (const name of HOP_BY_HOP_RESPONSE_HEADERS) headers.delete(name);
   return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+}
+
+/**
+ * iCloud Mail. The app never holds the password: the proxy signs in to
+ * Apple's IMAP/SMTP servers itself. Counts toward the rate limit, not the
+ * cap (there's no AI cost).
+ */
+async function icloudMail(method: string, path: string, request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+  const configured = !!(env.ICLOUD_EMAIL && env.ICLOUD_APP_PASSWORD && deps.openConn);
+  if (method === 'GET' && path === '/mail/icloud/status') return json({ configured, address: configured ? env.ICLOUD_EMAIL : undefined });
+  if (method !== 'POST') return errorResponse(404, 'optimus_not_found', `No route for ${method} ${path}.`);
+  if (!configured) return errorResponse(400, 'optimus_icloud_not_configured', 'iCloud Mail is not set up on this proxy. Add ICLOUD_EMAIL and ICLOUD_APP_PASSWORD.');
+  const verdict = await ledgerCall(() => deps.ledger.check({ enforceCap: false }));
+  if (!verdict.ok && verdict.reason === 'rate_limited') {
+    return errorResponse(429, 'optimus_rate_limited', `Too many requests; try again in ${verdict.retryAfterSeconds}s.`, { retryAfterSeconds: verdict.retryAfterSeconds }, { 'retry-after': String(verdict.retryAfterSeconds) });
+  }
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    // empty body is fine for search
+  }
+  const creds = { user: env.ICLOUD_EMAIL!, pass: env.ICLOUD_APP_PASSWORD! };
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+  try {
+    if (path === '/mail/icloud/search') {
+      return json({ messages: await icloudSearch(deps.openConn!, creds, { query: str(body.query), from: str(body.from), unreadOnly: body.unreadOnly === true, since: str(body.since), until: str(body.until), limit: typeof body.limit === 'number' ? body.limit : undefined }) });
+    }
+    if (path === '/mail/icloud/get') return json({ message: await icloudGet(deps.openConn!, creds, String(body.id ?? '')) });
+    if (path === '/mail/icloud/send') {
+      const to = Array.isArray(body.to) ? body.to.map(String) : [];
+      return json(await icloudSend(deps.openConn!, creds, { to, subject: String(body.subject ?? ''), body: String(body.body ?? ''), inReplyToId: str(body.inReplyToId) }));
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Apple rejects a wrong or revoked app-specific password at LOGIN / AUTH.
+    if (/AUTHENTICATIONFAILED|LOGIN|535|invalid credentials/i.test(msg)) return errorResponse(401, 'optimus_icloud_auth_failed', 'iCloud rejected the app-specific password. Create a new one at appleid.apple.com and update ICLOUD_APP_PASSWORD.');
+    return errorResponse(502, 'optimus_icloud_error', 'Couldn’t reach iCloud Mail. Try again in a moment.');
+  }
+  return errorResponse(404, 'optimus_not_found', `No route for ${method} ${path}.`);
 }
 
 async function putSpent(request: Request, ledger: LedgerApi): Promise<Response> {

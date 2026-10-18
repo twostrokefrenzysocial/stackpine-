@@ -29,7 +29,7 @@ export interface Settings {
   photoIndexEnabled: boolean;
   spendingCapUsd: number;
   onboardingDone: boolean;
-  emailAccounts: ('gmail' | 'outlook')[];
+  emailAccounts: ('gmail' | 'outlook' | 'icloud')[];
   userName?: string;
 }
 

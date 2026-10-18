@@ -101,7 +101,12 @@ async function doBoot(): Promise<Runtime> {
   const engineRef: { engine?: OptimusEngine } = {};
   const sources = (): DataSources => {
     if (settings.dataMode === 'mock') return mock;
-    real ??= createRealSources({ db, notifications: engineRef.engine!.notifications, locationEnabled: () => settings.locationEnabled });
+    real ??= createRealSources({
+      db,
+      notifications: engineRef.engine!.notifications,
+      locationEnabled: () => settings.locationEnabled,
+      icloudProxy: () => (settings.emailAccounts.includes('icloud') && settings.proxyUrl ? settings.proxyUrl : null),
+    });
     return real;
   };
 
