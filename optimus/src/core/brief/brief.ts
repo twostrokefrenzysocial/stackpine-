@@ -25,6 +25,11 @@ export class BriefStore {
     return r ? parseJson<DailyBrief | null>(r.data, null) : null;
   }
 
+  /** Briefs are built from one data mode; switching modes discards them. */
+  async clear(): Promise<void> {
+    await this.db.run('DELETE FROM briefs');
+  }
+
   /** The most recent brief (shown offline). */
   async latest(): Promise<DailyBrief | null> {
     const r = await this.db.get<{ data: string }>('SELECT data FROM briefs ORDER BY date DESC LIMIT 1');

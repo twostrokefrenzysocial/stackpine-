@@ -59,6 +59,10 @@ describe('daily brief', () => {
     await store.save(brief);
     expect((await store.forDate('2026-10-18'))?.headline).toBe(brief.headline);
     expect((await store.latest())?.id).toBe(brief.id);
+    // Switching data mode clears it, so the demo brief never shows on real data.
+    await store.clear();
+    expect(await store.forDate('2026-10-18')).toBeNull();
+    expect(await store.latest()).toBeNull();
   });
 });
 

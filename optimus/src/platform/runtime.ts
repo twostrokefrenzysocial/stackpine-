@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { PermissionsAndroid, Platform } from 'react-native';
 import * as Native from '../../modules/optimus-android';
+import { BriefStore } from '../core/brief/brief';
 import { OptimusEngine } from '../core/engine';
 import type { Db } from '../core/db/types';
 import type { BackgroundLlm } from '../core/llm/background';
@@ -117,7 +118,10 @@ async function doBoot(): Promise<Runtime> {
       return settings;
     },
     async updateSettings(patch) {
+      const modeChanged = 'dataMode' in patch && patch.dataMode !== settings.dataMode;
       settings = await saveSettings(db, patch);
+      // Today's brief was built from the old mode's data (e.g. the demo phone).
+      if (modeChanged) await new BriefStore(db).clear();
       if ('proxyUrl' in patch || 'provider' in patch || 'openaiModel' in patch || 'openaiBackgroundModel' in patch) await refreshClient();
       if ('excludedNotificationApps' in patch || 'notificationCaptureEnabled' in patch) {
         Native.setNotificationCaptureConfig({ enabled: settings.notificationCaptureEnabled, excludedPackages: settings.excludedNotificationApps });
