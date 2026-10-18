@@ -62,3 +62,23 @@ it('migrate is idempotent', async () => {
   expect(await migrate(db)).toBe(MIGRATIONS.length);
   expect(await migrate(db)).toBe(MIGRATIONS.length);
 });
+
+describe('rolling summary', () => {
+  it('folds older messages so long conversations keep the thread', async () => {
+    const { ConversationStore } = await import('../conversations/store');
+    const { maybeRollSummary, unsummarizedMessages, ROLLING_WINDOW } = await import('../llm/background');
+    const { HeuristicBackgroundLlm } = await import('../llm/scripted');
+    const db = await createMigratedDb();
+    const conversations = new ConversationStore(db);
+    const c = await conversations.create();
+    for (let i = 0; i < ROLLING_WINDOW + 6; i++) {
+      await conversations.addMessage(c.id, { role: i % 2 ? 'assistant' : 'user', text: `message ${i} about the Chicago trip` });
+    }
+    expect(await maybeRollSummary({ llm: new HeuristicBackgroundLlm(), conversations }, c.id)).toBe(true);
+    const conv = (await conversations.get(c.id))!;
+    expect(conv.rollingSummary).toMatch(/Chicago/);
+    const rest = unsummarizedMessages(conv, await conversations.messages(c.id));
+    expect(rest).toHaveLength(ROLLING_WINDOW / 2);
+    expect(await maybeRollSummary({ llm: new HeuristicBackgroundLlm(), conversations }, c.id)).toBe(false);
+  });
+});

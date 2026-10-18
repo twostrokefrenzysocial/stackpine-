@@ -76,10 +76,12 @@ function guessCategory(fact: string): string {
 }
 
 function thirdPerson(fact: string): string {
+  const verb = (v: string) => (/(s|sh|ch|x)$/.test(v) ? `${v}es` : /[^aeiou]y$/.test(v) ? `${v.slice(0, -1)}ies` : `${v}s`);
   return fact
     .replace(/^(that\s+)/i, '')
-    .replace(/\bI am\b/gi, 'is')
-    .replace(/\bI'm\b/gi, 'is')
+    .replace(/^my\s+/i, '')
+    .replace(/^I am\b|^I'm\b/i, 'Is')
+    .replace(/^I (\w+)/, (_m, v: string) => verb(v))
     .replace(/\bmy\b/gi, 'their')
     .replace(/\bI\b/g, 'they')
     .replace(/^./, (c) => c.toUpperCase())
