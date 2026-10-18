@@ -1,6 +1,9 @@
-/* Stackpine — site chrome: nav, the trail draw */
+/* Stackpine — site chrome: nav, stage accordion, the motion layer */
 (function () {
   'use strict';
+
+  var root = document.documentElement;
+  root.classList.add('js');
 
   /* ---- nav ---- */
   var nav = document.getElementById('nav');
@@ -33,15 +36,46 @@
     if (a.getAttribute('href') === here) a.setAttribute('aria-current', 'page');
   });
 
-  /* ---- the trail draws once when it comes into view ----
-     Fails SAFE: the trail is fully visible in CSS. We only hide it first when
-     motion is allowed and IntersectionObserver exists, and a watchdog shows
-     it regardless. Content is never permanently invisible. */
-  var trails = document.querySelectorAll('.trail');
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!trails.length || reduce || !('IntersectionObserver' in window)) return;
+  /* ---- stages: one open at a time ---- */
+  document.querySelectorAll('[data-stages]').forEach(function (group) {
+    var stages = group.querySelectorAll('.stage');
+    stages.forEach(function (stage) {
+      var tab = stage.querySelector('.stage__tab');
+      tab.addEventListener('click', function () {
+        stages.forEach(function (s) {
+          var open = s === stage;
+          s.classList.toggle('is-open', open);
+          s.querySelector('.stage__tab').setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      });
+    });
+  });
 
-  document.documentElement.classList.add('js-motion');
+  /* ---- motion layer ----
+     Fails SAFE: everything is visible in CSS. We hold elements back only
+     when motion is allowed and IntersectionObserver exists, and a watchdog
+     shows everything regardless. */
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var targets = Array.prototype.slice.call(document.querySelectorAll('[data-enter]:not([data-enter="each"]), .shutter'));
+  // long pages: every block of an "each" container is its own target
+  document.querySelectorAll('[data-enter="each"]').forEach(function (box) {
+    Array.prototype.forEach.call(box.children, function (child) {
+      child.setAttribute('data-enter-self', '');
+      targets.push(child);
+    });
+  });
+  if (reduce || !targets.length || !('IntersectionObserver' in window)) return;
+
+  root.classList.add('js-motion');
+
+  targets.forEach(function (el) {
+    if (!el.hasAttribute('data-enter-self')) {
+      Array.prototype.forEach.call(el.children, function (child, i) {
+        child.style.setProperty('--i', i);
+      });
+    }
+    el.classList.add('is-pending');
+  });
 
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
@@ -50,17 +84,16 @@
         io.unobserve(e.target);
       }
     });
-  }, { rootMargin: '0px 0px -15% 0px', threshold: 0.15 });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
 
-  trails.forEach(function (t) {
-    var r = t.getBoundingClientRect();
-    // already on screen at load: no point hiding it
-    if (r.top < innerHeight * 0.85) return;
-    t.classList.add('is-pending');
-    io.observe(t);
+  // two frames so the held-back state paints before it animates in
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      targets.forEach(function (el) { io.observe(el); });
+    });
   });
 
   setTimeout(function () {
-    trails.forEach(function (t) { t.classList.remove('is-pending'); });
-  }, 8000);
+    targets.forEach(function (el) { el.classList.remove('is-pending'); });
+  }, 6000);
 })();
