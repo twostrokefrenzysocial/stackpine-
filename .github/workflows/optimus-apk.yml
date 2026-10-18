@@ -1,0 +1,81 @@
+# Builds the Optimus Android app (APK) and publishes it to the
+# "optimus-latest" GitHub release so it can be downloaded straight to the
+# phone. No Expo account needed. The APK holds no API keys (they live only
+# in your proxy).
+name: Optimus APK
+
+on:
+  push:
+    branches: [ccr-2690ea4f-9czthr]
+    paths: ['optimus/**', '.github/workflows/optimus-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: optimus-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: optimus
+    env:
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: optimus/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck, lint and tests
+        run: npm run verify
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build release APK (arm64, for the S24 Ultra)
+        working-directory: optimus/android
+        run: |
+          echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g" >> gradle.properties
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Name the APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/optimus.apk
+          ls -lh dist
+
+      - name: Publish to the optimus-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: optimus-latest
+          name: Optimus (latest build)
+          prerelease: true
+          files: optimus/dist/optimus.apk
+          body: |
+            Latest Optimus build from `${{ github.sha }}`.
+            On the phone: tap **optimus.apk** below, open it, and allow your browser to install apps if asked.
+            Turn Samsung Auto Blocker off while installing, then back on.
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: optimus-apk
+          path: optimus/dist/optimus.apk
