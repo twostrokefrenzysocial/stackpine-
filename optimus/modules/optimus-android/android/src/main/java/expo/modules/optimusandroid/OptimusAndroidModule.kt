@@ -40,6 +40,7 @@ class OptimusAndroidModule : Module() {
       val manager: SmsManager =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
           context.getSystemService(SmsManager::class.java)
+            ?: throw CodedException("ERR_SMS_UNAVAILABLE", "This device can't send SMS", null)
         } else {
           @Suppress("DEPRECATION")
           SmsManager.getDefault()

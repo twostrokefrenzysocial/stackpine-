@@ -1,6 +1,8 @@
 import type { BetaImageBlockParam, BetaTextBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { CalendarEvent, CallLogEntry, CapturedNotification, EmailMessage, PhotoAsset, SmsMessage } from '../types';
-import { DAY, HOUR, addDays, endOfDay, startOfDay } from '../util/time';
+import { DAY, HOUR, addDays, endOfDay, formatTime, startOfDay } from '../util/time';
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 import { errorOutcome, isoOrUndefined, num, resolveContact, scanItems, str, truncate, untrustedContent } from './helpers';
 import type { ToolContext, ToolDef, ToolOutcome } from './types';
 
@@ -357,7 +359,7 @@ export const catchUp: ToolDef = {
         ...(emails.length ? [{ type: 'emails' as const, emails: emails.slice(0, 6) }] : []),
       ],
       suspicious: findings,
-      activity: `Catch-up since ${since.slice(11, 16)}: ${calls.length} missed calls, ${unreadTexts.length} texts, ${emails.length} emails, ${otherNotifs.length} notifications`,
+      activity: `Catch-up since ${formatTime(since)}: ${plural(calls.length, 'missed call')}, ${plural(unreadTexts.length, 'text')}, ${plural(emails.length, 'email')}, ${plural(otherNotifs.length, 'notification')}`,
     };
   },
 };

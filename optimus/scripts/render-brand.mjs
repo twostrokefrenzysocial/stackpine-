@@ -26,7 +26,7 @@ const data = {
 const draw = `
 function drawBrain(ctx, cx, cy, scale, opts) {
   const { positions, sparkle, edges, count } = window.BRAIN;
-  const yaw = opts.yaw ?? -0.6, pitch = opts.pitch ?? 0.22;
+  const yaw = opts.yaw ?? -0.95, pitch = opts.pitch ?? 0.45;
   const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const px = new Float32Array(count), py = new Float32Array(count), pz = new Float32Array(count);
   for (let i = 0; i < count; i++) {
@@ -38,34 +38,34 @@ function drawBrain(ctx, cx, cy, scale, opts) {
   }
   ctx.globalCompositeOperation = 'lighter';
   if (!opts.mono) {
-    ctx.lineWidth = Math.max(0.6, scale/320);
-    ctx.strokeStyle = 'rgba(227,27,35,0.13)';
+    ctx.lineWidth = Math.max(0.6, scale/320) * (opts.dot ?? 1);
+    ctx.strokeStyle = 'rgba(227,27,35,' + (opts.lines ?? 0.13) + ')';
     ctx.beginPath();
     for (let e = 0; e < edges.length; e += 2) { const a = edges[e], b = edges[e+1]; ctx.moveTo(px[a], py[a]); ctx.lineTo(px[b], py[b]); }
     ctx.stroke();
   }
   for (let i = 0; i < count; i++) {
     const depth = (1.25 - pz[i]) / 2.5; // 0 far .. 1 near
-    const r = Math.max(0.6, scale/220) * (0.6 + depth*0.8);
+    const r = Math.max(0.6, scale/220) * (0.6 + depth*0.8) * (opts.dot ?? 1);
     const a = 0.25 + depth*0.6;
     ctx.fillStyle = opts.mono ? 'rgba(255,255,255,' + a + ')' : sparkle[i] ? 'rgba(245,245,247,' + a + ')' : (depth > 0.62 ? 'rgba(255,59,66,' + a + ')' : 'rgba(227,27,35,' + a*0.8 + ')');
     ctx.beginPath(); ctx.arc(px[i], py[i], r, 0, Math.PI*2); ctx.fill();
   }
   if (!opts.mono) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, scale*0.28);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, scale*0.2);
     g.addColorStop(0, 'rgba(255,59,66,0.95)'); g.addColorStop(0.25, 'rgba(227,27,35,0.45)'); g.addColorStop(1, 'rgba(90,10,14,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, scale*0.28, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, scale*0.2, 0, Math.PI*2); ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
 }`;
 
 const jobs = [
-  { file: 'icon.png', w: 1024, h: 1024, bg: '#000000', paint: 'drawBrain(ctx, 512, 520, 330, {})' },
-  { file: 'adaptive-foreground.png', w: 1024, h: 1024, paint: 'drawBrain(ctx, 512, 520, 240, {})' },
-  { file: 'adaptive-monochrome.png', w: 1024, h: 1024, paint: 'drawBrain(ctx, 512, 520, 240, { mono: true })' },
+  { file: 'icon.png', w: 1024, h: 1024, bg: '#000000', paint: 'drawBrain(ctx, 512, 520, 330, { dot: 2.2, lines: 0.22 })' },
+  { file: 'adaptive-foreground.png', w: 1024, h: 1024, paint: 'drawBrain(ctx, 512, 520, 240, { dot: 2.4, lines: 0.24 })' },
+  { file: 'adaptive-monochrome.png', w: 1024, h: 1024, paint: 'drawBrain(ctx, 512, 520, 240, { mono: true, dot: 2.4 })' },
   { file: 'splash-emblem.png', w: 512, h: 512, paint: 'drawBrain(ctx, 256, 260, 170, {})' },
-  { file: 'notification-icon.png', w: 96, h: 96, paint: 'drawBrain(ctx, 48, 50, 34, { mono: true })' },
-  { file: 'favicon.png', w: 64, h: 64, bg: '#000000', paint: 'drawBrain(ctx, 32, 33, 22, {})' },
+  { file: 'notification-icon.png', w: 96, h: 96, paint: 'drawBrain(ctx, 48, 50, 34, { mono: true, dot: 2.5 })' },
+  { file: 'favicon.png', w: 64, h: 64, bg: '#000000', paint: 'drawBrain(ctx, 32, 33, 22, { dot: 2.5, lines: 0.3 })' },
   {
     file: 'widget-preview.png',
     w: 540,
