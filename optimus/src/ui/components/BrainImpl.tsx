@@ -130,7 +130,7 @@ export default function BrainImpl({ size, state, micLevel, speechLevel, onPress,
   const pulseClock = useSharedValue(0);
   const pulseBirth = useSharedValue<number[]>(new Array(MAX_PULSES).fill(-10));
   const sinceDraw = useSharedValue(0);
-  const fpsCap = lowPower ? 1 / 30 : 0;
+  const fpsCap = lowPower ? 1 / 30 : 1 / 60;
 
   const frame = useFrameCallback((info) => {
     'worklet';

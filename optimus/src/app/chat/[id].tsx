@@ -50,13 +50,14 @@ const SUGGESTIONS = {
 };
 
 export default function Chat() {
-  const { id, voice, q, focus } = useLocalSearchParams<{
+  const { id, voice, q, focus, notice } = useLocalSearchParams<{
     id: string;
     voice?: string;
     q?: string;
     focus?: string;
+    notice?: string;
   }>();
-  const { rt, settings, palette: p } = useApp();
+  const { rt, settings, palette: p, reduceMotion } = useApp();
   const insets = useSafeAreaInsets();
   const keyboardUp = useKeyboardVisible();
   const [created, setCreated] = useState<string | null>(null);
@@ -67,6 +68,8 @@ export default function Chat() {
   const lastSpoken = useRef(false);
   const pendingVoice = useRef(voice === "1");
   const pendingQ = useRef(q);
+  const pendingNotice = useRef(notice);
+  const [noticeAsk, setNoticeAsk] = useState<string | null>(null);
 
   useEffect(() => {
     if (id !== "new") return;
@@ -105,6 +108,30 @@ export default function Chat() {
       const text = pendingQ.current;
       pendingQ.current = undefined;
       chat.send(text);
+    }
+    if (pendingNotice.current) {
+      // Opened from a notification: show what it said as the first message.
+      const raw = pendingNotice.current;
+      pendingNotice.current = undefined;
+      try {
+        const n = JSON.parse(decodeURIComponent(raw)) as {
+          title: string;
+          body: string;
+          ask?: string;
+        };
+        rt.engine.conversations
+          .addMessage(
+            convId,
+            { role: "assistant", text: `**${n.title}**\n\n${n.body}` },
+            new Date(),
+          )
+          .then(() => {
+            chat.reload();
+            if (n.ask) setNoticeAsk(n.ask);
+          });
+      } catch {
+        // malformed notice: just open the chat
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convId]);
@@ -235,7 +262,9 @@ export default function Chat() {
             inverted
             data={reversed}
             keyExtractor={(m) => m.id}
-            renderItem={({ item }) => <MessageView m={item} />}
+            renderItem={({ item, index }) => (
+              <MessageView m={item} animate={index < 2 && !reduceMotion} />
+            )}
             contentContainerStyle={{
               paddingHorizontal: GUTTER,
               paddingVertical: space.lg,
@@ -252,6 +281,16 @@ export default function Chat() {
                 )}
                 {!chat.streaming && !chat.error && (
                   <View style={styles.chips}>
+                    {noticeAsk && (
+                      <Button
+                        label="Do it"
+                        compact
+                        onPress={() => {
+                          setNoticeAsk(null);
+                          chat.send(noticeAsk);
+                        }}
+                      />
+                    )}
                     {followUps(items[items.length - 1]).map((f) => (
                       <Button
                         key={f}

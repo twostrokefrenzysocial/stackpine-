@@ -1,18 +1,22 @@
-import Database from 'better-sqlite3';
-import { BriefStore, briefDue, generateBrief } from '../brief/brief';
-import { ConversationStore, EpisodeStore } from '../conversations/store';
-import { ROLLING_WINDOW, maybeRollSummary, unsummarizedMessages } from '../llm/background';
-import { HeuristicBackgroundLlm } from '../llm/scripted';
-import { MIGRATIONS, migrate, withoutFts5 } from '../db/schema';
-import type { Db } from '../db/types';
-import { MemoryStore } from '../memory/store';
-import { createMockSources } from '../mock/sources';
-import { ReminderStore } from '../reminders/reminders';
-import { shouldRelock } from '../security/lock';
-import { createMigratedDb, createTestDb } from './helpers/sqliteDb';
+import Database from "better-sqlite3";
+import { BriefStore, briefDue, generateBrief } from "../brief/brief";
+import { ConversationStore, EpisodeStore } from "../conversations/store";
+import {
+  ROLLING_WINDOW,
+  maybeRollSummary,
+  unsummarizedMessages,
+} from "../llm/background";
+import { HeuristicBackgroundLlm } from "../llm/scripted";
+import { MIGRATIONS, migrate, withoutFts5 } from "../db/schema";
+import type { Db } from "../db/types";
+import { MemoryStore } from "../memory/store";
+import { createMockSources } from "../mock/sources";
+import { ReminderStore } from "../reminders/reminders";
+import { shouldRelock } from "../security/lock";
+import { createMigratedDb, createTestDb } from "./helpers/sqliteDb";
 
-describe('app lock', () => {
-  it('re-locks only after 5 minutes in the background', () => {
+describe("app lock", () => {
+  it("re-locks only after 5 minutes in the background", () => {
     const t0 = 1_000_000;
     expect(shouldRelock(null, t0)).toBe(false);
     expect(shouldRelock(t0, t0 + 4 * 60_000)).toBe(false);
@@ -20,120 +24,269 @@ describe('app lock', () => {
   });
 });
 
-describe('without FTS5 (browser preview)', () => {
-  it('rewrites virtual tables and memory search still works via LIKE', async () => {
+describe("without FTS5 (browser preview)", () => {
+  it("rewrites virtual tables and memory search still works via LIKE", async () => {
     const sql = withoutFts5(MIGRATIONS[0]);
     expect(sql).not.toMatch(/fts5/);
-    const raw = new Database(':memory:');
+    const raw = new Database(":memory:");
     raw.exec(sql);
     const base = createTestDb();
     // Reuse the adapter but point it at the pre-migrated raw DB.
-    const db: Db = { ...base, exec: async (s) => void raw.exec(s), run: async (s, p = []) => { const r = raw.prepare(s).run(...p); return { changes: r.changes, lastInsertRowId: Number(r.lastInsertRowid) }; }, all: async (s, p = []) => raw.prepare(s).all(...p) as never, get: async (s, p = []) => (raw.prepare(s).get(...p) as never) ?? null, transaction: async (fn) => fn() };
+    const db: Db = {
+      ...base,
+      exec: async (s) => void raw.exec(s),
+      run: async (s, p = []) => {
+        const r = raw.prepare(s).run(...p);
+        return {
+          changes: r.changes,
+          lastInsertRowId: Number(r.lastInsertRowid),
+        };
+      },
+      all: async (s, p = []) => raw.prepare(s).all(...p) as never,
+      get: async (s, p = []) => (raw.prepare(s).get(...p) as never) ?? null,
+      transaction: async (fn) => fn(),
+    };
     const store = new MemoryStore(db);
-    await store.save({ category: 'Preferences', content: 'Prefers aisle seats on long flights', source: 'conversation' });
-    const hits = await store.search('which seats on flights?');
+    await store.save({
+      category: "Preferences",
+      content: "Prefers aisle seats on long flights",
+      source: "conversation",
+    });
+    const hits = await store.search("which seats on flights?");
     expect(hits).toHaveLength(1);
     expect(hits[0].relevance).toBeGreaterThan(0);
   });
 });
 
-describe('daily brief', () => {
-  const now = new Date('2026-10-18T07:30:00');
-  it('is due after the chosen time when missing', () => {
-    expect(briefDue('07:00', now, null)).toBe(true);
-    expect(briefDue('08:00', now, null)).toBe(false);
-    expect(briefDue('07:00', now, { date: '2026-10-18' } as never)).toBe(false);
+describe("daily brief", () => {
+  const now = new Date("2026-10-18T07:30:00");
+  it("is due after the chosen time when missing", () => {
+    expect(briefDue("07:00", now, null)).toBe(true);
+    expect(briefDue("08:00", now, null)).toBe(false);
+    expect(briefDue("07:00", now, { date: "2026-10-18" } as never)).toBe(false);
     // The background task may build it up to 45 minutes early, ahead of the notification.
-    expect(briefDue('08:00', now, null, 45)).toBe(true);
-    expect(briefDue('08:30', now, null, 45)).toBe(false);
+    expect(briefDue("08:00", now, null, 45)).toBe(true);
+    expect(briefDue("08:30", now, null, 45)).toBe(false);
   });
 
-  it('builds schedule, people waiting and missed calls, skipping suspicious senders', async () => {
+  it("builds schedule, people waiting and missed calls, skipping suspicious senders", async () => {
     const db = await createMigratedDb();
     const sources = createMockSources({ now: () => now });
-    const brief = await generateBrief({ sources, episodes: new EpisodeStore(db), reminders: new ReminderStore(db), now });
+    const brief = await generateBrief({
+      sources,
+      episodes: new EpisodeStore(db),
+      reminders: new ReminderStore(db),
+      now,
+    });
     expect(brief.schedule.some((e) => /Q4 roadmap/.test(e.title))).toBe(true);
     expect(brief.peopleWaiting.length).toBeGreaterThan(0);
-    expect(brief.peopleWaiting.some((p) => /IT Support|micros0ft/i.test(p.name))).toBe(false);
+    expect(
+      brief.peopleWaiting.some((p) => /IT Support|micros0ft/i.test(p.name)),
+    ).toBe(false);
     const store = new BriefStore(db);
     await store.save(brief);
-    expect((await store.forDate('2026-10-18'))?.headline).toBe(brief.headline);
+    expect((await store.forDate("2026-10-18"))?.headline).toBe(brief.headline);
     expect((await store.latest())?.id).toBe(brief.id);
     // Switching data mode clears it, so the demo brief never shows on real data.
     await store.clear();
-    expect(await store.forDate('2026-10-18')).toBeNull();
+    expect(await store.forDate("2026-10-18")).toBeNull();
     expect(await store.latest()).toBeNull();
   });
 });
 
-it('migrate is idempotent', async () => {
+it("migrate is idempotent", async () => {
   const db = createTestDb();
   expect(await migrate(db)).toBe(MIGRATIONS.length);
   expect(await migrate(db)).toBe(MIGRATIONS.length);
 });
 
-describe('rolling summary', () => {
-  it('folds older messages so long conversations keep the thread', async () => {
+describe("rolling summary", () => {
+  it("folds older messages so long conversations keep the thread", async () => {
     const db = await createMigratedDb();
     const conversations = new ConversationStore(db);
     const c = await conversations.create();
     for (let i = 0; i < ROLLING_WINDOW + 6; i++) {
-      await conversations.addMessage(c.id, { role: i % 2 ? 'assistant' : 'user', text: `message ${i} about the Chicago trip` });
+      await conversations.addMessage(c.id, {
+        role: i % 2 ? "assistant" : "user",
+        text: `message ${i} about the Chicago trip`,
+      });
     }
-    expect(await maybeRollSummary({ llm: new HeuristicBackgroundLlm(), conversations }, c.id)).toBe(true);
+    expect(
+      await maybeRollSummary(
+        { llm: new HeuristicBackgroundLlm(), conversations },
+        c.id,
+      ),
+    ).toBe(true);
     const conv = (await conversations.get(c.id))!;
     expect(conv.rollingSummary).toMatch(/Chicago/);
     const rest = unsummarizedMessages(conv, await conversations.messages(c.id));
     expect(rest).toHaveLength(ROLLING_WINDOW / 2);
-    expect(await maybeRollSummary({ llm: new HeuristicBackgroundLlm(), conversations }, c.id)).toBe(false);
+    expect(
+      await maybeRollSummary(
+        { llm: new HeuristicBackgroundLlm(), conversations },
+        c.id,
+      ),
+    ).toBe(false);
   });
 });
 
-describe('markdown in replies', () => {
-  const { parseMarkdown, parseInline } = jest.requireActual<typeof import('../util/markdown')>('../util/markdown');
-  it('renders headings, bullets, numbers and inline styles without raw symbols', () => {
-    const blocks = parseMarkdown('### Today\n**3:00 PM** — Q4 review\n\n- Call *Mom* back\n  - about `dinner`\n2) Reply to [Sarah](https://x.y)');
-    expect(blocks.map((b) => b.kind)).toEqual(['heading', 'paragraph', 'bullet', 'bullet', 'bullet']);
-    expect(blocks[1].spans[0]).toEqual({ text: '3:00 PM', bold: true });
-    expect(blocks[3]).toMatchObject({ depth: 1, marker: '•' });
-    expect(blocks[4]).toMatchObject({ marker: '2.' });
-    expect(blocks[4].spans.map((s) => s.text).join('')).toBe('Reply to Sarah');
+describe("markdown in replies", () => {
+  const { parseMarkdown, parseInline } =
+    jest.requireActual<typeof import("../util/markdown")>("../util/markdown");
+  it("renders headings, bullets, numbers and inline styles without raw symbols", () => {
+    const blocks = parseMarkdown(
+      "### Today\n**3:00 PM** — Q4 review\n\n- Call *Mom* back\n  - about `dinner`\n2) Reply to [Sarah](https://x.y)",
+    );
+    expect(blocks.map((b) => b.kind)).toEqual([
+      "heading",
+      "paragraph",
+      "bullet",
+      "bullet",
+      "bullet",
+    ]);
+    expect(blocks[1].spans[0]).toEqual({ text: "3:00 PM", bold: true });
+    expect(blocks[3]).toMatchObject({ depth: 1, marker: "•" });
+    expect(blocks[4]).toMatchObject({ marker: "2." });
+    expect(blocks[4].spans.map((s) => s.text).join("")).toBe("Reply to Sarah");
     expect(JSON.stringify(blocks)).not.toMatch(/\*\*|###/);
   });
-  it('leaves ordinary text alone', () => {
-    expect(parseInline('5 * 3 = 15 and snake_case_name')).toEqual([{ text: '5 * 3 = 15 and snake_case_name' }]);
+  it("leaves ordinary text alone", () => {
+    expect(parseInline("5 * 3 = 15 and snake_case_name")).toEqual([
+      { text: "5 * 3 = 15 and snake_case_name" },
+    ]);
   });
 });
 
-describe('model upgrade', () => {
-  const { upgradeModelDefaults, DEFAULT_SETTINGS } = jest.requireActual<typeof import('../settings/settings')>('../settings/settings');
-  it('moves chat from gpt-5-mini to gpt-5 once, keeping mini for background', () => {
-    const p = upgradeModelDefaults({ ...DEFAULT_SETTINGS, provider: 'openai', openaiModel: 'gpt-5-mini', openaiBackgroundModel: '' });
-    expect(p).toEqual({ modelDefaultsVersion: 1, openaiModel: 'gpt-5', openaiBackgroundModel: 'gpt-5-mini' });
-    expect(upgradeModelDefaults({ ...DEFAULT_SETTINGS, modelDefaultsVersion: 1, openaiModel: 'gpt-5-mini' })).toBeNull();
-    expect(upgradeModelDefaults({ ...DEFAULT_SETTINGS, openaiModel: 'my-custom-model' })).toEqual({ modelDefaultsVersion: 1 });
+describe("model upgrade", () => {
+  const { upgradeModelDefaults, DEFAULT_SETTINGS } = jest.requireActual<
+    typeof import("../settings/settings")
+  >("../settings/settings");
+  it("moves chat from gpt-5-mini to gpt-5 once, keeping mini for background", () => {
+    const p = upgradeModelDefaults({
+      ...DEFAULT_SETTINGS,
+      provider: "openai",
+      openaiModel: "gpt-5-mini",
+      openaiBackgroundModel: "",
+    });
+    expect(p).toEqual({
+      modelDefaultsVersion: 1,
+      openaiModel: "gpt-5",
+      openaiBackgroundModel: "gpt-5-mini",
+    });
+    expect(
+      upgradeModelDefaults({
+        ...DEFAULT_SETTINGS,
+        modelDefaultsVersion: 1,
+        openaiModel: "gpt-5-mini",
+      }),
+    ).toBeNull();
+    expect(
+      upgradeModelDefaults({
+        ...DEFAULT_SETTINGS,
+        openaiModel: "my-custom-model",
+      }),
+    ).toEqual({ modelDefaultsVersion: 1 });
   });
 });
 
-describe('voice mode', () => {
-  const { forSpeech } = jest.requireActual<typeof import('../util/speech')>('../util/speech');
-  const { buildSystem } = jest.requireActual<typeof import('../llm/agent')>('../llm/agent');
-  it('reads replies without Markdown, bullets or links', () => {
-    expect(forSpeech('**Today:**\n- 3:00 PM standup\n- Call [Mom](https://x.y)\n\nSee https://example.com')).toBe('Today:, 3:00 PM standup, Call Mom. See');
+describe("voice mode", () => {
+  const { forSpeech } =
+    jest.requireActual<typeof import("../util/speech")>("../util/speech");
+  const { buildSystem } =
+    jest.requireActual<typeof import("../llm/agent")>("../llm/agent");
+  it("reads replies without Markdown, bullets or links", () => {
+    expect(
+      forSpeech(
+        "**Today:**\n- 3:00 PM standup\n- Call [Mom](https://x.y)\n\nSee https://example.com",
+      ),
+    ).toBe("Today:, 3:00 PM standup, Call Mom. See");
   });
-  it('tells the model to answer briefly, for listening', () => {
-    const sys = buildSystem({ coreMemory: '', relevantMemory: '', now: new Date(), dataMode: 'real', unavailable: [], voice: true }).map((b) => b.text).join('\n');
+  it("tells the model to answer briefly, for listening", () => {
+    const sys = buildSystem({
+      coreMemory: "",
+      relevantMemory: "",
+      now: new Date(),
+      dataMode: "real",
+      unavailable: [],
+      voice: true,
+    })
+      .map((b) => b.text)
+      .join("\n");
     expect(sys).toMatch(/# Voice mode/);
-    expect(buildSystem({ coreMemory: '', relevantMemory: '', now: new Date(), dataMode: 'real', unavailable: [] }).map((b) => b.text).join('\n')).not.toMatch(/# Voice mode/);
+    expect(
+      buildSystem({
+        coreMemory: "",
+        relevantMemory: "",
+        now: new Date(),
+        dataMode: "real",
+        unavailable: [],
+      })
+        .map((b) => b.text)
+        .join("\n"),
+    ).not.toMatch(/# Voice mode/);
   });
 });
 
-describe('follow-up suggestions', () => {
-  const { followUps } = jest.requireActual<typeof import('../util/followUps')>('../util/followUps');
-  it('suggests the obvious next step for what was shown', () => {
-    const base = { id: 'm', conversationId: 'c', role: 'assistant' as const, text: '', createdAt: '' };
-    expect(followUps({ ...base, cards: [{ type: 'calls', calls: [{ id: '1', number: '555', contactName: 'Linda Ruiz', type: 'missed', date: '', durationSec: 0 }] }] } as never)).toEqual(['Call Linda Ruiz back']);
+describe("follow-up suggestions", () => {
+  const { followUps } =
+    jest.requireActual<typeof import("../util/followUps")>("../util/followUps");
+  it("suggests the obvious next step for what was shown", () => {
+    const base = {
+      id: "m",
+      conversationId: "c",
+      role: "assistant" as const,
+      text: "",
+      createdAt: "",
+    };
+    expect(
+      followUps({
+        ...base,
+        cards: [
+          {
+            type: "calls",
+            calls: [
+              {
+                id: "1",
+                number: "555",
+                contactName: "Linda Ruiz",
+                type: "missed",
+                date: "",
+                durationSec: 0,
+              },
+            ],
+          },
+        ],
+      } as never),
+    ).toEqual(["Call Linda Ruiz back"]);
     expect(followUps({ ...base, cards: [] })).toEqual([]);
-    expect(followUps({ ...base, role: 'user', cards: [] } as never)).toEqual([]);
+    expect(followUps({ ...base, role: "user", cards: [] } as never)).toEqual(
+      [],
+    );
+  });
+});
+
+import { hrefForNotification } from "../notifications/route";
+
+describe("notification taps", () => {
+  it("open a chat showing what the notification said, or the brief / voice screens", async () => {
+    expect(hrefForNotification({ url: "optimus://brief" })).toBe("/brief");
+    expect(hrefForNotification({ url: "optimus://voice" })).toBe("/voice");
+    const href = hrefForNotification({
+      url: "optimus://chat",
+      notice: {
+        title: "Call Linda back",
+        body: "You missed her call at 3pm.",
+        ask: "Call Linda",
+      },
+    });
+    expect(href.startsWith("/chat/new?notice=")).toBe(true);
+    expect(
+      JSON.parse(decodeURIComponent(href.slice("/chat/new?notice=".length))),
+    ).toEqual({
+      title: "Call Linda back",
+      body: "You missed her call at 3pm.",
+      ask: "Call Linda",
+    });
+    expect(hrefForNotification(undefined)).toBe("/");
   });
 });

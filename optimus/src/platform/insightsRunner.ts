@@ -14,7 +14,7 @@ export function ensureInsights(rt: Runtime, opts: { notify?: boolean; force?: bo
     try {
       const about = await knowledgeDigest(rt.engine.memory, rt.engine.episodes).catch(() => '');
       const items = await refreshInsights({ db: rt.db, sources: rt.sources(), llm: rt.background(), aboutUser: about || undefined, force: opts.force });
-      if (opts.notify) for (const i of await takeUnnotified(rt.db)) await notifyInsight(i).catch(() => undefined);
+      if (opts.notify) for (const i of await takeUnnotified(rt.db)) await notifyInsight({ title: i.title, why: i.why, ask: i.ask }).catch(() => undefined);
       return items;
     } finally {
       inFlight = null;
