@@ -6,6 +6,7 @@ import { MAIN_MODEL, BACKGROUND_MODEL } from "../core/llm/prompts";
 import { friendlyError } from "../core/llm/transport";
 import { photoIndexStats } from "../core/photos/photoIndex";
 import * as Native from "../../modules/optimus-android";
+import { CHAT_PACKAGES } from "../platform/sources/real";
 import { proxyApi, type ProxyUsage } from "../platform/claude";
 import { exportBackup, importBackup } from "../platform/backupFiles";
 import { proxyToken, oauthTokens } from "../platform/secrets";
@@ -37,17 +38,6 @@ function normalizeProxyUrl(raw: string): string {
 }
 
 /** Apps people usually keep out of the notification log. */
-const SENSITIVE_APPS = [
-  { packageName: "com.chase.sig.android", appName: "Chase" },
-  { packageName: "com.samsung.android.spay", appName: "Samsung Wallet" },
-  {
-    packageName: "com.google.android.apps.walletnfcrel",
-    appName: "Google Wallet",
-  },
-  { packageName: "com.sec.android.app.shealth", appName: "Samsung Health" },
-  { packageName: "com.venmo", appName: "Venmo" },
-];
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Panel label={title} animate={false}>
@@ -106,7 +96,6 @@ export default function Settings() {
   };
   const [wipeArmed, setWipeArmed] = useState(false);
   const [emailMsg, setEmailMsg] = useState<string | null>(null);
-  const [newPkg, setNewPkg] = useState("");
 
   const { data: routines } = useData(() => rt.engine.routines.list(), []);
   const { data: photoStats, reload: refreshPhotoStats } = useData(
@@ -155,18 +144,25 @@ export default function Settings() {
             appName: n.appName,
           }))
         : await rt.engine.notifications.apps();
+    const installed =
+      settings.dataMode === "mock"
+        ? []
+        : await Native.getLaunchableApps().catch(() => []);
     const all = [
-      ...SENSITIVE_APPS,
+      ...installed,
       ...seen,
-      ...settings.excludedNotificationApps.map((pk) => ({
+      ...settings.approvedNotificationApps.map((pk) => ({
         packageName: pk,
         appName: pk,
       })),
     ];
-    return all.filter(
-      (a, i) => all.findIndex((b) => b.packageName === a.packageName) === i,
-    );
-  }, [settings.dataMode, settings.excludedNotificationApps]);
+    return all
+      .filter(
+        (a, i) => all.findIndex((b) => b.packageName === a.packageName) === i,
+      )
+      .sort((a, b) => a.appName.localeCompare(b.appName));
+  }, [settings.dataMode, settings.approvedNotificationApps]);
+  const [appFilter, setAppFilter] = useState("");
 
   const refreshUsage = async (u = settings.proxyUrl) => {
     const t = await proxyToken.get();
@@ -275,11 +271,11 @@ export default function Settings() {
     }
   };
 
-  const toggleExcluded = (pkg: string, excluded: boolean) => {
-    const set = new Set(settings.excludedNotificationApps);
-    if (excluded) set.add(pkg);
+  const toggleApproved = (pkg: string, approved: boolean) => {
+    const set = new Set(settings.approvedNotificationApps);
+    if (approved) set.add(pkg);
     else set.delete(pkg);
-    updateSettings({ excludedNotificationApps: [...set] });
+    updateSettings({ approvedNotificationApps: [...set] });
   };
 
   const connect = async (which: "gmail" | "outlook" | "icloud") => {
@@ -719,41 +715,69 @@ export default function Settings() {
               label: `${d}d`,
             }))}
           />
-          <Txt variant="label" color={p.textSecondary}>
-            Excluded apps
+          <Segmented
+            label="Apps I can read"
+            value={settings.notificationApps}
+            onChange={(v) => {
+              // First switch to approvals: start with the messaging apps, the ones people ask about most.
+              const seed = settings.approvedNotificationApps.length
+                ? settings.approvedNotificationApps
+                : CHAT_PACKAGES;
+              updateSettings({
+                notificationApps: v,
+                approvedNotificationApps: seed,
+              });
+            }}
+            options={[
+              { value: "all", label: "All apps" },
+              { value: "approved", label: "Only approved" },
+            ]}
+          />
+          <Txt variant="small" color={p.textSecondary}>
+            {settings.notificationApps === "all"
+              ? "I read notifications from every app except this one. Switch to Only approved to pick the apps yourself."
+              : `Only the apps you turn on below reach me. ${settings.approvedNotificationApps.length} approved.`}
           </Txt>
-          {(apps ?? []).map((a) => (
-            <Toggle
-              key={a.packageName}
-              label={a.appName}
-              hint={a.packageName}
-              value={settings.excludedNotificationApps.includes(a.packageName)}
-              onChange={(v) => toggleExcluded(a.packageName, v)}
-            />
-          ))}
-          <View style={styles.rowBetween}>
-            <View style={{ flex: 1 }}>
+          {settings.notificationApps === "approved" && (
+            <>
               <Field
-                label="Exclude another app (package name)"
-                value={newPkg}
-                onChangeText={setNewPkg}
-                placeholder="com.example.bank"
+                label="Find an app"
+                value={appFilter}
+                onChangeText={setAppFilter}
+                placeholder="Messages, WhatsApp, Gmail…"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-            </View>
-          </View>
-          <Button
-            label="Exclude"
-            variant="secondary"
-            compact
-            disabled={!/^[a-zA-Z][\w]*(\.[\w]+)+$/.test(newPkg.trim())}
-            onPress={() => {
-              toggleExcluded(newPkg.trim(), true);
-              setNewPkg("");
-            }}
-            style={{ alignSelf: "flex-start" }}
-          />
+              {(apps ?? [])
+                .filter(
+                  (a) =>
+                    !appFilter.trim() ||
+                    a.appName
+                      .toLowerCase()
+                      .includes(appFilter.trim().toLowerCase()) ||
+                    a.packageName
+                      .toLowerCase()
+                      .includes(appFilter.trim().toLowerCase()),
+                )
+                .slice(0, appFilter.trim() ? 60 : 200)
+                .map((a) => (
+                  <Toggle
+                    key={a.packageName}
+                    label={a.appName}
+                    hint={a.packageName}
+                    value={settings.approvedNotificationApps.includes(
+                      a.packageName,
+                    )}
+                    onChange={(v) => toggleApproved(a.packageName, v)}
+                  />
+                ))}
+              {!apps?.length && (
+                <Txt variant="small" color={p.textTertiary}>
+                  No apps to show yet.
+                </Txt>
+              )}
+            </>
+          )}
         </Section>
 
         <Section title="Daily brief">

@@ -64,6 +64,7 @@ class OptimusNotificationListener : NotificationListenerService() {
       val pkg = sbn.packageName ?: return
       if (pkg == context.packageName) return
       if (config.excludedPackages.contains(pkg)) return
+      if (config.allowedPackages.isNotEmpty() && !config.allowedPackages.contains(pkg)) return
 
       val notification = sbn.notification ?: return
       val flags = notification.flags

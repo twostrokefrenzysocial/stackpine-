@@ -22,7 +22,11 @@ export interface Settings {
   briefTime: string; // "07:00"
   briefEnabled: boolean;
   notificationRetentionDays: number;
+  /** Kept only for migration; the UI now works with approved apps. */
   excludedNotificationApps: string[];
+  /** Read notifications from every app, or only the approved ones. */
+  notificationApps: 'all' | 'approved';
+  approvedNotificationApps: string[];
   notificationCaptureEnabled: boolean;
   locationEnabled: boolean;
   /** Describe photos in the background so search finds anything in the library. */
@@ -58,6 +62,8 @@ export const DEFAULT_SETTINGS: Settings = {
   briefEnabled: true,
   notificationRetentionDays: 30,
   excludedNotificationApps: [],
+  notificationApps: 'all',
+  approvedNotificationApps: [],
   notificationCaptureEnabled: true,
   locationEnabled: false,
   photoIndexEnabled: true,

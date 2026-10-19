@@ -1,4 +1,4 @@
-import { requireOptionalNativeModule } from 'expo';
+import { requireOptionalNativeModule } from "expo";
 
 /**
  * Android-only bridge for data Expo doesn't expose: SMS/MMS, the call log,
@@ -13,17 +13,17 @@ export interface RawSms {
   address: string;
   body: string;
   dateMs: number;
-  type: 'inbox' | 'sent' | 'draft' | 'outbox' | 'failed' | 'queued' | 'other';
+  type: "inbox" | "sent" | "draft" | "outbox" | "failed" | "queued" | "other";
   read: boolean;
-  kind: 'sms' | 'mms' | 'rcs';
+  kind: "sms" | "mms" | "rcs";
 }
 
 export interface MessagingDiagnostics {
   readSmsGranted: boolean;
   /** Row counts, or 'unavailable' when a store can't be read on this phone. */
-  sms?: number | 'unavailable';
-  mms?: number | 'unavailable';
-  samsungRcs?: number | 'unavailable';
+  sms?: number | "unavailable";
+  mms?: number | "unavailable";
+  samsungRcs?: number | "unavailable";
   defaultSmsApp: string | null;
   notificationAccessGranted: boolean;
 }
@@ -34,7 +34,14 @@ export interface RawCall {
   cachedName: string | null;
   dateMs: number;
   durationSec: number;
-  type: 'incoming' | 'outgoing' | 'missed' | 'rejected' | 'voicemail' | 'blocked' | 'other';
+  type:
+    | "incoming"
+    | "outgoing"
+    | "missed"
+    | "rejected"
+    | "voicemail"
+    | "blocked"
+    | "other";
 }
 
 export interface RawNotification {
@@ -61,24 +68,39 @@ export interface DeviceStatus {
 }
 
 interface NativeModuleShape {
-  getSmsMessages(opts: { sinceMs?: number; untilMs?: number; limit?: number; query?: string; threadId?: string }): Promise<RawSms[]>;
+  getSmsMessages(opts: {
+    sinceMs?: number;
+    untilMs?: number;
+    limit?: number;
+    query?: string;
+    threadId?: string;
+  }): Promise<RawSms[]>;
   sendSms(to: string, body: string): Promise<{ id: string }>;
   getMessagingDiagnostics(): Promise<MessagingDiagnostics>;
-  getCallLog(opts: { sinceMs?: number; limit?: number; number?: string }): Promise<RawCall[]>;
+  getCallLog(opts: {
+    sinceMs?: number;
+    limit?: number;
+    number?: string;
+  }): Promise<RawCall[]>;
   startCall(number: string): Promise<void>;
   getDeviceStatus(): DeviceStatus;
   openNotificationAccessSettings(): void;
   openAppDetailsSettings(): void;
   openBatteryOptimizationSettings(): void;
-  setNotificationCaptureConfig(cfg: { enabled: boolean; excludedPackages: string[] }): void;
+  setNotificationCaptureConfig(cfg: {
+    enabled: boolean;
+    excludedPackages: string[];
+    allowedPackages?: string[];
+  }): void;
+  getLaunchableApps(): Promise<{ packageName: string; appName: string }[]>;
   drainCapturedNotifications(): Promise<RawNotification[]>;
   requestListenerRebind(): void;
 }
 
-const Native = requireOptionalNativeModule<NativeModuleShape>('OptimusAndroid');
+const Native = requireOptionalNativeModule<NativeModuleShape>("OptimusAndroid");
 
 function need(): NativeModuleShape {
-  if (!Native) throw new Error('Optimus native module unavailable');
+  if (!Native) throw new Error("Optimus native module unavailable");
   return Native;
 }
 
@@ -87,7 +109,15 @@ export function isAvailable(): boolean {
 }
 
 /** Newest first. `sinceMs` enables incremental sync. Requires READ_SMS. */
-export function getSmsMessages(opts: { sinceMs?: number; untilMs?: number; limit?: number; query?: string; threadId?: string } = {}): Promise<RawSms[]> {
+export function getSmsMessages(
+  opts: {
+    sinceMs?: number;
+    untilMs?: number;
+    limit?: number;
+    query?: string;
+    threadId?: string;
+  } = {},
+): Promise<RawSms[]> {
   return need().getSmsMessages(opts);
 }
 
@@ -102,7 +132,9 @@ export function sendSms(to: string, body: string): Promise<{ id: string }> {
 }
 
 /** Newest first. Requires READ_CALL_LOG. */
-export function getCallLog(opts: { sinceMs?: number; limit?: number; number?: string } = {}): Promise<RawCall[]> {
+export function getCallLog(
+  opts: { sinceMs?: number; limit?: number; number?: string } = {},
+): Promise<RawCall[]> {
   return need().getCallLog(opts);
 }
 
@@ -129,8 +161,19 @@ export function openBatteryOptimizationSettings(): void {
 }
 
 /** Read by the listener service even when the JS runtime isn't running. */
-export function setNotificationCaptureConfig(cfg: { enabled: boolean; excludedPackages: string[] }): void {
+export function setNotificationCaptureConfig(cfg: {
+  enabled: boolean;
+  excludedPackages: string[];
+  allowedPackages?: string[];
+}): void {
   Native?.setNotificationCaptureConfig(cfg);
+}
+
+/** Apps with a launcher icon (name and package), alphabetical. */
+export async function getLaunchableApps(): Promise<
+  { packageName: string; appName: string }[]
+> {
+  return Native ? Native.getLaunchableApps() : [];
 }
 
 /** Everything the listener queued since the last drain, oldest first; clears the queue. */

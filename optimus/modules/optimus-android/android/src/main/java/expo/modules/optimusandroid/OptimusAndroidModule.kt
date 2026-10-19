@@ -126,7 +126,26 @@ class OptimusAndroidModule : Module() {
     Function("setNotificationCaptureConfig") { cfg: Map<String, Any?> ->
       val enabled = cfg["enabled"] as? Boolean ?: false
       val excluded = (cfg["excludedPackages"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-      CaptureConfig.write(context, enabled, excluded)
+      val allowed = (cfg["allowedPackages"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+      CaptureConfig.write(context, enabled, excluded, allowed)
+    }
+
+    /** Apps with a launcher icon, for picking which ones Optimus may read. */
+    AsyncFunction("getLaunchableApps") {
+      val pm = context.packageManager
+      val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+      val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0L))
+      } else {
+        @Suppress("DEPRECATION")
+        pm.queryIntentActivities(intent, 0)
+      }
+      resolved
+        .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+        .filter { it.first != context.packageName }
+        .distinctBy { it.first }
+        .sortedBy { it.second.lowercase() }
+        .map { mapOf("packageName" to it.first, "appName" to it.second) }
     }
 
     AsyncFunction("drainCapturedNotifications") {

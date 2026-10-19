@@ -1,7 +1,7 @@
-import type { Db } from '../db/types';
-import type { CapturedNotification } from '../types';
-import { DAY } from '../util/time';
-import { redactNotification } from './redact';
+import type { Db } from "../db/types";
+import type { CapturedNotification } from "../types";
+import { DAY } from "../util/time";
+import { redactNotification } from "./redact";
 
 export interface RawCapturedNotification {
   key: string;
@@ -16,6 +16,8 @@ export interface RawCapturedNotification {
 
 export interface IngestPolicy {
   excludedPackages: string[];
+  /** When set and non-empty, only these packages are kept. */
+  allowedPackages?: string[];
   retentionDays: number;
 }
 
@@ -38,13 +40,25 @@ export class NotificationStore {
    * Stores notifications drained from the native listener. Excluded apps are
    * dropped, codes are redacted (again), duplicates are skipped.
    */
-  async ingest(items: RawCapturedNotification[], policy: IngestPolicy, now = new Date()): Promise<number> {
+  async ingest(
+    items: RawCapturedNotification[],
+    policy: IngestPolicy,
+    now = new Date(),
+  ): Promise<number> {
     const excluded = new Set(policy.excludedPackages);
+    const allowed = policy.allowedPackages?.length
+      ? new Set(policy.allowedPackages)
+      : null;
     const cutoff = now.getTime() - policy.retentionDays * DAY;
     let stored = 0;
     await this.db.transaction(async () => {
       for (const n of items) {
-        if (excluded.has(n.packageName) || n.postedAtMs < cutoff) continue;
+        if (
+          excluded.has(n.packageName) ||
+          (allowed && !allowed.has(n.packageName)) ||
+          n.postedAtMs < cutoff
+        )
+          continue;
         const clean = redactNotification(n.title, n.text);
         const id = `${n.key}@${n.postedAtMs}`;
         const r = await this.db.run(
@@ -67,20 +81,28 @@ export class NotificationStore {
     return stored;
   }
 
-  async list(q: { app?: string; query?: string; since?: string; until?: string; limit?: number } = {}): Promise<CapturedNotification[]> {
-    const where: string[] = ['posted_at >= ?', 'posted_at <= ?'];
-    const params: (string | number)[] = [q.since ?? '0000', q.until ?? '9999'];
+  async list(
+    q: {
+      app?: string;
+      query?: string;
+      since?: string;
+      until?: string;
+      limit?: number;
+    } = {},
+  ): Promise<CapturedNotification[]> {
+    const where: string[] = ["posted_at >= ?", "posted_at <= ?"];
+    const params: (string | number)[] = [q.since ?? "0000", q.until ?? "9999"];
     if (q.app) {
-      where.push('(LOWER(app_name) LIKE ? OR LOWER(package_name) LIKE ?)');
+      where.push("(LOWER(app_name) LIKE ? OR LOWER(package_name) LIKE ?)");
       params.push(`%${q.app.toLowerCase()}%`, `%${q.app.toLowerCase()}%`);
     }
     if (q.query) {
-      where.push('(LOWER(title) LIKE ? OR LOWER(text) LIKE ?)');
+      where.push("(LOWER(title) LIKE ? OR LOWER(text) LIKE ?)");
       params.push(`%${q.query.toLowerCase()}%`, `%${q.query.toLowerCase()}%`);
     }
     params.push(q.limit ?? 30);
     const rows = await this.db.all<Record<string, unknown>>(
-      `SELECT * FROM notifications WHERE ${where.join(' AND ')} ORDER BY posted_at DESC LIMIT ?`,
+      `SELECT * FROM notifications WHERE ${where.join(" AND ")} ORDER BY posted_at DESC LIMIT ?`,
       params,
     );
     return rows.map(toNotif);
@@ -88,16 +110,40 @@ export class NotificationStore {
 
   /** Deletes notifications older than the retention window, and any from apps now excluded. */
   async prune(policy: IngestPolicy, now = new Date()): Promise<number> {
-    const cutoff = new Date(now.getTime() - policy.retentionDays * DAY).toISOString();
-    let removed = (await this.db.run('DELETE FROM notifications WHERE posted_at < ?', [cutoff])).changes;
+    const cutoff = new Date(
+      now.getTime() - policy.retentionDays * DAY,
+    ).toISOString();
+    let removed = (
+      await this.db.run("DELETE FROM notifications WHERE posted_at < ?", [
+        cutoff,
+      ])
+    ).changes;
+    if (policy.allowedPackages?.length) {
+      const ph = policy.allowedPackages.map(() => "?").join(",");
+      removed += (
+        await this.db.run(
+          `DELETE FROM notifications WHERE package_name NOT IN (${ph})`,
+          policy.allowedPackages,
+        )
+      ).changes;
+    }
     if (policy.excludedPackages.length) {
-      const ph = policy.excludedPackages.map(() => '?').join(',');
-      removed += (await this.db.run(`DELETE FROM notifications WHERE package_name IN (${ph})`, policy.excludedPackages)).changes;
+      const ph = policy.excludedPackages.map(() => "?").join(",");
+      removed += (
+        await this.db.run(
+          `DELETE FROM notifications WHERE package_name IN (${ph})`,
+          policy.excludedPackages,
+        )
+      ).changes;
     }
     return removed;
   }
 
-  async apps(): Promise<{ packageName: string; appName: string; count: number }[]> {
-    return this.db.all('SELECT package_name AS packageName, app_name AS appName, COUNT(*) AS count FROM notifications GROUP BY package_name ORDER BY count DESC');
+  async apps(): Promise<
+    { packageName: string; appName: string; count: number }[]
+  > {
+    return this.db.all(
+      "SELECT package_name AS packageName, app_name AS appName, COUNT(*) AS count FROM notifications GROUP BY package_name ORDER BY count DESC",
+    );
   }
 }
