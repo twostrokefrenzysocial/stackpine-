@@ -288,7 +288,7 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
 /* proof: concrete before and after */
 .proof{display:grid;gap:28px 40px;margin-top:56px}
 @media (min-width:860px){.proof{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.proof b{display:block;font-family:var(--display);font-weight:700;font-size:var(--step-lead);letter-spacing:-.02em;line-height:1.05;color:var(--on-dark)}
+.proof b{display:block;font-family:var(--display);font-weight:700;font-size:clamp(1.875rem,1.15rem + 2vw,3rem);letter-spacing:-.04em;line-height:.98;color:var(--on-dark);text-wrap:balance}
 .proof span{display:block;margin-top:8px;color:var(--on-dark-soft);max-width:34ch}
 .what__list p strong{font-weight:600}
 
