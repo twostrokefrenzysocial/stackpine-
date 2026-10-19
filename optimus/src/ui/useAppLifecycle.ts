@@ -24,7 +24,8 @@ export function useAppLifecycle() {
         const { ensureInsights } = await import('../platform/insightsRunner');
         const suggestions = await ensureInsights(rt).catch(() => []);
         const n = await rt.engine.processIdleConversations(activeConversation.id ?? undefined).catch(() => 0);
-        if (n || suggestions.length) bump();
+        const grown = await rt.engine.consolidate().catch(() => null);
+        if (n || suggestions.length || grown?.patterns) bump();
         const { runPhotoIndexing } = await import('../platform/photoIndexRunner');
         void runPhotoIndexing(rt);
       } finally {

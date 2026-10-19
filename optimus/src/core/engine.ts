@@ -1,4 +1,6 @@
 import { ActionStore } from "./actions/actions";
+import { measureGrowth } from "./growth/growth";
+import { consolidateMemories } from "./memory/consolidate";
 import { createActionHandlers } from "./actions/handlers";
 import { ActivityLog } from "./activity/log";
 import { ConversationStore, EpisodeStore } from "./conversations/store";
@@ -40,6 +42,30 @@ export interface EngineDeps {
  * background processing. The UI holds one instance.
  */
 export class OptimusEngine {
+  /** How much Optimus has learned so far (drives the brain's density). */
+  growth(now = this.now()) {
+    return measureGrowth(this.deps.db, now);
+  }
+
+  /** Daily pass that derives patterns from what's been learned; see memory/consolidate.ts. */
+  async consolidate(opts: { force?: boolean } = {}) {
+    const r = await consolidateMemories({
+      db: this.deps.db,
+      memory: this.memory,
+      episodes: this.episodes,
+      llm: this.deps.background(),
+      now: this.now(),
+      force: opts.force,
+    });
+    if (r && (r.patterns || r.reinforced)) {
+      await this.activity.add({
+        kind: "memory",
+        summary: `Connected the dots: ${r.patterns} new pattern${r.patterns === 1 ? "" : "s"}, ${r.reinforced} memor${r.reinforced === 1 ? "y" : "ies"} reinforced`,
+      });
+    }
+    return r;
+  }
+
   /** Chat turns in flight; background work (photo indexing) yields while this is > 0. */
   activeTurns = 0;
   readonly memory: MemoryStore;

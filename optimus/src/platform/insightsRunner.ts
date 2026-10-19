@@ -1,4 +1,5 @@
 import { refreshInsights, takeUnnotified, type Insight } from '../core/insights/insights';
+import { knowledgeDigest } from '../core/memory/consolidate';
 import { notifyInsight } from './notify';
 import type { Runtime } from './runtime';
 
@@ -11,7 +12,7 @@ let inFlight: Promise<Insight[]> | null = null;
 export function ensureInsights(rt: Runtime, opts: { notify?: boolean; force?: boolean } = {}): Promise<Insight[]> {
   inFlight ??= (async () => {
     try {
-      const about = (await rt.engine.memory.list('About Me')).slice(0, 8).map((m) => `- ${m.content}`).join('\n');
+      const about = await knowledgeDigest(rt.engine.memory, rt.engine.episodes).catch(() => '');
       const items = await refreshInsights({ db: rt.db, sources: rt.sources(), llm: rt.background(), aboutUser: about || undefined, force: opts.force });
       if (opts.notify) for (const i of await takeUnnotified(rt.db)) await notifyInsight(i).catch(() => undefined);
       return items;

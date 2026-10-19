@@ -95,16 +95,20 @@ export interface BrainProps {
   onLongPress?: () => void;
   /** Allow drag-to-rotate (off for the small top-bar brain). */
   interactive?: boolean;
+  /** 0..1 how much Optimus has learned: the brain grows denser as it does. */
+  growth?: number;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }
 
-export default function BrainImpl({ size, state, micLevel, speechLevel, onPress, onLongPress, interactive = true, style, accessibilityLabel }: BrainProps) {
+export default function BrainImpl({ size, state, micLevel, speechLevel, onPress, onLongPress, interactive = true, growth, style, accessibilityLabel }: BrainProps) {
   const { palette: p, reduceMotion } = useApp();
   const lowPower = usePowerSaver();
   const focused = useIsFocused();
   const small = size < 120;
-  const density = (small ? 0.35 : 1) * (lowPower ? 0.5 : 1);
+  // A new brain starts at about half density and fills in as it learns (quantized so geometry isn't rebuilt on every tiny change).
+  const learned = growth == null ? 1 : 0.5 + 0.5 * Math.round(Math.max(0, Math.min(1, growth)) * 10) / 10;
+  const density = (small ? 0.35 : 1) * (lowPower ? 0.5 : 1) * learned;
   const { g, adjStart, adj, dir, phaseA, phaseB } = useMemo(() => prepare(Math.round(1800 * density), Math.round(260 * density)), [density]);
 
   const stateIndex = useSharedValue(BRAIN_STATE_INDEX[state]);

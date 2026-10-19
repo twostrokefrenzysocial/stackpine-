@@ -38,7 +38,7 @@ export type SaveResult =
   | { status: 'rejected'; reason: string };
 
 /** Sources whose facts the user stated directly. Everything else needs approval. */
-const DIRECT_SOURCES: MemorySourceKind[] = ['conversation', 'manual', 'import'];
+const DIRECT_SOURCES: MemorySourceKind[] = ['conversation', 'manual', 'import', 'derived'];
 
 const DUPLICATE_THRESHOLD = 0.8;
 

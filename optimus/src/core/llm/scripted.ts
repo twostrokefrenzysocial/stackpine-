@@ -286,6 +286,10 @@ export class HeuristicBackgroundLlm implements BackgroundLlm {
         episode: { summary: `The user asked: ${userLines.slice(0, 3).join(' / ').slice(0, 300)}`, decisions: [], open_tasks: [], topics: [...new Set(first.match(/\b[A-Z][a-z]+\b/g) ?? [])].slice(0, 5) },
       });
     }
+    if (task.name === 'consolidate') {
+      // Offline: no model to connect the dots; leave memories as they are.
+      return task.schema.parse({ patterns: [], reinforce: [] });
+    }
     if (task.name === 'insights') {
       // Offline demo: missed calls and people waiting become suggestions.
       const m = task.prompt.match(/\{[\s\S]*\}/);

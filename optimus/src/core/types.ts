@@ -107,6 +107,7 @@ export const MEMORY_CATEGORIES = [
   'Projects and Goals',
   'Places',
   'Important Dates',
+  'Patterns',
 ] as const;
 export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
@@ -120,7 +121,9 @@ export type MemorySourceKind =
   | 'contacts'
   | 'photos'
   | 'manual'
-  | 'import';
+  | 'import'
+  /** Derived by consolidation from memories and conversations the user already approved. */
+  | 'derived';
 
 export interface Memory {
   id: string;

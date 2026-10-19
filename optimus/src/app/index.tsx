@@ -1,35 +1,46 @@
-import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BriefStore, generateBrief } from '../core/brief/brief';
-import { currentInsights, dismissInsight } from '../core/insights/insights';
-import type { DailyBrief } from '../core/types';
-import { formatDay, formatTime, isoDay, relativeTime } from '../core/util/time';
-import { ensureTodaysBrief } from '../platform/briefRunner';
-import { useApp, useData } from '../ui/AppContext';
-import { EventsCard } from '../ui/cards/DataCards';
-import { Banner } from '../ui/components/Banner';
-import { Brain } from '../ui/components/Brain';
-import { Button } from '../ui/components/Button';
-import { Dock } from '../ui/components/Dock';
-import { Icon } from '../ui/components/Icon';
-import { Panel } from '../ui/components/Panel';
-import { LinearFade, Screen } from '../ui/components/Screen';
-import { StatusStrip } from '../ui/components/StatusStrip';
-import { Txt } from '../ui/components/Txt';
-import { feedback } from '../ui/feedback';
-import { GUTTER, TOUCH, radius, space } from '../ui/theme';
+import { Redirect, router } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BriefStore, generateBrief } from "../core/brief/brief";
+import { currentInsights, dismissInsight } from "../core/insights/insights";
+import type { DailyBrief } from "../core/types";
+import { formatDay, formatTime, isoDay, relativeTime } from "../core/util/time";
+import { ensureTodaysBrief } from "../platform/briefRunner";
+import { useApp, useData } from "../ui/AppContext";
+import { EventsCard } from "../ui/cards/DataCards";
+import { Banner } from "../ui/components/Banner";
+import { Brain } from "../ui/components/Brain";
+import { Button } from "../ui/components/Button";
+import { Dock } from "../ui/components/Dock";
+import { Icon } from "../ui/components/Icon";
+import { Panel } from "../ui/components/Panel";
+import { LinearFade, Screen } from "../ui/components/Screen";
+import { StatusStrip } from "../ui/components/StatusStrip";
+import { Txt } from "../ui/components/Txt";
+import { feedback } from "../ui/feedback";
+import { GUTTER, TOUCH, radius, space } from "../ui/theme";
 
 function greeting(now: Date): string {
   const h = now.getHours();
-  return h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 5
+    ? "Still up"
+    : h < 12
+      ? "Good morning"
+      : h < 17
+        ? "Good afternoon"
+        : "Good evening";
 }
 
-async function userName(rt: ReturnType<typeof useApp>['rt'], fallback?: string): Promise<string | undefined> {
+async function userName(
+  rt: ReturnType<typeof useApp>["rt"],
+  fallback?: string,
+): Promise<string | undefined> {
   if (fallback) return fallback;
-  for (const m of await rt.engine.memory.list('About Me')) {
-    const match = m.content.match(/\bname is ([A-Z][a-z]+)/i) ?? m.content.match(/^(?:goes by|called) ([A-Z][a-z]+)/i);
+  for (const m of await rt.engine.memory.list("About Me")) {
+    const match =
+      m.content.match(/\bname is ([A-Z][a-z]+)/i) ??
+      m.content.match(/^(?:goes by|called) ([A-Z][a-z]+)/i);
     if (match) return match[1][0].toUpperCase() + match[1].slice(1);
   }
   return undefined;
@@ -45,38 +56,66 @@ export default function Home() {
   const { data } = useData(async () => {
     const store = new BriefStore(rt.db);
     const today = isoDay(new Date());
-    let brief: (DailyBrief & { live?: boolean; unavailable?: string[] }) | null = (await store.forDate(today)) ?? (await ensureTodaysBrief(rt).catch(() => null));
+    let brief:
+      (DailyBrief & { live?: boolean; unavailable?: string[] }) | null =
+      (await store.forDate(today)) ??
+      (await ensureTodaysBrief(rt).catch(() => null));
     let offline = false;
     if (!brief || brief.date !== today) {
       // Before the brief time: a live view of today, not saved.
       try {
-        brief = { ...(await generateBrief({ sources: rt.sources(), episodes: rt.engine.episodes, reminders: rt.engine.reminders })), live: true };
+        brief = {
+          ...(await generateBrief({
+            sources: rt.sources(),
+            episodes: rt.engine.episodes,
+            reminders: rt.engine.reminders,
+          })),
+          live: true,
+        };
       } catch {
         brief = await store.latest();
         offline = true;
       }
     }
-    const [name, reminders, pendingMemories, suggestions] = await Promise.all([userName(rt, settings.userName), rt.engine.reminders.upcoming(5), rt.engine.memory.listPending(), currentInsights(rt.db)]);
-    return { brief, offline, name, reminders, pendingMemories: pendingMemories.length, suggestions };
+    const [name, reminders, pendingMemories, suggestions, growth] =
+      await Promise.all([
+        userName(rt, settings.userName),
+        rt.engine.reminders.upcoming(5),
+        rt.engine.memory.listPending(),
+        currentInsights(rt.db),
+        rt.engine.growth().catch(() => null),
+      ]);
+    return {
+      brief,
+      offline,
+      name,
+      reminders,
+      pendingMemories: pendingMemories.length,
+      suggestions,
+      growth,
+    };
   }, [settings.dataMode, settings.userName]);
 
   const brief = data?.brief;
   const brainSize = Math.round(Math.min(width - GUTTER * 2, 400));
   const voice = () => {
-    feedback.fire('tap');
-    router.push('/voice');
+    feedback.fire("tap");
+    router.push("/voice");
   };
 
   const regenerate = async () => {
     setRegenerating(true);
     await ensureTodaysBrief(rt, { force: true }).catch(() => null);
     setRegenerating(false);
-    router.replace('/');
+    router.replace("/");
   };
 
   if (!settings.onboardingDone) return <Redirect href="/onboarding" />;
 
-  const mode = [settings.dataMode === 'mock' ? 'MOCK DATA' : 'LIVE DATA', rt.isDemoBrain() ? 'DEMO' : rt.providerLabel()].join(' · ');
+  const mode = [
+    settings.dataMode === "mock" ? "MOCK DATA" : "LIVE DATA",
+    rt.isDemoBrain() ? "DEMO" : rt.providerLabel(),
+  ].join(" · ");
 
   return (
     <View style={{ flex: 1, backgroundColor: p.bg }}>
@@ -92,8 +131,21 @@ export default function Home() {
 
         {/* The brain: tap to talk, long press for assistant settings. */}
         <View style={styles.brainWrap}>
-          <Brain size={brainSize} state="idle" onPress={voice} onLongPress={() => router.push('/settings')} />
-          <StatusStrip state="idle" />
+          <Brain
+            size={brainSize}
+            state="idle"
+            growth={data?.growth?.level}
+            onPress={voice}
+            onLongPress={() => router.push("/settings")}
+          />
+          <StatusStrip
+            state="idle"
+            detail={
+              data?.growth
+                ? `${data.growth.stage.toUpperCase()} · ${data.growth.memories} MEMORIES · ${data.growth.patterns} PATTERNS`
+                : undefined
+            }
+          />
         </View>
 
         <View style={styles.greeting}>
@@ -102,7 +154,7 @@ export default function Home() {
           </Txt>
           <Txt variant="display" accessibilityRole="header">
             {greeting(now)}
-            {data?.name ? `, ${data.name}` : ''}.
+            {data?.name ? `, ${data.name}` : ""}.
           </Txt>
           {brief && (
             <Txt variant="body" color={p.textSecondary}>
@@ -111,13 +163,19 @@ export default function Home() {
           )}
           {!!brief?.unavailable?.length && (
             <Txt variant="mono" color={p.textTertiary}>
-              NO ACCESS: {brief.unavailable.join(', ').toUpperCase()}
+              NO ACCESS: {brief.unavailable.join(", ").toUpperCase()}
             </Txt>
           )}
         </View>
 
         <View style={{ gap: space.md }}>
-          {data?.offline && <Banner icon="offline" title="Offline" body={`Showing your last brief from ${brief ? formatDay(brief.generatedAt) : 'earlier'}. Conversations and memories still work.`} />}
+          {data?.offline && (
+            <Banner
+              icon="offline"
+              title="Offline"
+              body={`Showing your last brief from ${brief ? formatDay(brief.generatedAt) : "earlier"}. Conversations and memories still work.`}
+            />
+          )}
 
           {!!data?.suggestions.length && (
             <Panel label="Suggested for you" tone="inset" index={0}>
@@ -125,7 +183,11 @@ export default function Home() {
                 {data.suggestions.map((s) => (
                   <View key={s.id} style={{ gap: space.sm }}>
                     <View style={styles.rowTop}>
-                      {s.priority === 'high' && <View style={[styles.liveDot, { backgroundColor: p.red }]} />}
+                      {s.priority === "high" && (
+                        <View
+                          style={[styles.liveDot, { backgroundColor: p.red }]}
+                        />
+                      )}
                       <Txt variant="bodyStrong" style={{ flex: 1 }}>
                         {s.title}
                       </Txt>
@@ -134,7 +196,16 @@ export default function Home() {
                       {s.why}
                     </Txt>
                     <View style={styles.row}>
-                      <Button label="Do it" compact onPress={() => router.push(`/chat/new?q=${encodeURIComponent(s.ask)}&from=suggestion`)} accessibilityHint={s.ask} />
+                      <Button
+                        label="Do it"
+                        compact
+                        onPress={() =>
+                          router.push(
+                            `/chat/new?q=${encodeURIComponent(s.ask)}&from=suggestion`,
+                          )
+                        }
+                        accessibilityHint={s.ask}
+                      />
                       <Button
                         label="Not now"
                         variant="ghost"
@@ -151,24 +222,43 @@ export default function Home() {
             </Panel>
           )}
 
-          {brief && <EventsCard events={brief.schedule} label="Schedule" index={0} />}
+          {brief && (
+            <EventsCard events={brief.schedule} label="Schedule" index={0} />
+          )}
 
           {brief && brief.peopleWaiting.length > 0 && (
             <Panel label="Waiting on you" index={1}>
               <View style={{ gap: space.lg }}>
                 {brief.peopleWaiting.map((w) => (
-                  <View key={`${w.name}-${w.channel}`} style={styles.row} accessible accessibilityLabel={`${w.name} by ${w.channel}: ${w.preview}`}>
-                    <Icon name={w.channel === 'text' ? 'message' : 'mail'} size={18} color={p.textSecondary} />
+                  <View
+                    key={`${w.name}-${w.channel}`}
+                    style={styles.row}
+                    accessible
+                    accessibilityLabel={`${w.name} by ${w.channel}: ${w.preview}`}
+                  >
+                    <Icon
+                      name={w.channel === "text" ? "message" : "mail"}
+                      size={18}
+                      color={p.textSecondary}
+                    />
                     <View style={{ flex: 1 }}>
                       <View style={styles.rowTop}>
-                        <Txt variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                        <Txt
+                          variant="bodyStrong"
+                          style={{ flex: 1 }}
+                          numberOfLines={1}
+                        >
                           {w.name}
                         </Txt>
                         <Txt variant="mono" color={p.textTertiary}>
                           {relativeTime(w.at).toUpperCase()}
                         </Txt>
                       </View>
-                      <Txt variant="small" color={p.textSecondary} numberOfLines={2}>
+                      <Txt
+                        variant="small"
+                        color={p.textSecondary}
+                        numberOfLines={2}
+                      >
                         {w.preview}
                       </Txt>
                     </View>
@@ -200,7 +290,12 @@ export default function Home() {
             {data?.reminders.length ? (
               <View style={{ gap: space.md }}>
                 {data.reminders.map((r) => (
-                  <View key={r.id} style={styles.row} accessible accessibilityLabel={`${r.text}, ${formatDay(r.dueAt)} at ${formatTime(r.dueAt)}`}>
+                  <View
+                    key={r.id}
+                    style={styles.row}
+                    accessible
+                    accessibilityLabel={`${r.text}, ${formatDay(r.dueAt)} at ${formatTime(r.dueAt)}`}
+                  >
                     <Icon name="clock" size={18} color={p.textSecondary} />
                     <Txt variant="body" style={{ flex: 1 }}>
                       {r.text}
@@ -229,46 +324,80 @@ export default function Home() {
             )}
           </Panel>
 
-          {brief && (brief.openTasks.length > 0 || brief.followUps.length > 0) && (
-            <Panel label="Open loops" index={4}>
-              <View style={{ gap: space.md }}>
-                {[...brief.followUps, ...brief.openTasks].slice(0, 6).map((t) => (
-                  <View key={t} style={styles.row}>
-                    <View style={[styles.tick, { backgroundColor: p.textSecondary }]} />
-                    <Txt variant="body" style={{ flex: 1 }}>
-                      {t}
-                    </Txt>
-                  </View>
-                ))}
-              </View>
-            </Panel>
-          )}
+          {brief &&
+            (brief.openTasks.length > 0 || brief.followUps.length > 0) && (
+              <Panel label="Open loops" index={4}>
+                <View style={{ gap: space.md }}>
+                  {[...brief.followUps, ...brief.openTasks]
+                    .slice(0, 6)
+                    .map((t) => (
+                      <View key={t} style={styles.row}>
+                        <View
+                          style={[
+                            styles.tick,
+                            { backgroundColor: p.textSecondary },
+                          ]}
+                        />
+                        <Txt variant="body" style={{ flex: 1 }}>
+                          {t}
+                        </Txt>
+                      </View>
+                    ))}
+                </View>
+              </Panel>
+            )}
 
           {!!data?.pendingMemories && (
             <Banner
               tone="info"
               icon="core"
-              title={`${data.pendingMemories} memor${data.pendingMemories === 1 ? 'y' : 'ies'} to review`}
+              title={`${data.pendingMemories} memor${data.pendingMemories === 1 ? "y" : "ies"} to review`}
               body="Things I noticed in your messages. Nothing is saved until you approve."
-              action={{ label: 'Review', onPress: () => router.replace('/memory?tab=pending') }}
+              action={{
+                label: "Review",
+                onPress: () => router.replace("/memory?tab=pending"),
+              }}
             />
           )}
 
           {brief && !brief.live && (
-            <Button label={regenerating ? 'Rebuilding' : 'Rebuild brief'} icon="brief" variant="ghost" compact onPress={regenerate} disabled={regenerating} style={{ alignSelf: 'flex-start' }} />
+            <Button
+              label={regenerating ? "Rebuilding" : "Rebuild brief"}
+              icon="brief"
+              variant="ghost"
+              compact
+              onPress={regenerate}
+              disabled={regenerating}
+              style={{ alignSelf: "flex-start" }}
+            />
           )}
         </View>
       </Screen>
 
       {/* Primary controls in the thumb zone. */}
-      <LinearFade style={[styles.fade, { height: insets.bottom + 64 + TOUCH + 48 }]} />
+      <LinearFade
+        style={[styles.fade, { height: insets.bottom + 64 + TOUCH + 48 }]}
+      />
       <View style={[styles.ask, { bottom: insets.bottom + 72 }]}>
-        <Pressable onPress={() => router.push('/chat/new?focus=1')} style={[styles.askField, { backgroundColor: p.surface }]} accessibilityRole="button" accessibilityLabel="Ask Optimus" accessibilityHint="Opens a new conversation">
+        <Pressable
+          onPress={() => router.push("/chat/new?focus=1")}
+          style={[styles.askField, { backgroundColor: p.surface }]}
+          accessibilityRole="button"
+          accessibilityLabel="Ask Optimus"
+          accessibilityHint="Opens a new conversation"
+        >
           <Txt variant="body" color={p.textTertiary}>
             Ask Optimus
           </Txt>
         </Pressable>
-        <Button label="Talk to Optimus" icon="mic" iconOnly onPress={voice} accessibilityHint="Opens voice mode" style={{ width: TOUCH + 8, minHeight: TOUCH + 8 }} />
+        <Button
+          label="Talk to Optimus"
+          icon="mic"
+          iconOnly
+          onPress={voice}
+          accessibilityHint="Opens voice mode"
+          style={{ width: TOUCH + 8, minHeight: TOUCH + 8 }}
+        />
       </View>
       <Dock />
     </View>
@@ -276,15 +405,38 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  strip: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  strip: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   wordmark: { fontSize: 13, letterSpacing: 5 },
-  brainWrap: { alignSelf: 'center', alignItems: 'center', gap: space.md, marginTop: space.lg, marginBottom: space.xxl },
+  brainWrap: {
+    alignSelf: "center",
+    alignItems: "center",
+    gap: space.md,
+    marginTop: space.lg,
+    marginBottom: space.xxl,
+  },
   greeting: { gap: space.sm, marginBottom: space.xl },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: space.sm },
   tick: { width: 8, height: 1 },
   liveDot: { width: 6, height: 6, borderRadius: 3 },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  ask: { position: 'absolute', left: GUTTER, right: GUTTER, flexDirection: 'row', gap: space.sm, alignItems: 'center' },
-  askField: { flex: 1, minHeight: TOUCH + 8, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.lg },
+  fade: { position: "absolute", left: 0, right: 0, bottom: 0 },
+  ask: {
+    position: "absolute",
+    left: GUTTER,
+    right: GUTTER,
+    flexDirection: "row",
+    gap: space.sm,
+    alignItems: "center",
+  },
+  askField: {
+    flex: 1,
+    minHeight: TOUCH + 8,
+    borderRadius: radius.pill,
+    justifyContent: "center",
+    paddingHorizontal: space.lg,
+  },
 });

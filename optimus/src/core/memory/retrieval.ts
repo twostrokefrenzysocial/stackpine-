@@ -46,8 +46,8 @@ export async function buildMemoryContext(store: MemoryStore, input: RetrievalInp
   const budget = input.budgetTokens ?? 1500;
   const used = new Set<string>();
 
-  // Core About Me facts, most important first, within ~40% of the budget.
-  const about = (await store.list('About Me')).sort((a, b) => b.importance - a.importance || a.createdAt.localeCompare(b.createdAt));
+  // Core About Me facts and the patterns learned over time, most important first, within ~40% of the budget.
+  const about = [...(await store.list('About Me')), ...(await store.list('Patterns'))].sort((a, b) => b.importance - a.importance || a.createdAt.localeCompare(b.createdAt));
   const coreLines: string[] = [];
   let tokens = 0;
   for (const m of about) {
