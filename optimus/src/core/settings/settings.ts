@@ -36,6 +36,8 @@ export interface Settings {
   spendingCapUsd: number;
   onboardingDone: boolean;
   emailAccounts: ('gmail' | 'outlook' | 'icloud')[];
+  /** Gmail reached through the proxy with an app password (no Google Cloud setup). */
+  gmailViaProxy: boolean;
   userName?: string;
 }
 
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spendingCapUsd: 20,
   onboardingDone: false,
   emailAccounts: [],
+  gmailViaProxy: false,
 };
 
 const KEY = 'settings';

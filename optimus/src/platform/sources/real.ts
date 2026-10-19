@@ -53,7 +53,7 @@ const CONTACT_FIELDS = [
   Contacts.Fields.Relationships,
 ];
 
-export function createRealSources(deps: { db: Db; notifications: NotificationStore; locationEnabled: () => boolean; icloudProxy?: () => string | null }): DataSources {
+export function createRealSources(deps: { db: Db; notifications: NotificationStore; locationEnabled: () => boolean; icloudProxy?: () => string | null; gmailProxy?: () => string | null }): DataSources {
   let contactCache: { at: number; list: Contact[] } | null = null;
 
   async function contactsAll(): Promise<Contact[]> {
@@ -296,7 +296,7 @@ export function createRealSources(deps: { db: Db; notifications: NotificationSto
       all: contactsAll,
     },
 
-    email: createEmailSource({ icloudProxy: deps.icloudProxy }),
+    email: createEmailSource({ icloudProxy: deps.icloudProxy, gmailProxy: deps.gmailProxy }),
 
     photos: {
       async list(q) {

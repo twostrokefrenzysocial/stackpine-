@@ -1,17 +1,22 @@
-import { ActionStore } from './actions/actions';
-import { createActionHandlers } from './actions/handlers';
-import { ActivityLog } from './activity/log';
-import { ConversationStore, EpisodeStore } from './conversations/store';
-import type { Db } from './db/types';
-import { runTurn, type TurnEvent, type TurnResult } from './llm/agent';
-import { maybeRollSummary, processConversation, unsummarizedMessages, type BackgroundLlm } from './llm/background';
-import type { LlmTransport } from './llm/transport';
-import { MemoryStore } from './memory/store';
-import { NotificationStore } from './notifications/store';
-import { ReminderStore, type ReminderScheduler } from './reminders/reminders';
-import { RoutineStore, type RoutineScheduler } from './routines/routines';
-import type { DataSources, SourceName } from './sources/types';
-import type { ChatMessage } from './types';
+import { ActionStore } from "./actions/actions";
+import { createActionHandlers } from "./actions/handlers";
+import { ActivityLog } from "./activity/log";
+import { ConversationStore, EpisodeStore } from "./conversations/store";
+import type { Db } from "./db/types";
+import { runTurn, type TurnEvent, type TurnResult } from "./llm/agent";
+import {
+  maybeRollSummary,
+  processConversation,
+  unsummarizedMessages,
+  type BackgroundLlm,
+} from "./llm/background";
+import type { LlmTransport } from "./llm/transport";
+import { MemoryStore } from "./memory/store";
+import { NotificationStore } from "./notifications/store";
+import { ReminderStore, type ReminderScheduler } from "./reminders/reminders";
+import { RoutineStore, type RoutineScheduler } from "./routines/routines";
+import type { DataSources, SourceName } from "./sources/types";
+import type { ChatMessage } from "./types";
 
 export interface EngineDeps {
   db: Db;
@@ -25,7 +30,7 @@ export interface EngineDeps {
   /** Web search on (Settings). */
   webSearch?: () => boolean;
   /** Reasoning effort for chat (Settings › Thinking). */
-  effort?: () => 'low' | 'medium' | 'high';
+  effort?: () => "low" | "medium" | "high";
   /** Sources the user hasn't granted (shown to the model so it can say what it can't see). */
   unavailableSources?: () => Promise<SourceName[]>;
 }
@@ -35,6 +40,8 @@ export interface EngineDeps {
  * background processing. The UI holds one instance.
  */
 export class OptimusEngine {
+  /** Chat turns in flight; background work (photo indexing) yields while this is > 0. */
+  activeTurns = 0;
   readonly memory: MemoryStore;
   readonly conversations: ConversationStore;
   readonly episodes: EpisodeStore;
@@ -56,7 +63,13 @@ export class OptimusEngine {
     this.notifications = new NotificationStore(deps.db);
     this.actions = new ActionStore(deps.db);
     this.actions.setHandlers(
-      createActionHandlers({ sources: deps.sources, memory: this.memory, reminders: this.reminders, routines: this.routines, onRoutinesChanged: () => this.refillRoutines() }),
+      createActionHandlers({
+        sources: deps.sources,
+        memory: this.memory,
+        reminders: this.reminders,
+        routines: this.routines,
+        onRoutinesChanged: () => this.refillRoutines(),
+      }),
     );
   }
 
@@ -79,70 +92,112 @@ export class OptimusEngine {
     onEvent: (e: TurnEvent) => void,
     signal?: AbortSignal,
     opts: { voice?: boolean } = {},
-  ): Promise<{ user: ChatMessage; assistant: ChatMessage; result: TurnResult }> {
+  ): Promise<{
+    user: ChatMessage;
+    assistant: ChatMessage;
+    result: TurnResult;
+  }> {
     const conv = await this.conversations.get(conversationId);
-    if (!conv) throw new Error('Conversation not found');
-    const prior = unsummarizedMessages(conv, await this.conversations.messages(conversationId));
-    const user = await this.conversations.addMessage(conversationId, { role: 'user', text }, this.now());
+    if (!conv) throw new Error("Conversation not found");
+    const prior = unsummarizedMessages(
+      conv,
+      await this.conversations.messages(conversationId),
+    );
+    const user = await this.conversations.addMessage(
+      conversationId,
+      { role: "user", text },
+      this.now(),
+    );
 
-    const result = await runTurn({
-      userText: text,
-      history: prior,
-      rollingSummary: conv.rollingSummary,
-      transport: this.deps.transport(),
-      ctx: {
-        sources: this.deps.sources(),
-        memory: this.memory,
-        conversations: this.conversations,
-        episodes: this.episodes,
+    this.activeTurns++;
+    let result: TurnResult;
+    try {
+      result = await runTurn({
+        userText: text,
+        history: prior,
+        rollingSummary: conv.rollingSummary,
+        transport: this.deps.transport(),
+        ctx: {
+          sources: this.deps.sources(),
+          memory: this.memory,
+          conversations: this.conversations,
+          episodes: this.episodes,
+          actions: this.actions,
+          activity: this.activity,
+          reminders: this.reminders,
+          routines: this.routines,
+          db: this.deps.db,
+          conversationId,
+          now: this.now,
+          locationEnabled: this.deps.locationEnabled?.() ?? false,
+          userAskedToRemember: /\bremember\b/i.test(text),
+        },
         actions: this.actions,
-        activity: this.activity,
-        reminders: this.reminders,
-        routines: this.routines,
-        db: this.deps.db,
-        conversationId,
-        now: this.now,
-        locationEnabled: this.deps.locationEnabled?.() ?? false,
-        userAskedToRemember: /\bremember\b/i.test(text),
-      },
-      actions: this.actions,
-      unavailableSources: (await this.deps.unavailableSources?.()) ?? [],
-      onEvent,
-      signal,
-      voice: opts.voice,
-      webSearch: this.deps.webSearch?.() ?? false,
-      effort: this.deps.effort?.(),
-    });
+        unavailableSources: (await this.deps.unavailableSources?.()) ?? [],
+        onEvent,
+        signal,
+        voice: opts.voice,
+        webSearch: this.deps.webSearch?.() ?? false,
+        effort: this.deps.effort?.(),
+      });
+    } finally {
+      this.activeTurns--;
+    }
 
     const assistant = await this.conversations.addMessage(
       conversationId,
-      { role: 'assistant', text: result.text, cards: result.cards, apiContent: result.apiContent },
+      {
+        role: "assistant",
+        text: result.text,
+        cards: result.cards,
+        apiContent: result.apiContent,
+      },
       this.now(),
     );
-    if (conv.title === 'New conversation') await this.conversations.rename(conversationId, text.slice(0, 48));
+    if (conv.title === "New conversation")
+      await this.conversations.rename(conversationId, text.slice(0, 48));
     // Fold old messages into the rolling summary in the background.
-    maybeRollSummary({ llm: this.deps.background(), conversations: this.conversations }, conversationId).catch(() => undefined);
+    maybeRollSummary(
+      { llm: this.deps.background(), conversations: this.conversations },
+      conversationId,
+    ).catch(() => undefined);
     return { user, assistant, result };
   }
 
   /** Background memory extraction for conversations that have gone quiet. */
-  async processIdleConversations(activeConversationId?: string): Promise<number> {
+  async processIdleConversations(
+    activeConversationId?: string,
+  ): Promise<number> {
     let n = 0;
-    for (const conv of await this.conversations.unprocessed(activeConversationId)) {
+    for (const conv of await this.conversations.unprocessed(
+      activeConversationId,
+    )) {
       try {
         const r = await processConversation(
-          { llm: this.deps.background(), memory: this.memory, conversations: this.conversations, episodes: this.episodes },
+          {
+            llm: this.deps.background(),
+            memory: this.memory,
+            conversations: this.conversations,
+            episodes: this.episodes,
+          },
           conv,
           this.now(),
         );
         if (r) {
           n++;
           if (r.saved || r.pending) {
-            await this.activity.add({ kind: 'memory', summary: `Learned from “${conv.title}”: ${r.saved} saved, ${r.pending} awaiting approval` });
+            await this.activity.add({
+              kind: "memory",
+              summary: `Learned from “${conv.title}”: ${r.saved} saved, ${r.pending} awaiting approval`,
+            });
           }
         }
       } catch (e) {
-        await this.activity.add({ kind: 'error', summary: `Memory extraction failed for “${conv.title}”`, detail: e instanceof Error ? e.message : String(e) });
+        await this.activity.add({
+          kind: "error",
+          summary: `Memory extraction failed for “${conv.title}”`,
+          detail: e instanceof Error ? e.message : String(e),
+        });
       }
     }
     return n;
@@ -151,21 +206,21 @@ export class OptimusEngine {
   /** "Wipe all local data": every table, including memories. */
   async wipeAll(): Promise<void> {
     const tables = [
-      'messages_fts',
-      'messages',
-      'conversations',
-      'memories_fts',
-      'memories',
-      'pending_memories',
-      'episodes_fts',
-      'episodes',
-      'actions',
-      'activity',
-      'notifications',
-      'reminders',
-      'briefs',
-      'sync_state',
-      'kv',
+      "messages_fts",
+      "messages",
+      "conversations",
+      "memories_fts",
+      "memories",
+      "pending_memories",
+      "episodes_fts",
+      "episodes",
+      "actions",
+      "activity",
+      "notifications",
+      "reminders",
+      "briefs",
+      "sync_state",
+      "kv",
     ];
     await this.deps.db.transaction(async () => {
       for (const t of tables) await this.deps.db.run(`DELETE FROM ${t}`);

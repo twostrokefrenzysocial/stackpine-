@@ -107,6 +107,7 @@ async function doBoot(): Promise<Runtime> {
       notifications: engineRef.engine!.notifications,
       locationEnabled: () => settings.locationEnabled,
       icloudProxy: () => (settings.emailAccounts.includes('icloud') && settings.proxyUrl ? settings.proxyUrl : null),
+      gmailProxy: () => (settings.emailAccounts.includes('gmail') && settings.gmailViaProxy && settings.proxyUrl ? settings.proxyUrl : null),
     });
     return real;
   };

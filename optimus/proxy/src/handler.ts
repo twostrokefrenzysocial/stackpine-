@@ -8,19 +8,30 @@
  * logged. Logs contain model names, token counts and costs only.
  */
 
-import { isAuthorized } from './auth';
-import { errorResponse, json } from './http';
-import { isValidCap, MAX_CAP_USD, type LedgerApi } from './ledgerCore';
-import { costUsd, DEFAULT_OPENAI_PRICES, openAICostUsd, parseOpenAIPrices } from './pricing';
-import { readUsage } from './usage';
-import type { OpenConn } from './mail/conn';
-import { icloudGet, icloudSearch, icloudSend } from './mail/icloud';
+import { isAuthorized } from "./auth";
+import { errorResponse, json } from "./http";
+import { isValidCap, MAX_CAP_USD, type LedgerApi } from "./ledgerCore";
+import {
+  costUsd,
+  DEFAULT_OPENAI_PRICES,
+  openAICostUsd,
+  parseOpenAIPrices,
+} from "./pricing";
+import { readUsage } from "./usage";
+import type { OpenConn } from "./mail/conn";
+import {
+  MAIL_PROVIDERS,
+  mailGet,
+  mailSearch,
+  mailSend,
+  type MailProvider,
+} from "./mail/icloud";
 
-export const ANTHROPIC_API_ORIGIN = 'https://api.anthropic.com';
-export const OPENAI_API_ORIGIN = 'https://api.openai.com';
-export const DEFAULT_ANTHROPIC_VERSION = '2023-06-01';
+export const ANTHROPIC_API_ORIGIN = "https://api.anthropic.com";
+export const OPENAI_API_ORIGIN = "https://api.openai.com";
+export const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 export const MAX_TOKENS_LIMIT = 64_000;
-export const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+export const DEFAULT_ALLOWED_MODELS = ["claude-sonnet-5-5", "claude-haiku-5-5"];
 
 /** Worker configuration: secrets plus the [vars] in wrangler.toml. */
 export interface HandlerEnv {
@@ -36,6 +47,9 @@ export interface HandlerEnv {
   /** Optional iCloud Mail: the Apple ID email and an app-specific password from appleid.apple.com. */
   ICLOUD_EMAIL?: string;
   ICLOUD_APP_PASSWORD?: string;
+  /** Optional Gmail over IMAP: the address and an app password (needs 2-Step Verification). */
+  GMAIL_EMAIL?: string;
+  GMAIL_APP_PASSWORD?: string;
   DEFAULT_CAP_USD?: string;
   RATE_LIMIT_PER_MINUTE?: string;
 }
@@ -51,25 +65,35 @@ export interface HandlerDeps {
   openConn?: OpenConn;
 }
 
-type Route = 'messages' | 'count_tokens' | 'openai_chat' | 'openai_responses';
+type Route = "messages" | "count_tokens" | "openai_chat" | "openai_responses";
 
 /** Text-to-speech models the app may use, and their price per million input characters (USD). */
-export const TTS_PRICES_PER_M_CHARS: Record<string, number> = { 'gpt-4o-mini-tts': 15, 'tts-1': 15, 'tts-1-hd': 30 };
+export const TTS_PRICES_PER_M_CHARS: Record<string, number> = {
+  "gpt-4o-mini-tts": 15,
+  "tts-1": 15,
+  "tts-1-hd": 30,
+};
 const MAX_TTS_CHARS = 4096;
 
 const UPSTREAM_PATHS: Record<Route, string> = {
-  messages: '/v1/messages',
-  count_tokens: '/v1/messages/count_tokens',
-  openai_chat: '/v1/chat/completions',
-  openai_responses: '/v1/responses',
+  messages: "/v1/messages",
+  count_tokens: "/v1/messages/count_tokens",
+  openai_chat: "/v1/chat/completions",
+  openai_responses: "/v1/responses",
 };
 
 /** Response headers that describe the upstream connection, not the body we relay. */
-const HOP_BY_HOP_RESPONSE_HEADERS = ['content-length', 'content-encoding', 'transfer-encoding', 'connection', 'set-cookie'];
+const HOP_BY_HOP_RESPONSE_HEADERS = [
+  "content-length",
+  "content-encoding",
+  "transfer-encoding",
+  "connection",
+  "set-cookie",
+];
 
 export function allowedModels(env: HandlerEnv): string[] {
-  const list = (env.ALLOWED_MODELS ?? '')
-    .split(',')
+  const list = (env.ALLOWED_MODELS ?? "")
+    .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
   return list.length > 0 ? list : DEFAULT_ALLOWED_MODELS;
@@ -81,57 +105,111 @@ export function allowedModels(env: HandlerEnv): string[] {
  * proxy change). OpenAI stays off until OPENAI_API_KEY is set.
  */
 export function allowedOpenAIModels(env: HandlerEnv): string[] {
-  const listed = (env.OPENAI_MODELS ?? '')
-    .split(',')
+  const listed = (env.OPENAI_MODELS ?? "")
+    .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
   return [...new Set([...listed, ...Object.keys(DEFAULT_OPENAI_PRICES)])];
 }
 
-export async function handle(request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+export async function handle(
+  request: Request,
+  env: HandlerEnv,
+  deps: HandlerDeps,
+): Promise<Response> {
   const url = new URL(request.url);
   // Tolerate a trailing slash or doubled slashes from a sloppily-entered base URL.
-  const path = url.pathname.replace(/\/{2,}/g, '/').replace(/(.)\/$/, '$1');
+  const path = url.pathname.replace(/\/{2,}/g, "/").replace(/(.)\/$/, "$1");
   const method = request.method.toUpperCase();
 
-  if (method === 'OPTIONS') return new Response(null, { status: 204 });
-  if (method === 'GET' && path === '/health') return json({ ok: true });
+  if (method === "OPTIONS") return new Response(null, { status: 204 });
+  if (method === "GET" && path === "/health") return json({ ok: true });
 
   // Everything below requires the shared app token. Unknown paths are also
   // behind auth so the proxy reveals nothing to unauthenticated callers.
   if (!env.APP_TOKEN || (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY)) {
-    return errorResponse(500, 'optimus_misconfigured', 'Proxy is missing the APP_TOKEN secret, or has neither ANTHROPIC_API_KEY nor OPENAI_API_KEY.');
+    return errorResponse(
+      500,
+      "optimus_misconfigured",
+      "Proxy is missing the APP_TOKEN secret, or has neither ANTHROPIC_API_KEY nor OPENAI_API_KEY.",
+    );
   }
-  if (!isAuthorized(request.headers.get('x-optimus-token'), env.APP_TOKEN)) {
-    return errorResponse(401, 'optimus_unauthorized', 'Missing or invalid x-optimus-token header.');
+  if (!isAuthorized(request.headers.get("x-optimus-token"), env.APP_TOKEN)) {
+    return errorResponse(
+      401,
+      "optimus_unauthorized",
+      "Missing or invalid x-optimus-token header.",
+    );
   }
-  const isOpenAI = path === '/openai/v1/chat/completions' || path === '/openai/v1/responses';
-  if (method === 'POST' && (path === '/v1/messages' || path === '/v1/messages/count_tokens') && !env.ANTHROPIC_API_KEY) {
-    return errorResponse(500, 'optimus_misconfigured', 'Proxy has no ANTHROPIC_API_KEY secret. Add it, or switch the app to OpenAI.');
+  const isOpenAI =
+    path === "/openai/v1/chat/completions" || path === "/openai/v1/responses";
+  if (
+    method === "POST" &&
+    (path === "/v1/messages" || path === "/v1/messages/count_tokens") &&
+    !env.ANTHROPIC_API_KEY
+  ) {
+    return errorResponse(
+      500,
+      "optimus_misconfigured",
+      "Proxy has no ANTHROPIC_API_KEY secret. Add it, or switch the app to OpenAI.",
+    );
   }
-  if (method === 'POST' && isOpenAI && !env.OPENAI_API_KEY) {
-    return errorResponse(500, 'optimus_misconfigured', 'Proxy has no OPENAI_API_KEY secret. Add it, or switch the app to Anthropic.');
+  if (method === "POST" && isOpenAI && !env.OPENAI_API_KEY) {
+    return errorResponse(
+      500,
+      "optimus_misconfigured",
+      "Proxy has no OPENAI_API_KEY secret. Add it, or switch the app to Anthropic.",
+    );
   }
 
   try {
-    if (method === 'POST' && path === '/v1/messages') return await forward('messages', request, url, env, deps);
-    if (method === 'POST' && path === '/v1/messages/count_tokens') {
-      return await forward('count_tokens', request, url, env, deps);
+    if (method === "POST" && path === "/v1/messages")
+      return await forward("messages", request, url, env, deps);
+    if (method === "POST" && path === "/v1/messages/count_tokens") {
+      return await forward("count_tokens", request, url, env, deps);
     }
-    if (method === 'POST' && isOpenAI) return await forward(path.endsWith('/responses') ? 'openai_responses' : 'openai_chat', request, url, env, deps);
-    if (method === 'POST' && path === '/openai/v1/audio/speech') return await speech(request, env, deps);
-    if (path.startsWith('/mail/icloud/')) return await icloudMail(method, path, request, env, deps);
-    if (method === 'GET' && path === '/usage') return json(await ledgerCall(() => deps.ledger.usage()));
-    if (method === 'PUT' && path === '/cap') return await putCap(request, deps.ledger);
-    if (method === 'PUT' && path === '/usage') return await putSpent(request, deps.ledger);
+    if (method === "POST" && isOpenAI)
+      return await forward(
+        path.endsWith("/responses") ? "openai_responses" : "openai_chat",
+        request,
+        url,
+        env,
+        deps,
+      );
+    if (method === "POST" && path === "/openai/v1/audio/speech")
+      return await speech(request, env, deps);
+    const mailRoute = /^\/mail\/(icloud|gmail)\//.exec(path);
+    if (mailRoute)
+      return await providerMail(
+        mailRoute[1] as MailProvider,
+        method,
+        path,
+        request,
+        env,
+        deps,
+      );
+    if (method === "GET" && path === "/usage")
+      return json(await ledgerCall(() => deps.ledger.usage()));
+    if (method === "PUT" && path === "/cap")
+      return await putCap(request, deps.ledger);
+    if (method === "PUT" && path === "/usage")
+      return await putSpent(request, deps.ledger);
   } catch (err) {
     if (err instanceof LedgerError) {
-      return errorResponse(503, 'optimus_ledger_unavailable', 'Spending ledger is temporarily unavailable.');
+      return errorResponse(
+        503,
+        "optimus_ledger_unavailable",
+        "Spending ledger is temporarily unavailable.",
+      );
     }
     throw err;
   }
 
-  return errorResponse(404, 'optimus_not_found', `No route for ${method} ${path}.`);
+  return errorResponse(
+    404,
+    "optimus_not_found",
+    `No route for ${method} ${path}.`,
+  );
 }
 
 /** Wraps failures talking to the Durable Object so they map to a 503. */
@@ -150,11 +228,19 @@ async function putCap(request: Request, ledger: LedgerApi): Promise<Response> {
   try {
     body = await request.json();
   } catch {
-    return errorResponse(400, 'optimus_invalid_cap', 'Body must be JSON like {"capUsd": 25}.');
+    return errorResponse(
+      400,
+      "optimus_invalid_cap",
+      'Body must be JSON like {"capUsd": 25}.',
+    );
   }
   const capUsd = (body as { capUsd?: unknown } | null)?.capUsd;
   if (!isValidCap(capUsd)) {
-    return errorResponse(400, 'optimus_invalid_cap', `capUsd must be a number greater than 0 and at most ${MAX_CAP_USD}.`);
+    return errorResponse(
+      400,
+      "optimus_invalid_cap",
+      `capUsd must be a number greater than 0 and at most ${MAX_CAP_USD}.`,
+    );
   }
   return json(await ledgerCall(() => ledger.setCap(capUsd)));
 }
@@ -165,61 +251,159 @@ async function putCap(request: Request, ledger: LedgerApi): Promise<Response> {
  * characters sent, against the same cap and rate limit. The audio streams
  * straight back to the phone.
  */
-async function speech(request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
-  if (!env.OPENAI_API_KEY) return errorResponse(500, 'optimus_misconfigured', 'Proxy has no OPENAI_API_KEY secret, so the natural voice is unavailable.');
+async function speech(
+  request: Request,
+  env: HandlerEnv,
+  deps: HandlerDeps,
+): Promise<Response> {
+  if (!env.OPENAI_API_KEY)
+    return errorResponse(
+      500,
+      "optimus_misconfigured",
+      "Proxy has no OPENAI_API_KEY secret, so the natural voice is unavailable.",
+    );
   let payload: Record<string, unknown>;
   try {
     payload = (await request.json()) as Record<string, unknown>;
   } catch {
-    return errorResponse(400, 'optimus_invalid_request', 'Request body must be a JSON object.');
+    return errorResponse(
+      400,
+      "optimus_invalid_request",
+      "Request body must be a JSON object.",
+    );
   }
   const model = payload.model;
-  if (typeof model !== 'string' || !(model in TTS_PRICES_PER_M_CHARS)) {
-    return errorResponse(400, 'optimus_model_not_allowed', `Model must be one of: ${Object.keys(TTS_PRICES_PER_M_CHARS).join(', ')}.`, { allowedModels: Object.keys(TTS_PRICES_PER_M_CHARS) });
+  if (typeof model !== "string" || !(model in TTS_PRICES_PER_M_CHARS)) {
+    return errorResponse(
+      400,
+      "optimus_model_not_allowed",
+      `Model must be one of: ${Object.keys(TTS_PRICES_PER_M_CHARS).join(", ")}.`,
+      { allowedModels: Object.keys(TTS_PRICES_PER_M_CHARS) },
+    );
   }
-  const input = typeof payload.input === 'string' ? payload.input : '';
-  if (!input || input.length > MAX_TTS_CHARS) return errorResponse(400, 'optimus_invalid_request', `input must be 1 to ${MAX_TTS_CHARS} characters.`);
-  const verdict = await ledgerCall(() => deps.ledger.check({ enforceCap: true }));
+  const input = typeof payload.input === "string" ? payload.input : "";
+  if (!input || input.length > MAX_TTS_CHARS)
+    return errorResponse(
+      400,
+      "optimus_invalid_request",
+      `input must be 1 to ${MAX_TTS_CHARS} characters.`,
+    );
+  const verdict = await ledgerCall(() =>
+    deps.ledger.check({ enforceCap: true }),
+  );
   if (!verdict.ok) {
-    return verdict.reason === 'spending_cap'
-      ? errorResponse(402, 'optimus_spending_cap_reached', `Monthly spending cap of $${verdict.capUsd.toFixed(2)} reached`, { spentUsd: verdict.spentUsd, capUsd: verdict.capUsd })
-      : errorResponse(429, 'optimus_rate_limited', `Too many requests; try again in ${verdict.retryAfterSeconds}s.`, { retryAfterSeconds: verdict.retryAfterSeconds }, { 'retry-after': String(verdict.retryAfterSeconds) });
+    return verdict.reason === "spending_cap"
+      ? errorResponse(
+          402,
+          "optimus_spending_cap_reached",
+          `Monthly spending cap of $${verdict.capUsd.toFixed(2)} reached`,
+          { spentUsd: verdict.spentUsd, capUsd: verdict.capUsd },
+        )
+      : errorResponse(
+          429,
+          "optimus_rate_limited",
+          `Too many requests; try again in ${verdict.retryAfterSeconds}s.`,
+          { retryAfterSeconds: verdict.retryAfterSeconds },
+          { "retry-after": String(verdict.retryAfterSeconds) },
+        );
   }
   let upstream: Response;
   try {
     upstream = await deps.upstreamFetch(
       new Request(`${OPENAI_API_ORIGIN}/v1/audio/speech`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
-        body: JSON.stringify({ model, input, voice: payload.voice, instructions: payload.instructions, response_format: payload.response_format ?? 'mp3' }),
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          input,
+          voice: payload.voice,
+          instructions: payload.instructions,
+          response_format: payload.response_format ?? "mp3",
+        }),
         signal: request.signal,
       }),
     );
   } catch {
-    return errorResponse(502, 'optimus_upstream_unreachable', 'Could not reach the OpenAI API.');
+    return errorResponse(
+      502,
+      "optimus_upstream_unreachable",
+      "Could not reach the OpenAI API.",
+    );
   }
   if (upstream.ok) {
     const cost = (input.length * TTS_PRICES_PER_M_CHARS[model]) / 1_000_000;
-    deps.waitUntil(ledgerCall(() => deps.ledger.record(cost)).catch(() => undefined));
+    deps.waitUntil(
+      ledgerCall(() => deps.ledger.record(cost)).catch(() => undefined),
+    );
   }
   const headers = new Headers(upstream.headers);
   for (const name of HOP_BY_HOP_RESPONSE_HEADERS) headers.delete(name);
-  return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
 }
 
 /**
- * iCloud Mail. The app never holds the password: the proxy signs in to
- * Apple's IMAP/SMTP servers itself. Counts toward the rate limit, not the
- * cap (there's no AI cost).
+ * Mail over IMAP/SMTP (iCloud, Gmail). The app never holds the password: the
+ * proxy signs in itself with an app password kept as a secret. Counts toward
+ * the rate limit, not the cap (there's no AI cost).
  */
-async function icloudMail(method: string, path: string, request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
-  const configured = !!(env.ICLOUD_EMAIL && env.ICLOUD_APP_PASSWORD && deps.openConn);
-  if (method === 'GET' && path === '/mail/icloud/status') return json({ configured, address: configured ? env.ICLOUD_EMAIL : undefined });
-  if (method !== 'POST') return errorResponse(404, 'optimus_not_found', `No route for ${method} ${path}.`);
-  if (!configured) return errorResponse(400, 'optimus_icloud_not_configured', 'iCloud Mail is not set up on this proxy. Add ICLOUD_EMAIL and ICLOUD_APP_PASSWORD.');
-  const verdict = await ledgerCall(() => deps.ledger.check({ enforceCap: false }));
-  if (!verdict.ok && verdict.reason === 'rate_limited') {
-    return errorResponse(429, 'optimus_rate_limited', `Too many requests; try again in ${verdict.retryAfterSeconds}s.`, { retryAfterSeconds: verdict.retryAfterSeconds }, { 'retry-after': String(verdict.retryAfterSeconds) });
+function mailCreds(
+  provider: MailProvider,
+  env: HandlerEnv,
+): { user: string; pass: string } | null {
+  const user = provider === "icloud" ? env.ICLOUD_EMAIL : env.GMAIL_EMAIL;
+  const pass =
+    provider === "icloud" ? env.ICLOUD_APP_PASSWORD : env.GMAIL_APP_PASSWORD;
+  return user && pass ? { user, pass } : null;
+}
+
+async function providerMail(
+  provider: MailProvider,
+  method: string,
+  path: string,
+  request: Request,
+  env: HandlerEnv,
+  deps: HandlerDeps,
+): Promise<Response> {
+  const creds = mailCreds(provider, env);
+  const configured = !!(creds && deps.openConn);
+  const label = MAIL_PROVIDERS[provider].label;
+  const vars =
+    provider === "icloud"
+      ? "ICLOUD_EMAIL and ICLOUD_APP_PASSWORD"
+      : "GMAIL_EMAIL and GMAIL_APP_PASSWORD";
+  const base = `/mail/${provider}/`;
+  if (method === "GET" && path === `${base}status`)
+    return json({ configured, address: configured ? creds!.user : undefined });
+  if (method !== "POST")
+    return errorResponse(
+      404,
+      "optimus_not_found",
+      `No route for ${method} ${path}.`,
+    );
+  if (!configured)
+    return errorResponse(
+      400,
+      `optimus_${provider}_not_configured`,
+      `${label} is not set up on this proxy. Add ${vars}.`,
+    );
+  const verdict = await ledgerCall(() =>
+    deps.ledger.check({ enforceCap: false }),
+  );
+  if (!verdict.ok && verdict.reason === "rate_limited") {
+    return errorResponse(
+      429,
+      "optimus_rate_limited",
+      `Too many requests; try again in ${verdict.retryAfterSeconds}s.`,
+      { retryAfterSeconds: verdict.retryAfterSeconds },
+      { "retry-after": String(verdict.retryAfterSeconds) },
+    );
   }
   let body: Record<string, unknown> = {};
   try {
@@ -227,87 +411,175 @@ async function icloudMail(method: string, path: string, request: Request, env: H
   } catch {
     // empty body is fine for search
   }
-  const creds = { user: env.ICLOUD_EMAIL!, pass: env.ICLOUD_APP_PASSWORD! };
-  const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+  const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
   try {
-    if (path === '/mail/icloud/search') {
-      return json({ messages: await icloudSearch(deps.openConn!, creds, { query: str(body.query), from: str(body.from), unreadOnly: body.unreadOnly === true, since: str(body.since), until: str(body.until), limit: typeof body.limit === 'number' ? body.limit : undefined }) });
+    if (path === `${base}search`) {
+      return json({
+        messages: await mailSearch(deps.openConn!, provider, creds!, {
+          query: str(body.query),
+          from: str(body.from),
+          unreadOnly: body.unreadOnly === true,
+          since: str(body.since),
+          until: str(body.until),
+          limit: typeof body.limit === "number" ? body.limit : undefined,
+        }),
+      });
     }
-    if (path === '/mail/icloud/get') return json({ message: await icloudGet(deps.openConn!, creds, String(body.id ?? '')) });
-    if (path === '/mail/icloud/send') {
+    if (path === `${base}get`)
+      return json({
+        message: await mailGet(
+          deps.openConn!,
+          provider,
+          creds!,
+          String(body.id ?? ""),
+        ),
+      });
+    if (path === `${base}send`) {
       const to = Array.isArray(body.to) ? body.to.map(String) : [];
-      return json(await icloudSend(deps.openConn!, creds, { to, subject: String(body.subject ?? ''), body: String(body.body ?? ''), inReplyToId: str(body.inReplyToId) }));
+      return json(
+        await mailSend(deps.openConn!, provider, creds!, {
+          to,
+          subject: String(body.subject ?? ""),
+          body: String(body.body ?? ""),
+          inReplyToId: str(body.inReplyToId),
+        }),
+      );
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // Apple rejects a wrong or revoked app-specific password at LOGIN / AUTH.
-    if (/AUTHENTICATIONFAILED|LOGIN|535|invalid credentials/i.test(msg)) return errorResponse(401, 'optimus_icloud_auth_failed', 'iCloud rejected the app-specific password. Create a new one at appleid.apple.com and update ICLOUD_APP_PASSWORD.');
-    return errorResponse(502, 'optimus_icloud_error', 'Couldn’t reach iCloud Mail. Try again in a moment.');
+    // A wrong or revoked app password is rejected at LOGIN / AUTH.
+    if (
+      /AUTHENTICATIONFAILED|LOGIN|535|invalid credentials|Application-specific password/i.test(
+        msg,
+      )
+    ) {
+      const fix =
+        provider === "icloud"
+          ? "Create a new one at appleid.apple.com and update ICLOUD_APP_PASSWORD."
+          : "Create a new one at myaccount.google.com/apppasswords (2-Step Verification must be on) and update GMAIL_APP_PASSWORD.";
+      return errorResponse(
+        401,
+        `optimus_${provider}_auth_failed`,
+        `${label} rejected the app password. ${fix}`,
+      );
+    }
+    return errorResponse(
+      502,
+      `optimus_${provider}_error`,
+      `Couldn’t reach ${label}. Try again in a moment.`,
+    );
   }
-  return errorResponse(404, 'optimus_not_found', `No route for ${method} ${path}.`);
+  return errorResponse(
+    404,
+    "optimus_not_found",
+    `No route for ${method} ${path}.`,
+  );
 }
 
-async function putSpent(request: Request, ledger: LedgerApi): Promise<Response> {
+async function putSpent(
+  request: Request,
+  ledger: LedgerApi,
+): Promise<Response> {
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return errorResponse(400, 'optimus_invalid_spent', 'Body must be JSON like {"spentUsd": 0.12}.');
+    return errorResponse(
+      400,
+      "optimus_invalid_spent",
+      'Body must be JSON like {"spentUsd": 0.12}.',
+    );
   }
   const spentUsd = (body as { spentUsd?: unknown } | null)?.spentUsd;
-  if (typeof spentUsd !== 'number' || !Number.isFinite(spentUsd) || spentUsd < 0 || spentUsd > MAX_CAP_USD) {
-    return errorResponse(400, 'optimus_invalid_spent', `spentUsd must be a number from 0 to ${MAX_CAP_USD}.`);
+  if (
+    typeof spentUsd !== "number" ||
+    !Number.isFinite(spentUsd) ||
+    spentUsd < 0 ||
+    spentUsd > MAX_CAP_USD
+  ) {
+    return errorResponse(
+      400,
+      "optimus_invalid_spent",
+      `spentUsd must be a number from 0 to ${MAX_CAP_USD}.`,
+    );
   }
   return json(await ledgerCall(() => ledger.setSpent(spentUsd)));
 }
 
-async function forward(route: Route, request: Request, url: URL, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+async function forward(
+  route: Route,
+  request: Request,
+  url: URL,
+  env: HandlerEnv,
+  deps: HandlerDeps,
+): Promise<Response> {
   // --- Validate. The original text is forwarded byte-for-byte. -------------
   const bodyText = await request.text();
   let payload: Record<string, unknown>;
   try {
     const parsed: unknown = JSON.parse(bodyText);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new TypeError();
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      throw new TypeError();
     payload = parsed as Record<string, unknown>;
   } catch {
-    return errorResponse(400, 'optimus_invalid_request', 'Request body must be a JSON object.');
+    return errorResponse(
+      400,
+      "optimus_invalid_request",
+      "Request body must be a JSON object.",
+    );
   }
 
-  const openai = route === 'openai_chat' || route === 'openai_responses';
+  const openai = route === "openai_chat" || route === "openai_responses";
   const model = payload.model;
   const allowed = openai ? allowedOpenAIModels(env) : allowedModels(env);
 
-  if (typeof model !== 'string' || !allowed.includes(model)) {
-    return errorResponse(400, 'optimus_model_not_allowed', `Model must be one of: ${allowed.join(', ')}.`, {
-      allowedModels: allowed,
-    });
+  if (typeof model !== "string" || !allowed.includes(model)) {
+    return errorResponse(
+      400,
+      "optimus_model_not_allowed",
+      `Model must be one of: ${allowed.join(", ")}.`,
+      {
+        allowedModels: allowed,
+      },
+    );
   }
-  const maxTokens = openai ? (payload.max_completion_tokens ?? payload.max_output_tokens ?? payload.max_tokens) : payload.max_tokens;
-  if (typeof maxTokens === 'number' && maxTokens > MAX_TOKENS_LIMIT) {
-    return errorResponse(400, 'optimus_max_tokens_too_large', `max_tokens must be at most ${MAX_TOKENS_LIMIT}.`, {
-      maxTokens: MAX_TOKENS_LIMIT,
-    });
+  const maxTokens = openai
+    ? (payload.max_completion_tokens ??
+      payload.max_output_tokens ??
+      payload.max_tokens)
+    : payload.max_tokens;
+  if (typeof maxTokens === "number" && maxTokens > MAX_TOKENS_LIMIT) {
+    return errorResponse(
+      400,
+      "optimus_max_tokens_too_large",
+      `max_tokens must be at most ${MAX_TOKENS_LIMIT}.`,
+      {
+        maxTokens: MAX_TOKENS_LIMIT,
+      },
+    );
   }
 
   // --- Admission: spending cap (billable calls only) and rate limit. -------
-  const verdict = await ledgerCall(() => deps.ledger.check({ enforceCap: route !== 'count_tokens' }));
+  const verdict = await ledgerCall(() =>
+    deps.ledger.check({ enforceCap: route !== "count_tokens" }),
+  );
   if (!verdict.ok) {
-    if (verdict.reason === 'spending_cap') {
+    if (verdict.reason === "spending_cap") {
       return errorResponse(
         402,
-        'optimus_spending_cap_reached',
+        "optimus_spending_cap_reached",
         `Monthly spending cap of $${verdict.capUsd.toFixed(2)} reached`,
         { spentUsd: verdict.spentUsd, capUsd: verdict.capUsd },
         // Tell the Anthropic SDK not to retry; this won't clear until next month.
-        { 'x-should-retry': 'false' },
+        { "x-should-retry": "false" },
       );
     }
     return errorResponse(
       429,
-      'optimus_rate_limited',
+      "optimus_rate_limited",
       `Too many requests; try again in ${verdict.retryAfterSeconds}s.`,
       { retryAfterSeconds: verdict.retryAfterSeconds },
-      { 'retry-after': String(verdict.retryAfterSeconds) },
+      { "retry-after": String(verdict.retryAfterSeconds) },
     );
   }
 
@@ -315,24 +587,34 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
   // app's placeholder x-api-key and its x-optimus-token are dropped. -------
   if (openai) return forwardOpenAI(route, payload, model, request, env, deps);
   const headers = new Headers({
-    'content-type': 'application/json',
-    'x-api-key': env.ANTHROPIC_API_KEY!,
-    'anthropic-version': request.headers.get('anthropic-version') || DEFAULT_ANTHROPIC_VERSION,
+    "content-type": "application/json",
+    "x-api-key": env.ANTHROPIC_API_KEY!,
+    "anthropic-version":
+      request.headers.get("anthropic-version") || DEFAULT_ANTHROPIC_VERSION,
   });
-  const beta = request.headers.get('anthropic-beta');
-  if (beta) headers.set('anthropic-beta', beta);
-  const accept = request.headers.get('accept');
-  if (accept) headers.set('accept', accept);
+  const beta = request.headers.get("anthropic-beta");
+  if (beta) headers.set("anthropic-beta", beta);
+  const accept = request.headers.get("accept");
+  if (accept) headers.set("accept", accept);
 
   // Preserve the query string (the SDK's beta client sends `?beta=true`).
   const upstreamUrl = `${ANTHROPIC_API_ORIGIN}${UPSTREAM_PATHS[route]}${url.search}`;
   let upstream: Response;
   try {
     upstream = await deps.upstreamFetch(
-      new Request(upstreamUrl, { method: 'POST', headers, body: bodyText, signal: request.signal }),
+      new Request(upstreamUrl, {
+        method: "POST",
+        headers,
+        body: bodyText,
+        signal: request.signal,
+      }),
     );
   } catch {
-    return errorResponse(502, 'optimus_upstream_unreachable', 'Could not reach the Anthropic API.');
+    return errorResponse(
+      502,
+      "optimus_upstream_unreachable",
+      "Could not reach the Anthropic API.",
+    );
   }
 
   const responseHeaders = new Headers(upstream.headers);
@@ -342,10 +624,12 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
   // to the client untouched and unbuffered; the other is parsed off the
   // response path for usage. ------------------------------------------------
   let clientBody = upstream.body;
-  if (route === 'messages' && upstream.ok && upstream.body) {
+  if (route === "messages" && upstream.ok && upstream.body) {
     const [toClient, toMeter] = upstream.body.tee();
-    clientBody = toClient;
-    deps.waitUntil(meter(toMeter, upstream.headers.get('content-type'), model, deps));
+    clientBody = withKeepalive(toClient, upstream.headers.get("content-type"));
+    deps.waitUntil(
+      meter(toMeter, upstream.headers.get("content-type"), model, deps),
+    );
   }
 
   return new Response(clientBody, {
@@ -359,29 +643,113 @@ async function forward(route: Route, request: Request, url: URL, env: HandlerEnv
  * OpenAI Chat Completions. Streaming requests always ask for a final usage
  * chunk so the cap can be enforced; nothing else in the body is changed.
  */
-async function forwardOpenAI(route: 'openai_chat' | 'openai_responses', payload: Record<string, unknown>, model: string, request: Request, env: HandlerEnv, deps: HandlerDeps): Promise<Response> {
+async function forwardOpenAI(
+  route: "openai_chat" | "openai_responses",
+  payload: Record<string, unknown>,
+  model: string,
+  request: Request,
+  env: HandlerEnv,
+  deps: HandlerDeps,
+): Promise<Response> {
   // Chat Completions only reports usage on a stream when asked; Responses always does.
-  const body = route === 'openai_chat' && payload.stream === true ? { ...payload, stream_options: { ...(payload.stream_options as object | undefined), include_usage: true } } : payload;
-  const headers = new Headers({ 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` });
-  const accept = request.headers.get('accept');
-  if (accept) headers.set('accept', accept);
+  const body =
+    route === "openai_chat" && payload.stream === true
+      ? {
+          ...payload,
+          stream_options: {
+            ...(payload.stream_options as object | undefined),
+            include_usage: true,
+          },
+        }
+      : payload;
+  const headers = new Headers({
+    "content-type": "application/json",
+    authorization: `Bearer ${env.OPENAI_API_KEY}`,
+  });
+  const accept = request.headers.get("accept");
+  if (accept) headers.set("accept", accept);
   let upstream: Response;
   try {
     upstream = await deps.upstreamFetch(
-      new Request(`${OPENAI_API_ORIGIN}${UPSTREAM_PATHS[route]}`, { method: 'POST', headers, body: JSON.stringify(body), signal: request.signal }),
+      new Request(`${OPENAI_API_ORIGIN}${UPSTREAM_PATHS[route]}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: request.signal,
+      }),
     );
   } catch {
-    return errorResponse(502, 'optimus_upstream_unreachable', 'Could not reach the OpenAI API.');
+    return errorResponse(
+      502,
+      "optimus_upstream_unreachable",
+      "Could not reach the OpenAI API.",
+    );
   }
   const responseHeaders = new Headers(upstream.headers);
   for (const name of HOP_BY_HOP_RESPONSE_HEADERS) responseHeaders.delete(name);
   let clientBody = upstream.body;
   if (upstream.ok && upstream.body) {
     const [toClient, toMeter] = upstream.body.tee();
-    clientBody = toClient;
-    deps.waitUntil(meter(toMeter, upstream.headers.get('content-type'), model, deps, env));
+    clientBody = withKeepalive(toClient, upstream.headers.get("content-type"));
+    deps.waitUntil(
+      meter(toMeter, upstream.headers.get("content-type"), model, deps, env),
+    );
   }
-  return new Response(clientBody, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
+  return new Response(clientBody, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders,
+  });
+}
+
+/** SSE comment lines keep the phone's connection alive while the model thinks or a tool runs upstream. */
+export const KEEPALIVE_MS = 10_000;
+
+export function withKeepalive(
+  body: ReadableStream<Uint8Array>,
+  contentType: string | null,
+  everyMs = KEEPALIVE_MS,
+): ReadableStream<Uint8Array> {
+  if (!/text\/event-stream/i.test(contentType ?? "")) return body;
+  const reader = body.getReader();
+  const ping = new TextEncoder().encode(": keepalive\n\n");
+  let timer: ReturnType<typeof setInterval> | null = null;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      let lastByte = Date.now();
+      timer = setInterval(
+        () => {
+          if (Date.now() - lastByte >= everyMs) {
+            try {
+              controller.enqueue(ping);
+            } catch {
+              // closed
+            }
+          }
+        },
+        Math.max(10, everyMs / 2),
+      );
+      void (async () => {
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            lastByte = Date.now();
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (e) {
+          controller.error(e);
+        } finally {
+          if (timer) clearInterval(timer);
+        }
+      })();
+    },
+    cancel(reason) {
+      if (timer) clearInterval(timer);
+      return reader.cancel(reason);
+    },
+  });
 }
 
 async function meter(
@@ -399,7 +767,13 @@ async function meter(
     // back to a different model than the one requested.
     const servedModel = metered?.model ?? requestedModel;
     const usage = metered?.usage ?? {};
-    const cost = openaiEnv ? openAICostUsd(servedModel, usage, parseOpenAIPrices(openaiEnv.OPENAI_PRICES)) : costUsd(servedModel, usage);
+    const cost = openaiEnv
+      ? openAICostUsd(
+          servedModel,
+          usage,
+          parseOpenAIPrices(openaiEnv.OPENAI_PRICES),
+        )
+      : costUsd(servedModel, usage);
     const totals = await deps.ledger.record(cost);
     log(
       `optimus usage model=${servedModel} in=${usage.input_tokens ?? 0} out=${usage.output_tokens ?? 0} ` +
@@ -407,6 +781,8 @@ async function meter(
         `cost=$${cost.toFixed(6)} month=${totals.month} spent=$${totals.spentUsd.toFixed(4)}/$${totals.capUsd}`,
     );
   } catch (err) {
-    log(`optimus metering failed: ${err instanceof Error ? err.name : 'unknown error'}`);
+    log(
+      `optimus metering failed: ${err instanceof Error ? err.name : "unknown error"}`,
+    );
   }
 }

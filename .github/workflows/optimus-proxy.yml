@@ -9,6 +9,8 @@
 #   ANTHROPIC_API_KEY      optional, for the Anthropic provider
 #   ICLOUD_EMAIL           optional, your iCloud Mail address
 #   ICLOUD_APP_PASSWORD    optional, an app-specific password from appleid.apple.com
+#   GMAIL_EMAIL            optional, your Gmail address
+#   GMAIL_APP_PASSWORD     optional, an app password from myaccount.google.com/apppasswords
 # Repository variables (same page, Variables tab):
 #   OPENAI_MODELS          e.g. "model-a,model-b" (ids from platform.openai.com/docs/models)
 #   OPENAI_PRICES          optional JSON, USD per million tokens, see proxy/wrangler.toml
@@ -42,6 +44,8 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ICLOUD_EMAIL: ${{ secrets.ICLOUD_EMAIL }}
       ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
+      GMAIL_EMAIL: ${{ secrets.GMAIL_EMAIL }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
       OPENAI_MODELS: ${{ vars.OPENAI_MODELS }}
       OPENAI_PRICES: ${{ vars.OPENAI_PRICES }}
     steps:
@@ -98,6 +102,10 @@ jobs:
           if [ -n "$ICLOUD_EMAIL" ] && [ -n "$ICLOUD_APP_PASSWORD" ]; then
             printf '%s' "$ICLOUD_EMAIL" | npx wrangler secret put ICLOUD_EMAIL
             printf '%s' "$ICLOUD_APP_PASSWORD" | npx wrangler secret put ICLOUD_APP_PASSWORD
+          fi
+          if [ -n "$GMAIL_EMAIL" ] && [ -n "$GMAIL_APP_PASSWORD" ]; then
+            printf '%s' "$GMAIL_EMAIL" | npx wrangler secret put GMAIL_EMAIL
+            printf '%s' "$GMAIL_APP_PASSWORD" | npx wrangler secret put GMAIL_APP_PASSWORD
           fi
 
       - name: Check it is running
