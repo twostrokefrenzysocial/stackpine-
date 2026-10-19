@@ -79,6 +79,31 @@ export default function Settings() {
     text: string;
   } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const { data: growth, reload: refreshGrowth } = useData(
+    () => rt.engine.growth(),
+    [],
+  );
+  const [dotsMsg, setDotsMsg] = useState<string | null>(null);
+  const connectDots = async () => {
+    setBusy("dots");
+    setDotsMsg(null);
+    try {
+      const r = await rt.engine.consolidate({ force: true });
+      const n = r?.patterns ?? 0;
+      setDotsMsg(
+        n
+          ? `Found ${n} new pattern${n === 1 ? "" : "s"} and reinforced ${r?.reinforced ?? 0} memor${r?.reinforced === 1 ? "y" : "ies"}. See Memory › Patterns.`
+          : "Nothing new to connect yet. Patterns come from memories and past conversations, so talk to me and tell me about your life; I'll find them.",
+      );
+      await refreshGrowth();
+    } catch (e) {
+      setDotsMsg(
+        e instanceof Error ? e.message : "Couldn’t run that right now.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
   const [wipeArmed, setWipeArmed] = useState(false);
   const [emailMsg, setEmailMsg] = useState<string | null>(null);
   const [newPkg, setNewPkg] = useState("");
@@ -556,6 +581,30 @@ export default function Settings() {
             value={settings.locationEnabled}
             onChange={(v) => updateSettings({ locationEnabled: v })}
           />
+        </Section>
+
+        <Section title="Growth">
+          {growth && (
+            <Txt variant="mono" color={p.textTertiary}>
+              {`${growth.stage.toUpperCase()} · ${growth.memories} MEMORIES · ${growth.people} PEOPLE · ${growth.patterns} PATTERNS · ${growth.episodes} CONVERSATIONS · DAY ${growth.daysKnown + 1}`}
+            </Txt>
+          )}
+          <Txt variant="small" color={p.textSecondary}>
+            Once a day I re-read everything I’ve learned and connect the dots
+            into patterns about you. The brain on Home grows denser as I learn.
+          </Txt>
+          <Button
+            label={busy === "dots" ? "Connecting…" : "Connect the dots now"}
+            icon="core"
+            variant="secondary"
+            onPress={connectDots}
+            disabled={busy === "dots"}
+          />
+          {dotsMsg && (
+            <Txt variant="small" color={p.textSecondary}>
+              {dotsMsg}
+            </Txt>
+          )}
         </Section>
 
         <Section title="Thinking">
