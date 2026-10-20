@@ -1,5 +1,5 @@
-import { Redirect, router } from "expo-router";
-import { useState } from "react";
+import { Redirect, router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BriefStore, generateBrief } from "../core/brief/brief";
@@ -7,6 +7,7 @@ import { currentInsights, dismissInsight } from "../core/insights/insights";
 import type { DailyBrief } from "../core/types";
 import { formatDay, formatTime, isoDay, relativeTime } from "../core/util/time";
 import { ensureTodaysBrief } from "../platform/briefRunner";
+import { takePendingHref } from "../platform/notify";
 import { useApp, useData } from "../ui/AppContext";
 import { EventsCard } from "../ui/cards/DataCards";
 import { Banner } from "../ui/components/Banner";
@@ -52,6 +53,13 @@ export default function Home() {
   const { width } = useWindowDimensions();
   const [regenerating, setRegenerating] = useState(false);
   const [now] = useState(() => new Date());
+  // A notification tapped while the app was closed lands here first.
+  useFocusEffect(
+    useCallback(() => {
+      const href = takePendingHref();
+      if (href) setTimeout(() => router.push(href as never), 50);
+    }, []),
+  );
 
   const { data } = useData(async () => {
     const store = new BriefStore(rt.db);

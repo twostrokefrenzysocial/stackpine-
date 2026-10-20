@@ -99,6 +99,13 @@ export class OptimusEngine {
     );
   }
 
+  /** After a change to what notifications carry: re-create everything already scheduled. */
+  async rescheduleNotifications(): Promise<number> {
+    const a = await this.reminders.rescheduleAll(this.now());
+    const b = await this.routines.rescheduleAll(this.now());
+    return a + b + (await this.refillRoutines());
+  }
+
   /** Writes and schedules the coming week of every daily routine. */
   refillRoutines(): Promise<number> {
     return this.routines.refillAll(this.deps.background(), this.now());

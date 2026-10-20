@@ -44,6 +44,7 @@ export class NotificationStore {
     items: RawCapturedNotification[],
     policy: IngestPolicy,
     now = new Date(),
+    storedIds?: string[],
   ): Promise<number> {
     const excluded = new Set(policy.excludedPackages);
     const allowed = policy.allowedPackages?.length
@@ -76,6 +77,7 @@ export class NotificationStore {
           ],
         );
         stored += r.changes;
+        if (r.changes && storedIds) storedIds.push(id);
       }
     });
     return stored;
@@ -137,6 +139,16 @@ export class NotificationStore {
       ).changes;
     }
     return removed;
+  }
+
+  async byIds(ids: string[]): Promise<CapturedNotification[]> {
+    if (!ids.length) return [];
+    const ph = ids.map(() => "?").join(",");
+    const rows = await this.db.all<Record<string, unknown>>(
+      `SELECT * FROM notifications WHERE id IN (${ph}) ORDER BY posted_at DESC`,
+      ids,
+    );
+    return rows.map(toNotif);
   }
 
   async apps(): Promise<

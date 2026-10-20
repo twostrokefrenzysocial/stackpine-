@@ -14,6 +14,8 @@ import { LlmError, type LlmTransport } from "../core/llm/transport";
 import { createMockSources, type MockDataSources } from "../core/mock/sources";
 import {
   DEFAULT_SETTINGS,
+  kvGet,
+  kvSet,
   loadSettings,
   saveSettings,
   upgradeModelDefaults,
@@ -172,6 +174,13 @@ async function doBoot(): Promise<Runtime> {
     unavailableSources: () => unavailableSources(settings),
   });
   engineRef.engine = engine;
+  // Notifications scheduled by older builds open Home; re-create them so a tap opens the chat with the message.
+  if ((await kvGet(db, "notify.payloadVersion")) !== "2") {
+    engine
+      .rescheduleNotifications()
+      .then(() => kvSet(db, "notify.payloadVersion", "2"))
+      .catch(() => undefined);
+  }
 
   runtime = {
     db,

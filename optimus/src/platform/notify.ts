@@ -128,14 +128,28 @@ export async function scheduleDailyBrief(
 }
 
 /** Opens the screen a tapped notification points at. Returns an unsubscribe. */
+let pendingHref: string | null = null;
+/** A tap that arrived before the navigator was ready (cold start); Home consumes it as soon as it mounts. */
+export function takePendingHref(): string | null {
+  const h = pendingHref;
+  pendingHref = null;
+  return h;
+}
+
 export function routeNotificationTaps(go: (href: string) => void): () => void {
   if (Platform.OS === "web") return () => undefined;
-  const open = (data: unknown) =>
-    go(
-      hrefForNotification(
-        (data ?? undefined) as Record<string, unknown> | undefined,
-      ),
+  const open = (data: unknown) => {
+    const href = hrefForNotification(
+      (data ?? undefined) as Record<string, unknown> | undefined,
     );
+    if (href === "/") return;
+    pendingHref = href;
+    try {
+      go(href);
+    } catch {
+      // Navigator not ready yet: Home will pick it up.
+    }
+  };
   const last = Notifications.getLastNotificationResponse();
   if (last) open(last.notification.request.content.data);
   const sub = Notifications.addNotificationResponseReceivedListener((r) =>
