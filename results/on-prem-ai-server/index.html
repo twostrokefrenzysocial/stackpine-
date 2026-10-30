@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On-Prem AI Server Case Study: Private, Compliance-Ready AI | Stackpine</title>
+<meta name="description" content="An on-premises AI inference server that keeps compliance-sensitive workloads in the building: a large local model, private document search and scheduled agents.">
+<link rel="canonical" href="https://stackpine.org/results/on-prem-ai-server/">
+<meta name="theme-color" content="#F5F8F4">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Stackpine">
+<meta property="og:title" content="On-Prem AI Server Case Study: Private, Compliance-Ready AI | Stackpine">
+<meta property="og:description" content="An on-premises AI inference server that keeps compliance-sensitive workloads in the building: a large local model, private document search and scheduled agents.">
+<meta property="og:url" content="https://stackpine.org/results/on-prem-ai-server/">
+<meta property="og:image" content="https://stackpine.org/cover.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="On-Prem AI Server Case Study: Private, Compliance-Ready AI | Stackpine">
+<meta name="twitter:description" content="An on-premises AI inference server that keeps compliance-sensitive workloads in the building: a large local model, private document search and scheduled agents.">
+<meta name="twitter:image" content="https://stackpine.org/cover.jpg">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="icon" href="/logo.png" type="image/png">
+<link rel="preload" href="/assets/fonts/league-spartan-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+<script>document.documentElement.classList.add('js')</script>
+<link rel="stylesheet" href="/assets/builds.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "BreadcrumbList",
+   "itemListElement": [
+    {
+     "@type": "ListItem",
+     "position": 1,
+     "name": "Home",
+     "item": "https://stackpine.org/"
+    },
+    {
+     "@type": "ListItem",
+     "position": 2,
+     "name": "Results",
+     "item": "https://stackpine.org/results/"
+    },
+    {
+     "@type": "ListItem",
+     "position": 3,
+     "name": "On-Prem AI Server",
+     "item": "https://stackpine.org/results/on-prem-ai-server/"
+    }
+   ]
+  },
+  {
+   "@type": "WebPage",
+   "@id": "https://stackpine.org/results/on-prem-ai-server/#webpage",
+   "url": "https://stackpine.org/results/on-prem-ai-server/",
+   "name": "On-Prem AI Server Case Study: Private, Compliance-Ready AI",
+   "isPartOf": {
+    "@id": "https://stackpine.org/#website"
+   },
+   "about": {
+    "@id": "https://stackpine.org/#business"
+   },
+   "description": "An on-premises AI inference server that keeps compliance-sensitive workloads in the building: a large local model, private document search and scheduled agents.",
+   "mainEntity": {
+    "@type": "SoftwareApplication",
+    "name": "On-Prem AI Server",
+    "applicationCategory": "BusinessApplication",
+    "description": "An on-premises inference layer that keeps compliance-sensitive AI workloads entirely in the building.",
+    "operatingSystem": "Web",
+    "creator": {
+     "@id": "https://stackpine.org/#business"
+    }
+   }
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav ch--ground" id="nav">
+  <div class="wrap nav__in">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="29">Stackpine</a>
+    <button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
+    <nav class="nav__links" id="nav-links" aria-label="Main">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/what-we-build/">What we build</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/results/">Results</a>
+      <a href="/builds/">Builds</a>
+      <a class="btn btn--sm nav__cta" href="/contact/">Get a free quote</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-hero board">
+  <div class="wrap" data-enter>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true"></span><a href="/results/">Results</a><span aria-hidden="true"></span><b aria-current="page">On-Prem AI Server</b></nav>
+    <h1>On-Prem AI Server</h1>
+    <p class="lede">An on-premises inference layer that keeps compliance-sensitive AI workloads entirely in the building.</p>
+  </div>
+  <figure class="page-hero__pic shutter"><img src="/assets/img/screens-wide.jpg" width="1560" height="600" alt="Stackpine illustration: software windows and a gear connected among pine trees"></figure>
+</section>
+
+<div class="wrap">
+<article class="prose" data-enter="each">
+
+<div class="callout"><p><strong>Nemotron Super 49B running fully on-prem</strong>NVIDIA DGX Spark.</p></div>
+
+<h2>The problem</h2>
+<p>Compliance-sensitive workflows, such as intake and case-adjacent processing, cannot run on cloud LLMs.</p>
+
+<h2>What we built</h2>
+<p>An on-premises inference layer that serves a large local model through an OpenAI-compatible endpoint. It powers local document RAG (answers grounded in the organization’s own documents), privacy-sensitive processing, and scheduled agent runs as persistent services.</p>
+
+<h2>What changed</h2>
+<p>AI tooling became usable for workflows that could not touch the cloud, with the model, the documents and the processing all staying on hardware in the building.</p>
+
+<h2>The stack</h2>
+<ul class="chips"><li>NVIDIA DGX Spark</li><li>Ollama</li><li>Nemotron Super 49B</li><li>systemd services</li></ul>
+<h2>Is this a fit for your business?</h2>
+<p>Most small businesses will never need their own AI hardware. But if your data genuinely cannot leave the building, it is good to know that AI assistants are still on the table. Ask us whether it makes sense for you; often a simpler setup does the job.</p>
+<p>Every project starts with one tool, quoted for free, on one monthly subscription that covers the build, hosting, support and ongoing improvements. See <a href="/pricing/">how pricing works</a>, or read <a href="/how-it-works/">how a build works</a>.</p>
+<p>Relevant industries: <a href="/industries/healthcare/">Healthcare</a>. This build also appears on <a href="/builds/">our builds page</a>.</p>
+
+<h2>Related builds</h2>
+<div class="next" data-enter="rows">
+  <a href="/results/resume-screening-pipeline/"><b>Resume Screening Pipeline →</b><span>Privacy-first candidate triage · Zero PII leaves the building</span></a>
+  <a href="/results/staff-knowledge-assistant/"><b>Staff Knowledge Assistant →</b><span>Internal RAG chatbot · ~30 hrs/week of interruptions absorbed</span></a>
+</div>
+
+<div class="endcap board" data-enter>
+  <h2>Want something like this?</h2>
+  <p>Tell us what’s slowing your business down. Free quote, plain English, zero pressure. Usually a same-day reply.</p>
+  <div class="btn-row">
+    <a class="btn" href="/contact/">Get a free quote</a>
+    <a class="tlink" href="/results/">See all results <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </div>
+</div>
+
+</article>
+</div>
+</main>
+
+<footer class="footer ch ch--navy">
+  <div class="wrap">
+    <p class="footer__name" aria-hidden="true">Stackpine</p>
+    <div class="footer__row">
+      <ul class="footer__places">
+        <!-- TODO(owner): footer contact line. Add a phone number and/or city once you supply real values, e.g.
+             <li><a href="tel:+1__________">(___) ___-____</a></li>  and  <li>____, OH</li>
+             Do not publish placeholder values. -->
+        <li><a href="mailto:chris@stackpine.org">chris@stackpine.org</a></li>
+        <li><a href="/ohio/">Cleveland · Columbus · Cincinnati</a></li>
+        <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message us on Facebook</a></li>
+      </ul>
+      <nav class="footer__links" aria-label="Footer">
+        <div><h2>Company</h2><ul>
+          <li><a href="/how-it-works/">How it works</a></li>
+          <li><a href="/what-we-build/">What we build</a></li>
+          <li><a href="/pricing/">Pricing</a></li>
+          <li><a href="/results/">Results</a></li>
+          <li><a href="/builds/">Builds</a></li>
+          <li><a href="/contact/">Get in touch</a></li>
+        </ul></div>
+        <div><h2>Guides</h2><ul>
+          <li><a href="/custom-software/">Custom software guide</a></li>
+          <li><a href="/websites/">Websites guide</a></li>
+          <li><a href="/industries/">Industries we serve</a></li>
+        </ul></div>
+        <div><h2>Ohio</h2><ul>
+          <li><a href="/cleveland/">Cleveland</a></li>
+          <li><a href="/columbus/">Columbus</a></li>
+          <li><a href="/cincinnati/">Cincinnati</a></li>
+          <li><a href="/ohio/">All of Ohio</a></li>
+        </ul></div>
+      </nav>
+    </div>
+    <div class="footer__base">
+      <span>&copy; 2026 Stackpine · Based in Ohio</span>
+      <span>Illustrations from Stackpine’s cover art</span>
+      <a href="#main">Back to top</a>
+    </div>
+  </div>
+</footer>
+<script src="/assets/site.js" defer></script>
+<script src="/assets/fx.js" defer></script>
+<script src="/assets/beacon.js" defer></script>
+</body>
+</html>

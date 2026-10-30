@@ -574,3 +574,8 @@ html:not(.js) .stage__body{position:static;display:block;opacity:1;visibility:vi
   /* buttons lean towards the pointer, and spring back */
   .btn{transition:transform var(--t-press) var(--ease-out),translate 320ms var(--ease-out),background-color var(--t-hover) ease,color var(--t-hover) ease}
 }
+
+/* inline links in the homepage proof note and breadcrumb current page */
+.names__note a{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em}
+@media (hover:hover) and (pointer:fine){.names__note a:hover{color:var(--on-dark)}}
+.crumbs b{font-weight:600;color:var(--on-dark)}
