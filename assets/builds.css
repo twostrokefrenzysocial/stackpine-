@@ -33,3 +33,8 @@
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .chips li{font-size:var(--step-small);padding:4px 10px;background:var(--ground)}
 .build--featured .chips li{background:var(--paper)}
+
+/* stack chips inside long-form case-study prose */
+.prose .chips{display:flex;gap:6px}
+.prose .chips li{padding:4px 10px;line-height:1.4}
+.prose .chips li::before{content:none}
