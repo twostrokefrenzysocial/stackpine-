@@ -24,16 +24,6 @@
 <link rel="preload" href="/assets/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script>document.documentElement.classList.add('js')</script>
-<!--
-  TODO(owner): business details for the ProfessionalService entity (@id https://stackpine.org/#business).
-  Fill in ONLY with real, verified values, then delete this comment. Do not guess.
-  - "telephone": "+1-___-___-____"            (add to the ProfessionalService object)
-  - "address": { ..., "addressLocality": "____" }  (city the business is registered/based in)
-  - "sameAs" additions once the profiles exist:
-      Google Business Profile URL: https://g.page/____  (or the maps.app.goo.gl share link)
-      LinkedIn company page URL:   https://www.linkedin.com/company/____
-      Clutch profile URL:          https://clutch.co/profile/____
--->
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -50,6 +40,7 @@
    "priceRange": "$$",
    "address": {
     "@type": "PostalAddress",
+    "addressLocality": "Akron",
     "addressRegion": "OH",
     "addressCountry": "US"
    },
@@ -57,6 +48,10 @@
     {
      "@type": "State",
      "name": "Ohio"
+    },
+    {
+     "@type": "City",
+     "name": "Akron"
     },
     {
      "@type": "City",
@@ -291,9 +286,7 @@
     <p class="footer__name" aria-hidden="true">Stackpine</p>
     <div class="footer__row">
       <ul class="footer__places">
-        <!-- TODO(owner): footer contact line. Add a phone number and/or city once you supply real values, e.g.
-             <li><a href="tel:+1__________">(___) ___-____</a></li>  and  <li>____, OH</li>
-             Do not publish placeholder values. -->
+        <li>Based in Akron, OH</li>
         <li><a href="mailto:chris@stackpine.org">chris@stackpine.org</a></li>
         <li><a href="/ohio/">Cleveland · Columbus · Cincinnati</a></li>
         <li><a href="https://www.facebook.com/profile.php?id=61588702793283" rel="noopener">Message us on Facebook</a></li>
